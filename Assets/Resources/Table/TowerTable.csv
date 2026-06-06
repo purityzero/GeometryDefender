@@ -1,0 +1,3 @@
+Id,DisplayName,ColorHex,Cost,Damage,AttackInterval,Range,SplashRadius,ProjectileSpeed,DefaultTargeting
+1,Archer,#FFD54F,25,10,0.6,5.0,0.0,15,First
+2,Mage,#BA68C8,50,15,1.2,4.5,1.5,10,Strongest

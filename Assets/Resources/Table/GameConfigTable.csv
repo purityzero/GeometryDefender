@@ -1,0 +1,10 @@
+Id,DisplayName,Value
+1,StartGold,100
+2,StartLife,10
+3,TotalWaves,5
+4,SpawnX,10
+5,SpawnY,0
+6,SpawnZ,12
+7,BaseX,18
+8,BaseY,0
+9,BaseZ,-8

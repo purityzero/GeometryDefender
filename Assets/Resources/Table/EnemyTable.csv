@@ -1,0 +1,4 @@
+Id,DisplayName,Shape,ColorHex,MaxHp,MoveSpeed,DamageToBase,GoldReward
+1,Normal,Cube,#4FC3F7,30,2.0,1,5
+2,Swift,Sphere,#81C784,15,4.0,1,7
+3,Heavy,Capsule,#E57373,120,1.0,3,20

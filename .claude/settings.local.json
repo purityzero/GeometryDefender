@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__github__get_file_contents",
+      "Bash(Get-ChildItem \"D:\\\\Unity\\\\GeometryDefender\\\\GeometryDefender\\\\Assets\\\\Resources\\\\Table\" -Recurse)",
+      "Bash(Select-Object FullName, Extension)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Unity\\\\GeometryDefender\\\\GeometryDefender\" -Recurse -Filter \"*.asset\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Unity\\\\GeometryDefender\\\\GeometryDefender\\\\Assets\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Get-ChildItem *)",
+      "Bash(grep -E \"\\\\.\\(asset|prefab\\)$\")",
+      "Bash(Select-Object Name)"
+    ]
+  }
+}
