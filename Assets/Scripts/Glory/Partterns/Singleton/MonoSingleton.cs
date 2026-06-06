@@ -1,43 +1,32 @@
 using UnityEngine;
-using System;
 
 public class MonoSingleton<T> : MonoBehaviour where T : Component
 {
-    private static readonly Lazy<T> _instance = new Lazy<T>(CreateSingleton);
-    public static T instance => _instance.Value;
-
-    private static T CreateSingleton()
+    private static T m_Instance;
+    public static T instance
     {
-        T instance = FindFirstObjectByType<T>();
-
-        if (instance == null)
+        get
         {
-            T[] instances = Resources.FindObjectsOfTypeAll<T>();
-            if (instances.Length > 0)
+            if (m_Instance == null)
             {
-                instance = instances[0];
+                m_Instance = FindFirstObjectByType<T>();
+                if (m_Instance == null)
+                    m_Instance = new GameObject(typeof(T).Name).AddComponent<T>();
             }
+            return m_Instance;
         }
-
-        if (instance == null)
-        {
-            GameObject singletonObj = new GameObject(typeof(T).Name);
-            instance = singletonObj.AddComponent<T>();
-        }
-
-        return instance;
     }
 
     protected virtual void Awake()
     {
-        if (_instance.Value != this)
+        if (m_Instance == null)
         {
-            Destroy(gameObject); // 중복된 싱글톤 제거
+            m_Instance = this as T;
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
-            DontDestroyOnLoad(gameObject);
+            Destroy(gameObject);
         }
     }
-
 }

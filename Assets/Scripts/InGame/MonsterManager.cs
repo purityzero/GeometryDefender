@@ -103,6 +103,7 @@ public class MonsterManager : MonoBehaviour
     {
         ProcessDeadMonsters();
         ProcessReachedEndMonsters();
+        m_MonsterFactory.UpdateLogic();
     }
 
     private void ProcessDeadMonsters()

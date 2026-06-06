@@ -2,12 +2,24 @@ using UnityEngine;
 
 public class TitleSquareEffect : MonoBehaviour
 {
+    [SerializeField] SpriteRenderer m_SpriteRenderer;
     private float Speed = 5f;
 
     private Vector2 m_Direction;
     private Camera m_MainCamera;
     private Vector2 m_HalfObjectSize;
     private float m_RotationSpeed;
+
+    private void Awake()
+    {
+        m_SpriteRenderer = GetComponent<SpriteRenderer>();
+        if (m_SpriteRenderer == null)
+        {
+            Debug.Log($"[TitleSquareEffect] SpriteRenderer 컴포넌트를 찾을 수 없어 컴포넌트를 비활성화합니다.");
+            enabled = false;
+            return;
+        }
+    }
 
     private void Start()
     {
@@ -21,12 +33,13 @@ public class TitleSquareEffect : MonoBehaviour
 
         m_Direction = Random.insideUnitCircle.normalized;
 
-        SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
-            m_HalfObjectSize = spriteRenderer.bounds.extents;
+        if (m_SpriteRenderer != null)
+            m_HalfObjectSize = m_SpriteRenderer.bounds.extents;
 
         Speed = Random.Range(1f, 5f);
         m_RotationSpeed = Random.Range(30f, 120f) * (Random.value > 0.5f ? 1f : -1f);
+
+        m_SpriteRenderer.color = new Color(Random.value, Random.value, Random.value, 1f);
     }
 
     private void Update()
