@@ -1,6 +1,6 @@
-Id,NormalCount,SwiftCount,HeavyCount,SpawnInterval,ClearBonus
-1,5,0,0,0.8,20
-2,8,2,0,0.7,25
-3,6,4,1,0.6,30
-4,8,5,2,0.5,35
-5,10,6,4,0.4,50
+Id,StartTime,NormalWeight,SwiftWeight,HeavyWeight,SplitterWeight,RangedWeight,EliteChance
+1,0,100,0,0,0,0,0.0
+2,120,60,40,0,0,0,0.05
+3,240,40,30,20,10,0,0.1
+4,360,30,25,20,15,10,0.15
+5,480,20,25,20,20,15,0.2

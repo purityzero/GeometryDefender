@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>06 ECS Hybrid — Geometry Defender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="doc-header">
+      <div class="doc-tag">06 · ECS Hybrid</div>
+      <h1>ECS Hybrid 아키텍처</h1>
+      <p class="lead">
+        본 프로젝트의 기술적 차별점은 ECS(DOTS/Job/Burst)와 MonoBehaviour를
+        혼용하는 <strong>Hybrid 아키텍처</strong>다. 적 시뮬레이션처럼 데이터
+        병렬화가 명확한 영역만 ECS로 처리하고, 나머지는 OOP로 유지한다.
+        모든 곳에 ECS를 적용하는 것은 오버킬이며, 본 문서는 그 경계선을
+        명확히 정의한다.
+      </p>
+    </header>
+
+    <h2>왜 Hybrid인가</h2>
+
+    <p>
+      Unity ECS는 강력하지만 학습 곡선이 가파르고, OOP에 익숙한 시스템
+      (UI, 카드, 매니저류)을 ECS로 옮기면 복잡도가 폭증한다.
+      <strong>도구는 문제에 맞게 골라 쓴다</strong>는 원칙으로 영역별 분리.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>영역</th><th>아키텍처</th><th>이유</th></tr></thead>
+        <tbody>
+          <tr><td>적 시뮬레이션</td><td><code>ECS</code></td><td>500+ 동시 인스턴스, 단순 직선 이동, SoA 친화</td></tr>
+          <tr><td>투사체</td><td><code>ECS</code></td><td>50+ 동시 인스턴스, 적과 충돌 판정 SIMD 처리</td></tr>
+          <tr><td>중앙 타워</td><td><code>MonoBehaviour</code></td><td>인스턴스 1개. ECS 이점 없음.</td></tr>
+          <tr><td>카드 시스템</td><td><code>MonoBehaviour</code></td><td>UI 중심, 사용자 입력 처리, 참조 타입 데이터</td></tr>
+          <tr><td>UI / HUD</td><td><code>MonoBehaviour</code></td><td>UGUI는 본질적으로 MonoBehaviour</td></tr>
+          <tr><td>메타 진행</td><td><code>MonoBehaviour</code></td><td>저장/로드, 트리 그래프 순회</td></tr>
+          <tr><td>웨이브 매니저</td><td><code>MonoBehaviour</code></td><td>시간 기반 트리거. ECS 적 생성 호출</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">면접 어필 포인트</div>
+      <p style="margin-bottom: 0;">
+        "ECS를 모든 곳에 쓰지 않고, 성능 임팩트가 명확한 영역에만
+        선택적으로 적용. RPG / 콘텐츠 도메인에서 ECS 학습 후, 그 복잡도가
+        과한 경우를 직접 경험. 본 프로젝트는 그 경험을 바탕으로 한 의식적
+        도구 선택의 결과."
+      </p>
+    </div>
+
+    <h2>아키텍처 다이어그램</h2>
+
+    <p>
+      두 세계(Scene MonoBehaviour와 ECS World)는 <strong>EcsBridge 게이트웨이</strong>를
+      통해서만 통신한다. 양측이 마구잡이로 서로를 참조하면 Hybrid의 이점이
+      사라진다.
+    </p>
+
+    <div class="meta-tree">
+      <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bridge-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#00e5ff;stop-opacity:0.8"/>
+            <stop offset="100%" style="stop-color:#ff00aa;stop-opacity:0.8"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Scene Layer -->
+        <rect x="40" y="30" width="720" height="140" fill="#161620" stroke="#00e5ff" stroke-width="1.5" rx="8"/>
+        <text x="60" y="55" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="2">SCENE · MonoBehaviour</text>
+
+        <!-- Scene components -->
+        <g>
+          <rect x="80" y="80" width="130" height="60" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="145" y="105" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">TowerController</text>
+          <text x="145" y="125" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">사격 트리거</text>
+        </g>
+        <g>
+          <rect x="240" y="80" width="130" height="60" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="305" y="105" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">WaveManager</text>
+          <text x="305" y="125" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">시간 기반 스폰</text>
+        </g>
+        <g>
+          <rect x="400" y="80" width="130" height="60" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="465" y="105" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">CardSystem</text>
+          <text x="465" y="125" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">드래프트 / 효과 적용</text>
+        </g>
+        <g>
+          <rect x="560" y="80" width="130" height="60" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="625" y="105" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">UI / HUD</text>
+          <text x="625" y="125" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">UGUI</text>
+        </g>
+
+        <!-- Arrows from scene to bridge -->
+        <path d="M 145 140 L 145 200 L 380 200" stroke="#606078" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+        <path d="M 305 140 L 305 200 L 380 200" stroke="#606078" stroke-width="1.5" fill="none"/>
+        <path d="M 465 140 L 465 200 L 420 200" stroke="#606078" stroke-width="1.5" fill="none"/>
+
+        <!-- Bridge -->
+        <rect x="270" y="200" width="260" height="80" fill="#1a1a26" stroke="url(#bridge-grad)" stroke-width="2" rx="8"/>
+        <text x="400" y="225" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle" letter-spacing="2">EcsBridge (게이트웨이)</text>
+        <text x="400" y="248" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">SpawnEnemy() · SpawnProjectile()</text>
+        <text x="400" y="263" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">QueryClosestEnemy() · GetEnemyCount()</text>
+
+        <!-- Arrow bridge to ECS -->
+        <path d="M 400 280 L 400 310" stroke="#ff00aa" stroke-width="1.5" fill="none" marker-end="url(#arrow-mag)"/>
+
+        <!-- ECS Layer -->
+        <rect x="40" y="310" width="720" height="150" fill="#161620" stroke="#ff00aa" stroke-width="1.5" rx="8"/>
+        <text x="60" y="335" fill="#ff00aa" font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="2">ECS WORLD · DOTS / Job / Burst</text>
+
+        <!-- ECS systems -->
+        <g>
+          <rect x="80" y="360" width="120" height="48" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="140" y="380" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">MovementSystem</text>
+          <text x="140" y="395" fill="#606078" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">[BurstCompile]</text>
+        </g>
+        <g>
+          <rect x="220" y="360" width="120" height="48" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="280" y="380" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">CollisionSystem</text>
+          <text x="280" y="395" fill="#606078" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">SpatialHash + Burst</text>
+        </g>
+        <g>
+          <rect x="360" y="360" width="120" height="48" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="420" y="380" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">DamageSystem</text>
+          <text x="420" y="395" fill="#606078" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">[BurstCompile]</text>
+        </g>
+        <g>
+          <rect x="500" y="360" width="120" height="48" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="560" y="380" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">SpawnSystem</text>
+          <text x="560" y="395" fill="#606078" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">EntityCommandBuffer</text>
+        </g>
+        <g>
+          <rect x="640" y="360" width="100" height="48" fill="#0a0a0f" stroke="#3a3a52" rx="4"/>
+          <text x="690" y="380" fill="#e8e8f0" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">DyingSystem</text>
+          <text x="690" y="395" fill="#606078" font-family="JetBrains Mono, monospace" font-size="8" text-anchor="middle">[BurstCompile]</text>
+        </g>
+
+        <text x="400" y="438" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Entities: Enemy × 500+, Projectile × 50+</text>
+
+        <!-- Arrow markers -->
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#606078"/>
+          </marker>
+          <marker id="arrow-mag" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#ff00aa"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+    <p class="phone-caption">FIG-06-A · HYBRID ARCHITECTURE · MonoBehaviour ↔ ECS</p>
+
+    <h2>ECS 컴포넌트 명세</h2>
+
+    <p>모든 ECS 컴포넌트는 <code>IComponentData</code> 또는 <code>IBufferElementData</code>.</p>
+
+    <h3>적 컴포넌트</h3>
+
+    <pre><code>public struct EnemyTag : IComponentData { }
+
+public struct EnemyStats : IComponentData {
+    public float MaxHp;
+    public float CurrentHp;
+    public float MoveSpeed;
+    public float TowerDamage;
+}
+
+public struct EnemyVisual : IComponentData {
+    public float4 Tint;          // 컬러
+    public int SpriteIndex;      // 도형 인덱스
+    public float SizeScale;
+}
+
+public struct EnemyState : IComponentData {
+    public byte State;           // enum (Spawning/Moving/Attacking/Dying)
+    public float StateTimer;
+}
+
+// 변종 마커
+public struct EliteTag : IComponentData { }
+public struct BossTag : IComponentData { }
+
+// 특수 종 (조합형)
+public struct SplitterComponent : IComponentData {
+    public int ChildCount;
+    public int ChildEnemyId;
+}
+
+public struct RangedComponent : IComponentData {
+    public float FireCooldown;
+    public float FireTimer;
+    public float StopDistance;
+}</code></pre>
+
+    <h3>투사체 컴포넌트</h3>
+
+    <pre><code>public struct ProjectileTag : IComponentData { }
+
+public struct ProjectileStats : IComponentData {
+    public float Damage;
+    public float Speed;
+    public float Radius;
+    public int Pierce;           // 0 = 1체 적중 후 소멸
+}
+
+public struct ProjectileMotion : IComponentData {
+    public float3 Direction;     // 정규화 방향
+    public float3 SpawnPos;
+    public float MaxDistance;
+}
+
+// 변형 (있는 경우만 추가)
+public struct SplashComponent : IComponentData {
+    public float Radius;
+}
+
+public struct HomingComponent : IComponentData {
+    public Entity Target;
+    public float TurnRate;
+}
+
+public struct ChainComponent : IComponentData {
+    public int RemainingJumps;
+    public float JumpRadius;
+}</code></pre>
+
+    <h2>ECS 시스템 명세</h2>
+
+    <p>각 시스템은 단일 책임. ISystem 권장 (Burst 지원).</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>시스템</th><th>역할</th><th>Burst</th></tr></thead>
+        <tbody>
+          <tr><td><code>EnemyMovementSystem</code></td><td>적 위치 갱신 (중앙 향 직선)</td><td>O</td></tr>
+          <tr><td><code>ProjectileMovementSystem</code></td><td>투사체 위치 갱신</td><td>O</td></tr>
+          <tr><td><code>CollisionSystem</code></td><td>적-투사체 충돌 (Spatial Hash)</td><td>O</td></tr>
+          <tr><td><code>DamageSystem</code></td><td>HP 차감, 사망 마킹</td><td>O</td></tr>
+          <tr><td><code>DyingSystem</code></td><td>Dying 정리, XP 드랍 큐</td><td>O</td></tr>
+          <tr><td><code>SplitterDeathSystem</code></td><td>Splitter 사망 시 자식 스폰</td><td>X (ECB)</td></tr>
+          <tr><td><code>RangedFireSystem</code></td><td>Ranged 적 발사 처리</td><td>X (ECB)</td></tr>
+          <tr><td><code>TowerCollisionSystem</code></td><td>적-타워 충돌, 타워 HP 알림</td><td>O</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>핵심 시스템: CollisionSystem</h2>
+
+    <p>
+      가장 부담이 큰 시스템. Naive O(N×M) 비교 대신 <strong>Spatial Hash Grid</strong>로
+      적과 투사체를 영역별 분류 후, 동일/인접 셀끼리만 비교.
+    </p>
+
+    <div class="meta-tree">
+      <svg viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg">
+        <!-- Grid -->
+        <g stroke="#3a3a52" stroke-width="1" fill="none" opacity="0.5">
+          <line x1="100" y1="40" x2="100" y2="320"/>
+          <line x1="180" y1="40" x2="180" y2="320"/>
+          <line x1="260" y1="40" x2="260" y2="320"/>
+          <line x1="340" y1="40" x2="340" y2="320"/>
+          <line x1="420" y1="40" x2="420" y2="320"/>
+          <line x1="500" y1="40" x2="500" y2="320"/>
+          <line x1="20" y1="40" x2="500" y2="40"/>
+          <line x1="20" y1="110" x2="500" y2="110"/>
+          <line x1="20" y1="180" x2="500" y2="180"/>
+          <line x1="20" y1="250" x2="500" y2="250"/>
+          <line x1="20" y1="320" x2="500" y2="320"/>
+        </g>
+
+        <!-- Cell label -->
+        <text x="135" y="60" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9">(0,0)</text>
+        <text x="215" y="60" fill="#606078" font-family="JetBrains Mono, monospace" font-size="9">(1,0)</text>
+
+        <!-- Active cell + 8 neighbors -->
+        <rect x="180" y="110" width="80" height="70" fill="#00e5ff" fill-opacity="0.08" stroke="#00e5ff" stroke-width="2"/>
+        <rect x="100" y="40" width="240" height="210" fill="none" stroke="#ff00aa" stroke-width="2" stroke-dasharray="4 4"/>
+
+        <!-- Projectile -->
+        <circle cx="220" cy="145" r="8" fill="#00e5ff" filter="url(#glow-c)"/>
+        <text x="240" y="145" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="10">투사체</text>
+
+        <!-- Enemies in neighbor cells -->
+        <circle cx="135" cy="80" r="9" fill="#ff3355"/>
+        <circle cx="280" cy="90" r="9" fill="#ff3355"/>
+        <circle cx="155" cy="160" r="9" fill="#ff3355"/>
+        <circle cx="305" cy="155" r="9" fill="#ff3355"/>
+        <circle cx="130" cy="220" r="9" fill="#ff3355"/>
+        <circle cx="290" cy="225" r="9" fill="#ff3355"/>
+
+        <!-- Far enemies (not checked) -->
+        <circle cx="50" cy="280" r="9" fill="#3a3a52"/>
+        <circle cx="450" cy="80" r="9" fill="#3a3a52"/>
+        <circle cx="470" cy="280" r="9" fill="#3a3a52"/>
+
+        <!-- Legend -->
+        <g transform="translate(20, 340)">
+          <rect x="0" y="0" width="14" height="14" fill="#00e5ff" fill-opacity="0.08" stroke="#00e5ff"/>
+          <text x="22" y="11" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">투사체 셀</text>
+          <rect x="100" y="0" width="14" height="14" fill="none" stroke="#ff00aa" stroke-dasharray="3 3"/>
+          <text x="122" y="11" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">검색 범위 (3x3)</text>
+          <circle cx="262" cy="7" r="6" fill="#ff3355"/>
+          <text x="275" y="11" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">검색 대상 적</text>
+          <circle cx="395" cy="7" r="6" fill="#3a3a52"/>
+          <text x="408" y="11" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">비교 안 함</text>
+        </g>
+
+        <defs>
+          <filter id="glow-c" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3"/>
+          </filter>
+        </defs>
+      </svg>
+    </div>
+    <p class="phone-caption">FIG-06-B · SPATIAL HASH GRID · 투사체는 3×3 인접 셀의 적만 검사</p>
+
+    <pre><code>// 의사코드
+[BurstCompile]
+public partial struct CollisionJob : IJobChunk
+{
+    [ReadOnly] public NativeParallelMultiHashMap&lt;int2, Entity&gt; enemyGrid;
+
+    public void Execute(in ArchetypeChunk chunk, ...) {
+        int2 cell = WorldToCell(projectile.pos);
+
+        for (int dx = -1; dx &lt;= 1; dx++)
+        for (int dy = -1; dy &lt;= 1; dy++) {
+            if (enemyGrid.TryGetFirstValue(cell + (dx,dy), ...)) {
+                // 거리 비교 → 충돌 처리
+            }
+        }
+    }
+}</code></pre>
+
+    <p>
+      셀 크기는 평균 적 크기 × 2 (≈ 1.0 unit) 권장. <code>NativeParallelMultiHashMap</code>
+      사용. <code>ParallelWriter</code>로 병렬 빌드.
+    </p>
+
+    <h2>MonoBehaviour 측 통신 — EcsBridge</h2>
+
+    <pre><code>public static class EcsBridge
+{
+    static EntityManager EM =&gt; World.DefaultGameObjectInjectionWorld.EntityManager;
+
+    // 적 스폰 — WaveManager가 호출
+    public static void SpawnEnemy(int enemyTableId, float3 position)
+    {
+        var record = TableManager.Instance.GetTable&lt;EnemyTable&gt;().Get(enemyTableId);
+        var entity = EM.CreateEntity(EnemyArchetype);
+        EM.SetComponentData(entity, new LocalTransform { Position = position, Scale = 1 });
+        EM.SetComponentData(entity, new EnemyStats {
+            MaxHp = record.MaxHp,
+            CurrentHp = record.MaxHp,
+            MoveSpeed = record.MoveSpeed,
+            TowerDamage = record.TowerDamage
+        });
+        // ... 컬러, 종별 컴포넌트 추가
+    }
+
+    // 투사체 스폰 — TowerController가 호출
+    public static void SpawnProjectile(float3 from, float3 to, float damage)
+    {
+        var entity = EM.CreateEntity(ProjectileArchetype);
+        // ... 컴포넌트 세팅
+    }
+
+    // 쿼리 — TowerController가 공격 쿨다운마다 호출
+    public static Entity QueryClosestEnemy(float3 towerPos, float range)
+    {
+        // ECS Query로 가장 가까운 적 1체 반환
+    }
+}</code></pre>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">통신 비용</div>
+      <p style="margin-bottom: 0;">
+        MonoBehaviour → ECS 호출은 비용이 작지 않다. 매 프레임 수십 회 호출은
+        피하고, <strong>이벤트 기반</strong>으로 호출 (적 스폰 시점, 발사 시점에만).
+        매 프레임 호출되는 쿼리(타겟 탐색)는 가능한 한 ECS 측에 묶는다.
+      </p>
+    </div>
+
+    <h2>적 시각화: 어떻게 그릴까</h2>
+
+    <p>
+      ECS Entity는 GameObject가 아니므로 SpriteRenderer를 직접 가질 수 없다.
+      두 가지 옵션:
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4 style="margin-top: 0;">옵션 A — Entities Graphics</h4>
+        <p style="margin: 0;">
+          Unity Entities Graphics 패키지. <code>MaterialMeshInfo</code>로
+          ECS 측에서 직접 렌더링. 진정한 DOTS 풀스택. 학습 비용 큼.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top: 0;">옵션 B — Hybrid Visual</h4>
+        <p style="margin: 0;">
+          ECS는 데이터만, 렌더링은 MonoBehaviour 풀에서 처리.
+          ECS 위치 → 활성 SpriteRenderer로 동기화. 구현 단순.
+        </p>
+      </div>
+    </div>
+
+    <p><strong>MVP 선택: 옵션 A (Entities Graphics).</strong></p>
+
+    <p>
+      이유: ① 옵션 B는 결국 GameObject 인스턴스 500개를 풀에서 돌려쓰는
+      것이고, ECS의 절반 가치가 사라진다. ② Entities Graphics는
+      <code>RenderMeshInstanced</code> 기반이라 드로우콜 효율 극대화.
+      ③ 면접 시 <strong>"ECS 풀스택 경험"</strong> 어필 강력.
+    </p>
+
+    <h2>측정 / 검증 계획</h2>
+
+    <p>
+      Hybrid 접근의 정당성은 <strong>측정 데이터</strong>로 증명한다. 면접에서
+      활용할 수치 자료를 다음 시점에 캡처:
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>측정 항목</th><th>측정 시점</th><th>비교군</th><th>도구</th></tr></thead>
+        <tbody>
+          <tr><td>적 500체 FPS</td><td>마일스톤</td><td>OOP 풀링 vs ECS Job</td><td>Profiler</td></tr>
+          <tr><td>충돌 판정 시간</td><td>마일스톤</td><td>Naive vs Spatial Hash</td><td>Profiler</td></tr>
+          <tr><td>메모리 사용량</td><td>릴리즈 빌드</td><td>OOP vs ECS</td><td>Memory Profiler</td></tr>
+          <tr><td>모바일 발열</td><td>릴리즈 빌드</td><td>10분 플레이 후</td><td>Android Profiler</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-success">
+      <div class="callout-title">포트폴리오 결과물</div>
+      <p style="margin-bottom: 0;">
+        위 측정 결과는 README에 비교 그래프 + 표로 게시. 면접에서
+        <strong>"왜 ECS를 도입했는가"</strong>에 대한 정량적 답변 자료로 활용.
+        막연한 "성능이 좋아졌어요"가 아니라 "60 FPS 유지 가능 적 수가
+        80에서 520으로 증가" 같은 구체 수치.
+      </p>
+    </div>
+
+    <div class="divider">END OF ECS HYBRID</div>
+
+    <nav class="doc-nav">
+      <a class="doc-nav-prev" href="05_meta.html">
+        <span class="doc-nav-label">META</span>
+        <span class="doc-nav-title">05 메타 진행</span>
+      </a>
+      <a class="doc-nav-next" href="07_ui.html">
+        <span class="doc-nav-label">UI</span>
+        <span class="doc-nav-title">07 UI / UX</span>
+      </a>
+    </nav>
+
+  </div>
+</body>
+</html>

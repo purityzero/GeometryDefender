@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>04 Card System — Geometry Defender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="doc-header">
+      <div class="doc-tag">04 · Card System</div>
+      <h1>카드 시스템</h1>
+      <p class="lead">
+        카드는 본 게임의 정체성이다. 매 레벨업마다 3장 중 1장을 선택해
+        타워의 성격을 결정한다. 한 런 안에서 휘발되며, 다음 런은 0에서
+        다시 시작한다. 카드 수와 시너지가 빌드의 다양성을 만들고,
+        다양성이 "한 판 더"의 동기가 된다.
+      </p>
+    </header>
+
+    <h2>드래프트 흐름</h2>
+
+    <p>
+      플레이어가 충분한 XP를 획득해 레벨업하면, 게임이 즉시 일시정지되고
+      카드 선택 UI가 등장한다. 3장의 카드 중 1장을 골라야 게임이 재개된다.
+    </p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="hud-top">
+          <div class="hud-pill hp">❤ 87/100</div>
+          <div class="hud-pill">⏱ 04:12</div>
+          <div class="hud-pill kills">💀 312</div>
+        </div>
+        <div class="draft-overlay">
+          <div class="draft-title">LEVEL UP — CHOOSE ONE</div>
+          <div class="draft-cards">
+            <div class="draft-mini" data-rarity="epic">
+              <div class="draft-mini-icon" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div>
+              <div class="draft-mini-name">Pierce II</div>
+              <div class="draft-mini-effect">관통 +2</div>
+            </div>
+            <div class="draft-mini" data-rarity="legendary">
+              <div class="draft-mini-icon" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div>
+              <div class="draft-mini-name">Glass Cannon</div>
+              <div class="draft-mini-effect">HP -50%<br>DMG ×2.5</div>
+            </div>
+            <div class="draft-mini" data-rarity="common">
+              <div class="draft-mini-icon" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div>
+              <div class="draft-mini-name">Sharp Edges</div>
+              <div class="draft-mini-effect">DMG +20%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-04-A · CARD DRAFT UI · 게임 일시정지 + 카드 3장</p>
+
+    <h3>레벨업 곡선</h3>
+
+    <p>
+      레벨업에 필요한 XP는 레벨이 오를수록 증가. 카드 획득 빈도가 점점
+      줄어 후반부일수록 카드 한 장의 가치가 커진다.
+    </p>
+
+    <pre><code>requiredXp(level) = 5 + level × 3 + level² × 0.5
+
+레벨   누적 XP   카드 누적
+  1 →   8         1
+  2 →   17        2
+  3 →   28        3
+  5 →   55        5
+ 10 →   180       10
+ 20 →   650       20
+ 30 →   1420      30</code></pre>
+
+    <h2>카드 등급</h2>
+
+    <p>
+      카드는 4등급으로 구분된다. 등급에 따라 효과 크기와 등장 확률이
+      다르다. 카드 프레임 컬러로 즉시 식별 가능.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>등급</th><th>컬러</th><th>등장 가중치</th><th>특징</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Common</td><td><span class="swatch" style="background:#a0a0b8"></span>Gray</td><td class="num">60%</td><td>기본 스탯 +%</td></tr>
+          <tr><td>Rare</td><td><span class="swatch" style="background:#00e5ff"></span>Cyan</td><td class="num">25%</td><td>큰 스탯 + 약한 효과</td></tr>
+          <tr><td>Epic</td><td><span class="swatch" style="background:#ff00aa"></span>Magenta</td><td class="num">12%</td><td>고유 효과 (관통, 폭발 등)</td></tr>
+          <tr><td>Legendary</td><td><span class="swatch" style="background:#ffd600"></span>Gold</td><td class="num">3%</td><td>빌드 정의 카드</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">PITY 시스템</div>
+      <p style="margin-bottom: 0;">
+        Epic 이상 카드가 5장 연속 안 나오면 다음 드래프트에서 강제로
+        Epic 이상이 1장 포함됨. "운빨" 비율을 통제해 좌절감 완화.
+      </p>
+    </div>
+
+    <h2>카드 카테고리</h2>
+
+    <p>
+      카드는 5개 카테고리로 분류된다. 카테고리는 시너지 계산의 단위이며,
+      같은 카테고리 카드를 많이 모으면 보너스가 적용된다.
+    </p>
+
+    <div class="card-grid">
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-cyan);">OFFENSE</h4><p style="margin: 0;">데미지·치명타·관통 — 8장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-yellow);">SPEED</h4><p style="margin: 0;">공격 속도·투사체 속도 — 5장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-magenta);">UTILITY</h4><p style="margin: 0;">사거리·타겟팅·관통·체인 — 7장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-green);">DEFENSE</h4><p style="margin: 0;">HP·회복·실드 — 6장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: #ff6600;">SPECIAL</h4><p style="margin: 0;">빌드 정의 (Legendary) — 4장</p></div>
+    </div>
+
+    <h2>전체 카드 일람 (30장)</h2>
+
+    <p>
+      모든 카드는 다음과 같이 시각화된다. 인게임 카드 UI와 동일한 디자인.
+    </p>
+
+    <!-- ============================================ -->
+    <!-- OFFENSE -->
+    <!-- ============================================ -->
+    <div class="cat-header">
+      <span class="cat-header-icon" style="color: var(--neon-cyan); border-color: var(--neon-cyan);">OFFENSE</span>
+      <h3>공격 카드</h3>
+      <span class="cat-header-count">8장</span>
+    </div>
+
+    <div class="gcard-grid">
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#101</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Sharp Edges</div>
+        <div class="gcard-effect">Damage +20%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#102</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Sharper Edges</div>
+        <div class="gcard-effect">Damage +40%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#103</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Precision</div>
+        <div class="gcard-effect">Crit Chance +5%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#104</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Deadly Aim</div>
+        <div class="gcard-effect">Crit Multiplier +0.5</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#105</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div></div>
+        <div class="gcard-name">Pierce I</div>
+        <div class="gcard-effect">투사체가 적 1체 관통</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#106</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div></div>
+        <div class="gcard-name">Pierce II</div>
+        <div class="gcard-effect">관통 +2 (스택)</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#107</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Double Shot</div>
+        <div class="gcard-effect">한 번에 투사체 2개 발사</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#108</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Triangle Hunter</div>
+        <div class="gcard-effect">Triangle 적에게 DMG +50%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- SPEED -->
+    <!-- ============================================ -->
+    <div class="cat-header">
+      <span class="cat-header-icon" style="color: var(--neon-yellow); border-color: var(--neon-yellow);">SPEED</span>
+      <h3>속도 카드</h3>
+      <span class="cat-header-count">5장</span>
+    </div>
+
+    <div class="gcard-grid">
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#201</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Quick Fire</div>
+        <div class="gcard-effect">Attack Speed +15%</div>
+        <div class="gcard-category">Speed</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#202</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Rapid Fire</div>
+        <div class="gcard-effect">Attack Speed +30%</div>
+        <div class="gcard-category">Speed</div>
+      </div>
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#203</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Velocity</div>
+        <div class="gcard-effect">Projectile Speed +25%</div>
+        <div class="gcard-category">Speed</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#204</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Hypersonic</div>
+        <div class="gcard-effect">Proj Speed +60%, Range +20%</div>
+        <div class="gcard-category">Speed</div>
+      </div>
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#205</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Overdrive</div>
+        <div class="gcard-effect">AS +100%, DMG -30%</div>
+        <div class="gcard-category">Speed</div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- UTILITY -->
+    <!-- ============================================ -->
+    <div class="cat-header">
+      <span class="cat-header-icon" style="color: var(--neon-magenta); border-color: var(--neon-magenta);">UTILITY</span>
+      <h3>유틸리티 카드</h3>
+      <span class="cat-header-count">7장</span>
+    </div>
+
+    <div class="gcard-grid">
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#301</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9Ijg2LDIwIDE3MCwyMCAyMzYsODYgMjM2LDE3MCAxNzAsMjM2IDg2LDIzNiAyMCwxNzAgMjAsODYiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Long Reach</div>
+        <div class="gcard-effect">Range +15%</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#302</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9Ijg2LDIwIDE3MCwyMCAyMzYsODYgMjM2LDE3MCAxNzAsMjM2IDg2LDIzNiAyMCwxNzAgMjAsODYiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Far Sight</div>
+        <div class="gcard-effect">Range +35%</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#303</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Splash I</div>
+        <div class="gcard-effect">적중 시 반경 1.5 폭발</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#304</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzAsOTQgMTkxLDIxMyA2NSwyMTMgMjYsOTQiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Chain Lightning</div>
+        <div class="gcard-effect">3체 연쇄 (반경 2.0)</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#305</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Homing Missile</div>
+        <div class="gcard-effect">투사체 호밍 활성</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#306</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSIyMTYiIGhlaWdodD0iMjE2IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div></div>
+        <div class="gcard-name">Target Strongest</div>
+        <div class="gcard-effect">타겟팅 → 최고 HP 우선</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#307</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Target Fastest</div>
+        <div class="gcard-effect">타겟팅 → 최속 적 우선</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- DEFENSE -->
+    <!-- ============================================ -->
+    <div class="cat-header">
+      <span class="cat-header-icon" style="color: var(--neon-green); border-color: var(--neon-green);">DEFENSE</span>
+      <h3>방어 카드</h3>
+      <span class="cat-header-count">6장</span>
+    </div>
+
+    <div class="gcard-grid">
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#401</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Reinforce</div>
+        <div class="gcard-effect">Max HP +20</div>
+        <div class="gcard-category">Defense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#402</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Fortify</div>
+        <div class="gcard-effect">Max HP +50, 즉시 회복</div>
+        <div class="gcard-category">Defense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#403</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9Ijg2LDIwIDE3MCwyMCAyMzYsODYgMjM2LDE3MCAxNzAsMjM2IDg2LDIzNiAyMCwxNzAgMjAsODYiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Regeneration</div>
+        <div class="gcard-effect">HP +1 / 초</div>
+        <div class="gcard-category">Defense</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#404</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9Ijg2LDIwIDE3MCwyMCAyMzYsODYgMjM2LDE3MCAxNzAsMjM2IDg2LDIzNiAyMCwxNzAgMjAsODYiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Shield Burst</div>
+        <div class="gcard-effect">HP 30% ↓ 시 반경 3 폭발</div>
+        <div class="gcard-category">Defense</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#405</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div></div>
+        <div class="gcard-name">Vampire</div>
+        <div class="gcard-effect">처치 시 1% 확률 HP +1</div>
+        <div class="gcard-category">Defense</div>
+      </div>
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#406</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Phoenix</div>
+        <div class="gcard-effect">사망 시 1회 부활 (HP 50%)</div>
+        <div class="gcard-category">Defense</div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- SPECIAL -->
+    <!-- ============================================ -->
+    <div class="cat-header">
+      <span class="cat-header-icon" style="color: #ff6600; border-color: #ff6600;">SPECIAL</span>
+      <h3>빌드 정의 카드</h3>
+      <span class="cat-header-count">4장 (전부 Legendary)</span>
+    </div>
+
+    <div class="gcard-grid">
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#501</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Glass Cannon</div>
+        <div class="gcard-effect">Max HP -50%, DMG ×2.5</div>
+        <div class="gcard-category">Special</div>
+      </div>
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#502</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Berserker</div>
+        <div class="gcard-effect">HP 낮을수록 DMG ↑</div>
+        <div class="gcard-category">Special</div>
+      </div>
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#503</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Orbital Ring</div>
+        <div class="gcard-effect">타워 주변 회전 투사체 4개</div>
+        <div class="gcard-category">Special</div>
+      </div>
+
+      <div class="gcard" data-rarity="legendary">
+        <div class="gcard-id-badge">#504</div>
+        <div class="gcard-rarity-badge">Legend</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Time Slow</div>
+        <div class="gcard-effect">모든 적 속도 -25%</div>
+        <div class="gcard-category">Special</div>
+      </div>
+
+    </div>
+
+    <h2>시너지 시스템</h2>
+
+    <p>
+      같은 카테고리 카드를 일정 수 이상 모으면 시너지 보너스가 발동된다.
+      이는 빌드 일관성을 보상하는 메커니즘이다. 시너지는 HUD 하단에
+      실시간 표시.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>카테고리</th><th>3장</th><th>5장</th><th>7장</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>OFFENSE</td><td>Damage +10%</td><td>Damage +25%</td><td>Crit Chance +25%</td></tr>
+          <tr><td>SPEED</td><td>Attack Speed +10%</td><td>Attack Speed +25%</td><td>한 번에 투사체 +1</td></tr>
+          <tr><td>UTILITY</td><td>Range +10%</td><td>관통 +1</td><td>Splash 자동 활성 (반경 1.0)</td></tr>
+          <tr><td>DEFENSE</td><td>Max HP +20</td><td>HP +0.5/s 회복</td><td>받는 데미지 -20%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>카드 중복 규칙</h2>
+
+    <p>
+      Common / Rare는 무한 중복 가능 (스택). Epic / Legendary는 같은
+      카드 1회만 등장. 이미 뽑은 Epic / Legendary는 카드풀에서 제거된다.
+    </p>
+
+    <ul>
+      <li>Common: <strong>+20%처럼 가산형 효과</strong>는 스택 → 정량 강화</li>
+      <li>Epic / Legendary: <strong>유니크 효과</strong>로 중복 없음 → 빌드 다양성</li>
+    </ul>
+
+    <h2>리롤 시스템 (Meta 해금)</h2>
+
+    <p>
+      카드 3장이 모두 마음에 안 들 때, 플레이어가 1회 리롤할 수 있는
+      옵션. 메타 트리에서 <code>Reroll Token</code> 해금 시 사용 가능.
+    </p>
+
+    <div class="divider">END OF CARD SYSTEM</div>
+
+    <nav class="doc-nav">
+      <a class="doc-nav-prev" href="03_enemy.html">
+        <span class="doc-nav-label">ENEMY</span>
+        <span class="doc-nav-title">03 적 시스템</span>
+      </a>
+      <a class="doc-nav-next" href="05_meta.html">
+        <span class="doc-nav-label">META</span>
+        <span class="doc-nav-title">05 메타 진행</span>
+      </a>
+    </nav>
+
+  </div>
+</body>
+</html>

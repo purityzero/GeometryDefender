@@ -26,12 +26,13 @@ public class MonsterManager : MonoBehaviour
     {
         m_EntityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
-        Dictionary<eEnemyShape, string> pathMap = new Dictionary<eEnemyShape, string>
+        EnemyTable enemyTable = TableManager.instance.GetTable<EnemyTable>();
+
+        Dictionary<eEnemyShape, string> pathMap = new Dictionary<eEnemyShape, string>();
+        foreach (KeyValuePair<eEnemyShape, List<EnemyRecord>> pair in enemyTable.shapeMap)
         {
-            { eEnemyShape.Cube,    "Prefabs/Monster/Cube"    },
-            { eEnemyShape.Sphere,  "Prefabs/Monster/Sphere"  },
-            { eEnemyShape.Capsule, "Prefabs/Monster/Capsule" },
-        };
+            pathMap[pair.Key] = pair.Value[0].PrefabPath;
+        }
 
         m_MonsterFactory = new MemoryPoolFactory<ActorMonster, eEnemyShape>(pathMap, 10, m_PoolParent);
         m_MonsterFactory.Prewarm();

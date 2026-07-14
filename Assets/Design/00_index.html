@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geometry Defender — Design Doc</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="doc-header">
+      <div class="doc-tag">Game Design Document · v1.0</div>
+      <h1>Geometry Defender</h1>
+      <p class="lead">
+        사방에서 몰려드는 도형들을 막아내는 미니멀 로그라이트 타워 디펜스.
+        하나의 중앙 타워, 무한 웨이브, 카드 드래프트, 영구 메타 성장 —
+        Vampire Survivors의 떼몰림과 Rogue Tower의 빌드 다양성을
+        모바일 세로 화면에 압축했다.
+      </p>
+    </header>
+
+    <h2>한 줄 컨셉</h2>
+    <p>
+      <strong>도형이 도형을 막는다.</strong> 화면 중앙에 있는 단 하나의 타워가
+      사방에서 수렴해오는 기하학적 적들을 자동 사격으로 막아내고, 플레이어는
+      웨이브 클리어마다 등장하는 3장의 카드 중 하나를 선택해 매 런마다 다른
+      빌드를 완성한다. 죽으면 처음부터. 다만 영구적으로 누적되는 메타 진행도가
+      다음 런을 조금씩 강하게 만든다.
+    </p>
+
+    <h2>핵심 의사결정</h2>
+
+    <div class="spec-table">
+      <div class="spec-key">Genre</div>
+      <div class="spec-val">로그라이트 타워 디펜스 (서바이버형 떼몰림 구조)</div>
+
+      <div class="spec-key">View</div>
+      <div class="spec-val">2D 탑다운, 고정 카메라</div>
+
+      <div class="spec-key">Platform</div>
+      <div class="spec-val">Mobile-first, 세로 화면 (9:19.5 ~ 9:21 대응)</div>
+
+      <div class="spec-key">Art Style</div>
+      <div class="spec-val">프리미티브 도형 + 단색 + 네온 글로우</div>
+
+      <div class="spec-key">Session</div>
+      <div class="spec-val">1런 10~15분 / 무한 웨이브 / 점수 기록</div>
+
+      <div class="spec-key">Progression</div>
+      <div class="spec-val">인-런 카드 드래프트 (휘발) + 메타 영구 해금</div>
+
+      <div class="spec-key">Tech Spike</div>
+      <div class="spec-val">ECS Hybrid — 적 시뮬레이션만 DOTS/Job/Burst, 그 외 MonoBehaviour</div>
+
+      <div class="spec-key">Engine</div>
+      <div class="spec-val">Unity 6 LTS</div>
+
+      <div class="spec-key">Dev Cycle</div>
+      <div class="spec-val">MVP 5일 (1런 코어) + 추가 2일 (메타 시스템)</div>
+    </div>
+
+    <h2>문서 목차</h2>
+
+    <div class="toc-grid">
+
+      <a class="toc-card" href="01_concept.html">
+        <div class="toc-num">01</div>
+        <div class="toc-title">CONCEPT</div>
+        <div class="toc-desc">게임 컨셉, 코어 루프, 차별점, 레퍼런스 분석</div>
+      </a>
+
+      <a class="toc-card" href="02_combat.html">
+        <div class="toc-num">02</div>
+        <div class="toc-title">COMBAT</div>
+        <div class="toc-desc">중앙 타워, 사격 시스템, 데미지 모델, 투사체</div>
+      </a>
+
+      <a class="toc-card" href="03_enemy.html">
+        <div class="toc-num">03</div>
+        <div class="toc-title">ENEMY</div>
+        <div class="toc-desc">적 종류, 행동 패턴, ECS 호환 데이터 구조</div>
+      </a>
+
+      <a class="toc-card" href="04_card.html">
+        <div class="toc-num">04</div>
+        <div class="toc-title">CARD SYSTEM</div>
+        <div class="toc-desc">인-런 성장 / 드래프트 / 시너지 / 카드풀</div>
+      </a>
+
+      <a class="toc-card" href="05_meta.html">
+        <div class="toc-num">05</div>
+        <div class="toc-title">META</div>
+        <div class="toc-desc">영구 진행도, 연구 트리, 세이브 시스템</div>
+      </a>
+
+      <a class="toc-card" href="06_ecs.html">
+        <div class="toc-num">06</div>
+        <div class="toc-title">ECS HYBRID</div>
+        <div class="toc-desc">DOTS 적용 범위, 컴포넌트/시스템 명세, 경계선</div>
+      </a>
+
+      <a class="toc-card" href="07_ui.html">
+        <div class="toc-num">07</div>
+        <div class="toc-title">UI / UX</div>
+        <div class="toc-desc">화면 구성, HUD, 카드 선택 UI, 메뉴</div>
+      </a>
+
+      <a class="toc-card" href="08_balance.html">
+        <div class="toc-num">08</div>
+        <div class="toc-title">BALANCE</div>
+        <div class="toc-desc">난이도 곡선, 적 수치, 카드 시너지 매트릭스</div>
+      </a>
+
+    </div>
+
+    <div class="divider">END OF INDEX</div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">DOCUMENT NOTES</div>
+      <p style="margin-bottom: 0;">
+        본 문서는 1인 개발자(Unity Client Programmer)의 포트폴리오 프로젝트
+        기획서로, 면접 시 제출 가능한 형태로 작성되었다. 모든 이미지 자리
+        (<code>img-spec</code> 블록)에는 GPT 이미지 생성용 프롬프트가 명시되어
+        있으므로 외부 도구로 생성 후 교체하면 된다.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>

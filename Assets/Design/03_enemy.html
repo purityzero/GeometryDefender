@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03 Enemy — Geometry Defender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="doc-header">
+      <div class="doc-tag">03 · Enemy</div>
+      <h1>적 시스템</h1>
+      <p class="lead">
+        적은 화면 가장자리에서 스폰되어 중앙 타워를 향해 직선 이동한다.
+        AI는 의도적으로 단순화되어 있다 — ECS Job 내에서 Burst 컴파일
+        가능한 데이터 구조를 유지하기 위함이다. 다양성은 행동이 아닌
+        <strong>도형 × 컬러 × 스탯</strong>으로 확보한다.
+      </p>
+    </header>
+
+    <h2>적 분류 체계</h2>
+
+    <p>
+      적은 두 축으로 분류된다. <strong>기본 종(Species)</strong>은 도형과
+      스탯 원형을 결정하고, <strong>변종(Variant)</strong>은 시간 경과에 따른
+      강화 단계다.
+    </p>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4 style="margin-top: 0;">SPECIES — 5종</h4>
+        <p style="margin: 0;">
+          Normal / Swift / Heavy / Splitter / Ranged.
+          각 도형으로 1차 식별. 모두 적색 베이스.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top: 0;">VARIANT — 3단계</h4>
+        <p style="margin: 0;">
+          Normal → Elite → Boss.
+          엘리트는 마젠타 컬러, 보스는 별 도형 + 골드.
+        </p>
+      </div>
+    </div>
+
+    <h2>기본 종(Species)</h2>
+
+    <h3>① NORMAL — 일반 적</h3>
+    <p>가장 흔한 적. 모든 스탯의 기준값.</p>
+
+    <div class="asset-spec">
+      <div class="asset-spec-header">
+        <span class="asset-spec-tag">ENEMY-01</span>
+        <span class="asset-spec-name">enemy_normal</span>
+      </div>
+      <div class="asset-spec-body">
+        <div class="asset-preview">
+          <div class="asset-preview-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff3355;"></div>
+        </div>
+        <div class="asset-info">
+          <div class="asset-info-row"><div class="asset-info-key">Shape</div><div class="asset-info-val">Triangle</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tint</div><div class="asset-info-val"><span class="swatch-inline" style="background:#ff3355"></span>#ff3355</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Size</div><div class="asset-info-val">0.5 × 0.5 unit</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">HP / Speed</div><div class="asset-info-val">20 / 1.5 u/s</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tower DMG</div><div class="asset-info-val">5</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">XP Drop</div><div class="asset-info-val">1</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>② SWIFT — 빠른 적</h3>
+    <p>HP 낮지만 속도 빠름. 처치 못 하면 라인 뚫림.</p>
+
+    <div class="asset-spec">
+      <div class="asset-spec-header">
+        <span class="asset-spec-tag">ENEMY-02</span>
+        <span class="asset-spec-name">enemy_swift</span>
+      </div>
+      <div class="asset-spec-body">
+        <div class="asset-preview">
+          <div class="asset-preview-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff3355;"></div>
+        </div>
+        <div class="asset-info">
+          <div class="asset-info-row"><div class="asset-info-key">Shape</div><div class="asset-info-val">Circle</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tint</div><div class="asset-info-val"><span class="swatch-inline" style="background:#ff3355"></span>#ff3355</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Size</div><div class="asset-info-val">0.4 × 0.4 unit</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">HP / Speed</div><div class="asset-info-val">10 / 3.0 u/s</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tower DMG</div><div class="asset-info-val">3</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">XP Drop</div><div class="asset-info-val">2</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>③ HEAVY — 탱커</h3>
+    <p>HP 높고 느림. 타워 데미지 큼.</p>
+
+    <div class="asset-spec">
+      <div class="asset-spec-header">
+        <span class="asset-spec-tag">ENEMY-03</span>
+        <span class="asset-spec-name">enemy_heavy</span>
+      </div>
+      <div class="asset-spec-body">
+        <div class="asset-preview">
+          <div class="asset-preview-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSIyMTYiIGhlaWdodD0iMjE2IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); --tint: #ff3355;"></div>
+        </div>
+        <div class="asset-info">
+          <div class="asset-info-row"><div class="asset-info-key">Shape</div><div class="asset-info-val">Square</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tint</div><div class="asset-info-val"><span class="swatch-inline" style="background:#ff3355"></span>#ff3355</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Size</div><div class="asset-info-val">0.8 × 0.8 unit</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">HP / Speed</div><div class="asset-info-val">80 / 0.8 u/s</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tower DMG</div><div class="asset-info-val">15</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">XP Drop</div><div class="asset-info-val">5</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>④ SPLITTER — 분열 적</h3>
+    <p>사망 시 작은 Normal 2마리로 분열. 군집 형성 유도.</p>
+
+    <div class="asset-spec">
+      <div class="asset-spec-header">
+        <span class="asset-spec-tag">ENEMY-04</span>
+        <span class="asset-spec-name">enemy_splitter</span>
+      </div>
+      <div class="asset-spec-body">
+        <div class="asset-preview">
+          <div class="asset-preview-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); --tint: #ff3355;"></div>
+        </div>
+        <div class="asset-info">
+          <div class="asset-info-row"><div class="asset-info-key">Shape</div><div class="asset-info-val">Diamond</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tint</div><div class="asset-info-val"><span class="swatch-inline" style="background:#ff3355"></span>#ff3355</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Size</div><div class="asset-info-val">0.6 × 0.6 unit</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">HP / Speed</div><div class="asset-info-val">25 / 1.2 u/s</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tower DMG</div><div class="asset-info-val">7</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">XP Drop</div><div class="asset-info-val">3 + 1×2</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Death FX</div><div class="asset-info-val">자식 Normal 2체 즉시 스폰</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>⑤ RANGED — 원거리 적</h3>
+    <p>타워에 도달하지 않고 일정 거리에서 멈춰 투사체 발사.</p>
+
+    <div class="asset-spec">
+      <div class="asset-spec-header">
+        <span class="asset-spec-tag">ENEMY-05</span>
+        <span class="asset-spec-name">enemy_ranged</span>
+      </div>
+      <div class="asset-spec-body">
+        <div class="asset-preview">
+          <div class="asset-preview-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzAsOTQgMTkxLDIxMyA2NSwyMTMgMjYsOTQiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ff3355;"></div>
+        </div>
+        <div class="asset-info">
+          <div class="asset-info-row"><div class="asset-info-key">Shape</div><div class="asset-info-val">Pentagon</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tint</div><div class="asset-info-val"><span class="swatch-inline" style="background:#ff3355"></span>#ff3355</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Size</div><div class="asset-info-val">0.5 × 0.5 unit</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">HP / Speed</div><div class="asset-info-val">15 / 1.0 u/s</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Tower DMG</div><div class="asset-info-val">투사체 4 / hit</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">XP Drop</div><div class="asset-info-val">4</div></div>
+          <div class="asset-info-row"><div class="asset-info-key">Behavior</div><div class="asset-info-val">거리 4.0에서 정지 → 2초마다 발사</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h2>변종(Variant)</h2>
+
+    <p>
+      변종은 기본 종 위에 덧붙는 강화 레이어다. 시간 경과에 따라 출현
+      확률이 증가하며, 변종마다 별도 스폰 테이블이 있는 것이 아니라
+      <strong>기본 종의 스폰에 변종 확률이 곱해지는 구조</strong>다.
+    </p>
+
+    <h3>Triangle 종의 변종 예시</h3>
+
+    <div class="mini-card-grid">
+      <div class="mini-card">
+        <div class="shape-box">
+          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff3355; width: 50%; height: 50%;"></div>
+        </div>
+        <div class="mini-card-name">Normal</div>
+        <div class="mini-card-meta">HP 20 / 기본</div>
+      </div>
+      <div class="mini-card">
+        <div class="shape-box">
+          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff00aa; width: 65%; height: 65%;"></div>
+        </div>
+        <div class="mini-card-name">Elite</div>
+        <div class="mini-card-meta">HP ×3 / 마젠타</div>
+      </div>
+      <div class="mini-card">
+        <div class="shape-box">
+          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ffd600; width: 90%; height: 90%;"></div>
+        </div>
+        <div class="mini-card-name">Boss</div>
+        <div class="mini-card-meta">Star + Gold</div>
+      </div>
+    </div>
+
+    <h3>변종 배율 (모든 종 공통)</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>변종</th><th>HP ×</th><th>Speed ×</th><th>Size ×</th><th>XP ×</th><th>TwrDmg ×</th><th>출현</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Normal</td><td class="num">1.0</td><td class="num">1.0</td><td class="num">1.0</td><td class="num">1.0</td><td class="num">1.0</td><td>0:00~</td></tr>
+          <tr><td>Elite</td><td class="num">3.0</td><td class="num">1.2</td><td class="num">1.3</td><td class="num">4.0</td><td class="num">1.5</td><td>2:00~</td></tr>
+          <tr><td>Boss</td><td class="num">30.0</td><td class="num">0.8</td><td class="num">3.0</td><td class="num">50.0</td><td class="num">3.0</td><td>5분마다</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Elite 출현 확률은 2분부터 점진 증가 (2분 5% → 10분 30%). Boss는
+      <strong>5분 / 10분 / 15분 등 5분 간격으로 고정 출현</strong>. 보스 처치 시
+      카드 선택 1회 보너스 + Shards +10.
+    </p>
+
+    <h2>전체 적 일람</h2>
+
+    <p>모든 종 × 변종 매트릭스 (15종 시각화).</p>
+
+    <h4>NORMAL VARIANT</h4>
+    <div class="mini-card-grid">
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff3355;"></div></div><div class="mini-card-name">Normal</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff3355;"></div></div><div class="mini-card-name">Swift</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSIyMTYiIGhlaWdodD0iMjE2IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); --tint: #ff3355;"></div></div><div class="mini-card-name">Heavy</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); --tint: #ff3355;"></div></div><div class="mini-card-name">Splitter</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzAsOTQgMTkxLDIxMyA2NSwyMTMgMjYsOTQiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ff3355;"></div></div><div class="mini-card-name">Ranged</div></div>
+    </div>
+
+    <h4>ELITE VARIANT (×3 HP, 마젠타)</h4>
+    <div class="mini-card-grid">
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff00aa;"></div></div><div class="mini-card-name">Normal-E</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff00aa;"></div></div><div class="mini-card-name">Swift-E</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSIyMTYiIGhlaWdodD0iMjE2IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); --tint: #ff00aa;"></div></div><div class="mini-card-name">Heavy-E</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); --tint: #ff00aa;"></div></div><div class="mini-card-name">Splitter-E</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzAsOTQgMTkxLDIxMyA2NSwyMTMgMjYsOTQiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ff00aa;"></div></div><div class="mini-card-name">Ranged-E</div></div>
+    </div>
+
+    <h4>BOSS VARIANT (Star + Gold, 도형 오버라이드)</h4>
+    <div class="mini-card-grid">
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ffd600;"></div></div><div class="mini-card-name">Boss × 5분</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ffd600;"></div></div><div class="mini-card-name">Boss × 10분</div></div>
+      <div class="mini-card"><div class="shape-box"><div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+'); --tint: #ffd600;"></div></div><div class="mini-card-name">Boss × 15분</div></div>
+    </div>
+
+    <h2>스폰 시스템</h2>
+
+    <h3>스폰 위치</h3>
+
+    <p>
+      적은 카메라 뷰포트 바깥쪽 반경 7.0 unit 원 둘레에서 무작위 각도로
+      스폰. 화면에서 약간 떨어진 위치에서 페이드 인.
+    </p>
+
+    <pre><code>spawnAngle = Random(0, 360°)
+spawnPos = (cos(angle) * 7.0, sin(angle) * 7.0)</code></pre>
+
+    <h3>스폰 페이스</h3>
+
+    <p>스폰 페이스는 시간 함수로 계산. 후반부 곡선이 가팔라진다.</p>
+
+    <pre><code>spawnRate(t) = baseRate * (1 + t / 60) ^ 1.3
+  baseRate = 1.0 (초당 1체)
+  t        = 경과 시간 (초)
+
+t=0    → 1.0 체/초   (분당 60)
+t=60   → 2.46 체/초  (분당 148)
+t=300  → 17.0 체/초  (분당 1020)
+t=600  → 49.0 체/초  (분당 2940)</code></pre>
+
+    <h3>스폰 풀 가중치 (시간대별 종 비율)</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>시간</th><th>Normal</th><th>Swift</th><th>Heavy</th><th>Splitter</th><th>Ranged</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">0:00~2:00</td><td class="num">100%</td><td class="num">0%</td><td class="num">0%</td><td class="num">0%</td><td class="num">0%</td></tr>
+          <tr><td class="num">2:00~4:00</td><td class="num">60%</td><td class="num">40%</td><td class="num">0%</td><td class="num">0%</td><td class="num">0%</td></tr>
+          <tr><td class="num">4:00~6:00</td><td class="num">40%</td><td class="num">30%</td><td class="num">20%</td><td class="num">10%</td><td class="num">0%</td></tr>
+          <tr><td class="num">6:00~8:00</td><td class="num">30%</td><td class="num">25%</td><td class="num">20%</td><td class="num">15%</td><td class="num">10%</td></tr>
+          <tr><td class="num">8:00~∞</td><td class="num">20%</td><td class="num">25%</td><td class="num">20%</td><td class="num">20%</td><td class="num">15%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>행동 패턴</h2>
+
+    <p>
+      ECS Job 호환을 위해 행동은 4가지 상태로만 정의된다. BehaviorTree
+      대신 단순 enum 상태머신을 사용한다.
+    </p>
+
+    <pre><code>enum EnemyState : byte {
+    Spawning  = 0,   // 화면 밖에서 페이드 인 (0.3초)
+    Moving    = 1,   // 중앙 향해 직선 이동
+    Attacking = 2,   // Ranged 전용 (정지 + 발사)
+    Dying     = 3,   // 사망 페이드 아웃 (0.2초) + XP 드랍
+}</code></pre>
+
+    <p>
+      모든 적은 <code>Spawning → Moving → Dying</code> 경로를 따른다.
+      Ranged만 <code>Moving → Attacking</code> 전이가 추가된다.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-title">왜 BT가 아닌가</div>
+      <p style="margin-bottom: 0;">
+        BT는 디자이너 친화적 시각 도구지만, ECS Job 내에서 사용할 수 없다
+        (참조 타입 / 가변 트리 구조). 본 프로젝트는 <strong>적 수 폭증
+        대응</strong>이 1순위 목표이므로 ECS 호환 단순 enum 상태머신을
+        선택. BT는 v2 PC 빌드에서 검토.
+      </p>
+    </div>
+
+    <h2>적 ECS 데이터 구조</h2>
+
+    <p>각 적은 다음 컴포넌트들의 조합으로 표현된다.</p>
+
+    <pre><code>// 모든 적이 가지는 필수 컴포넌트
+EnemyTag           : (마커)
+LocalTransform     : float3 position, rotation, scale
+EnemyStats         : float maxHp, currentHp, moveSpeed, towerDamage
+EnemyVisual        : float4 tint, int spriteIndex
+EnemyState         : byte (enum)
+
+// 종(Species)별 추가 컴포넌트
+SplitterComponent  : int childCount, int childEnemyId   (Splitter 전용)
+RangedComponent    : float fireCooldown, float fireRange (Ranged 전용)
+EliteTag / BossTag : (마커)</code></pre>
+
+    <p>
+      종별 동작 차이는 <strong>컴포넌트 유무</strong>로 시스템이 분기 처리.
+      Polymorphism을 enum + 추가 컴포넌트 패턴으로 풀어냈다.
+    </p>
+
+    <div class="divider">END OF ENEMY</div>
+
+    <nav class="doc-nav">
+      <a class="doc-nav-prev" href="02_combat.html">
+        <span class="doc-nav-label">COMBAT</span>
+        <span class="doc-nav-title">02 전투 시스템</span>
+      </a>
+      <a class="doc-nav-next" href="04_card.html">
+        <span class="doc-nav-label">CARD</span>
+        <span class="doc-nav-title">04 카드 시스템</span>
+      </a>
+    </nav>
+
+  </div>
+</body>
+</html>

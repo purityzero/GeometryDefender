@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>07 UI / UX — Geometry Defender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="doc-header">
+      <div class="doc-tag">07 · UI / UX</div>
+      <h1>UI / UX</h1>
+      <p class="lead">
+        모바일 세로 화면 9:19.5를 기준으로 한 UI 시스템. 한 손 조작이
+        가능하도록 인터랙션은 화면 하단 1/3에 배치한다. 게임 플레이 중에는
+        정보 노이즈를 최소화하고, 일시정지된 의사결정 순간(카드 선택)에
+        모든 정보를 풍부하게 전달한다.
+      </p>
+    </header>
+
+    <h2>해상도 / 세이프 에어리어</h2>
+
+    <p>
+      디자인 기준 해상도는 <strong>1080 × 2400 (9:20)</strong>.
+      9:18 ~ 9:21 사이를 모두 대응. 노치/홀펀치 대응을 위한 안전 영역을
+      두 단계로 정의.
+    </p>
+
+    <div class="spec-table">
+      <div class="spec-key">Reference Resolution</div>
+      <div class="spec-val">1080 × 2400 (9:20)</div>
+
+      <div class="spec-key">Aspect Range</div>
+      <div class="spec-val">9:18 ~ 9:21 (대부분 디바이스 커버)</div>
+
+      <div class="spec-key">Safe Area Top</div>
+      <div class="spec-val">96px (노치 회피)</div>
+
+      <div class="spec-key">Safe Area Bottom</div>
+      <div class="spec-val">60px (홈 인디케이터 회피)</div>
+
+      <div class="spec-key">Play Area</div>
+      <div class="spec-val">1080 × 1500 (게임 월드 영역)</div>
+
+      <div class="spec-key">UI Bottom Zone</div>
+      <div class="spec-val">400px (한 손 조작 영역)</div>
+    </div>
+
+    <h2>화면 1: 메인 메뉴</h2>
+
+    <p>
+      앱 진입 시 첫 화면. 중앙의 거대한 육각형이 게임 정체성을 즉시 전달.
+      한 손으로 PLAY 버튼에 닿는 위치에 배치.
+    </p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div style="position: absolute; top: 80px; left: 0; right: 0; text-align: center; font-family: var(--font-display); font-size: 22px; font-weight: 900; letter-spacing: 0.1em; background: linear-gradient(135deg, #fff 0%, #00e5ff 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+          GEOMETRY<br>DEFENDER
+        </div>
+        <div style="position: absolute; top: 200px; left: 50%; transform: translateX(-50%); width: 110px; height: 110px; background-color: #00e5ff; -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-size: contain; mask-size: contain; filter: drop-shadow(0 0 14px #00e5ff) drop-shadow(0 0 30px #00e5ff);"></div>
+        <div style="position: absolute; bottom: 80px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="background: #00e5ff; color: #0a0a0f; text-align: center; padding: 12px; border-radius: 8px; font-family: var(--font-display); font-weight: 700; font-size: 14px; letter-spacing: 0.15em; box-shadow: 0 0 16px rgba(0,229,255,0.5);">▶ PLAY</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); text-align: center; padding: 10px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px; display: flex; justify-content: space-between; padding-left: 16px; padding-right: 16px;"><span>💎 META TREE</span><span style="color: var(--neon-cyan)">312</span></div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">⚙ SETTINGS</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">📖 HOW TO PLAY</div>
+        </div>
+        <div style="position: absolute; bottom: 30px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 9px; color: var(--text-muted);">
+          BEST 18,200 · RUNS 27
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-07-A · MAIN MENU</p>
+
+    <h2>화면 2: 인게임 HUD</h2>
+
+    <p>
+      플레이 중 화면. 정보는 최소화 — HP / 시간 / 킬 / XP 바 / 시너지만.
+      플레이어가 만질 수 있는 건 일시정지 버튼 하나.
+    </p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="hud-top">
+          <div class="hud-pill hp">❤ 100/100</div>
+          <div class="hud-pill">⏱ 03:42</div>
+          <div class="hud-pill kills">💀 247</div>
+        </div>
+        <div class="xp-bar"><div class="xp-fill"></div></div>
+        <div class="play-area">
+          <div class="range-circle"></div>
+          <div class="tower-center"></div>
+          <div class="enemy-dot" style="top: 18%; left: 30%; width: 14px; height: 14px; background: #ff3355;"></div>
+          <div class="enemy-dot" style="top: 25%; left: 65%; width: 10px; height: 10px; background: #ff3355;"></div>
+          <div class="enemy-dot" style="top: 70%; left: 22%; width: 18px; height: 18px; background: #ff3355;"></div>
+          <div class="enemy-dot" style="top: 78%; left: 70%; width: 14px; height: 14px; background: #ff00aa;"></div>
+          <div class="enemy-dot" style="top: 45%; left: 12%; width: 12px; height: 12px; background: #ff3355;"></div>
+          <div class="enemy-dot" style="top: 55%; left: 85%; width: 12px; height: 12px; background: #ff3355;"></div>
+          <div class="enemy-dot" style="top: 30%; left: 50%; width: 16px; height: 16px; background: #ff00aa;"></div>
+          <div class="enemy-dot" style="top: 60%; left: 40%; width: 10px; height: 10px; background: #ff3355;"></div>
+          <div class="enemy-dot" style="top: 47%; left: 45%; width: 6px; height: 6px; background: #00e5ff;"></div>
+          <div class="enemy-dot" style="top: 52%; left: 60%; width: 6px; height: 6px; background: #00e5ff;"></div>
+        </div>
+        <div class="hud-bottom">
+          <div class="synergy-row"><span>OFFENSE 4/5</span><span>░░░░▓</span></div>
+          <div class="synergy-row"><span>SPEED 2/3</span><span>▓▓░</span></div>
+          <div class="synergy-row active"><span>UTILITY 3/3 ✓</span><span>▓▓▓</span></div>
+          <div class="synergy-row"><span>DEFENSE 1/3</span><span>▓░░</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-07-B · INGAME HUD · 상단 정보, 중앙 게임, 하단 시너지</p>
+
+    <h3>HUD 요소 명세</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>요소</th><th>위치</th><th>스타일</th></tr></thead>
+        <tbody>
+          <tr><td>HP Pill</td><td>좌측 상단</td><td>시안 외곽선, HP 변경 시 펄스</td></tr>
+          <tr><td>Timer</td><td>중앙 상단</td><td>회색 외곽선, 분:초</td></tr>
+          <tr><td>Kill Counter</td><td>우측 상단</td><td>적색 외곽선, 처치 시 펄스</td></tr>
+          <tr><td>XP Bar</td><td>HUD 바로 아래, 가로 전체</td><td>3px 두께, 시안 글로우</td></tr>
+          <tr><td>Range Circle</td><td>타워 주변</td><td>1px 시안 점선, 평시 비표시</td></tr>
+          <tr><td>Synergy Rows</td><td>하단 4행</td><td>카테고리 누적 카드 + 다음 시너지 진척</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>화면 3: 카드 드래프트 (핵심)</h2>
+
+    <p>
+      게임의 가장 중요한 의사결정 화면. 일시정지 + 카드 3장. 등급별
+      외곽 글로우로 매력 차등.
+    </p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="hud-top">
+          <div class="hud-pill hp">❤ 87/100</div>
+          <div class="hud-pill">⏱ 04:12</div>
+          <div class="hud-pill kills">💀 312</div>
+        </div>
+        <div class="draft-overlay">
+          <div class="draft-title">LEVEL UP — CHOOSE ONE</div>
+          <div class="draft-cards">
+            <div class="draft-mini" data-rarity="epic">
+              <div class="draft-mini-icon" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div>
+              <div class="draft-mini-name">Pierce II</div>
+              <div class="draft-mini-effect">관통 +2</div>
+            </div>
+            <div class="draft-mini" data-rarity="legendary">
+              <div class="draft-mini-icon" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div>
+              <div class="draft-mini-name">Glass Cannon</div>
+              <div class="draft-mini-effect">HP -50%<br>DMG ×2.5</div>
+            </div>
+            <div class="draft-mini" data-rarity="common">
+              <div class="draft-mini-icon" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div>
+              <div class="draft-mini-name">Sharp Edges</div>
+              <div class="draft-mini-effect">DMG +20%</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px; display: flex; gap: 8px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 4px 10px; border-radius: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary);">🔄 REROLL (1)</div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 4px 10px; border-radius: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary);">⏭ SKIP (+5💎)</div>
+          </div>
+          <div style="margin-top: 12px; font-family: var(--font-mono); font-size: 8px; color: var(--text-muted); text-align: center;">현재 빌드: OFFENSE 3 / UTILITY 2 / DEFENSE 1</div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-07-C · CARD DRAFT · 일시정지 + 카드 3장 + 리롤/스킵</p>
+
+    <h3>카드 시각 명세</h3>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>요소</th><th>스타일</th></tr></thead>
+        <tbody>
+          <tr><td>카드 프레임</td><td>등급 컬러 외곽선 + 발광</td></tr>
+          <tr><td>도형 아이콘</td><td>카드 효과를 상징하는 도형 + 등급 컬러</td></tr>
+          <tr><td>이름 폰트</td><td>Orbitron, 굵게, 12sp</td></tr>
+          <tr><td>효과 텍스트</td><td>Pretendard, 10sp, 회색</td></tr>
+          <tr><td>탭 피드백</td><td>0.95 스케일 + 글로우 강화</td></tr>
+          <tr><td>선택 확정</td><td>1.1 스케일 + 발광 펄스 → 페이드아웃 → 재개</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>화면 4: 런 종료</h2>
+
+    <p>사망 후 점수와 보상 표시. 메타 트리로 가는 진입점.</p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div style="position: absolute; top: 80px; left: 0; right: 0; text-align: center; font-family: var(--font-display); font-size: 14px; color: var(--neon-red); letter-spacing: 0.3em;">— RUN OVER —</div>
+        <div style="position: absolute; top: 140px; left: 0; right: 0; text-align: center;">
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.2em;">⭐ SCORE</div>
+          <div style="font-family: var(--font-display); font-size: 36px; color: var(--neon-cyan); font-weight: 900; margin-top: 4px;">15,420</div>
+          <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); margin-top: 2px;">Best: 18,200</div>
+        </div>
+        <div style="position: absolute; top: 270px; left: 24px; right: 24px;">
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.2em; margin-bottom: 8px;">📊 STATS</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 11px;">
+            <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">Survival</span><span style="color: var(--text-primary);">08:43</span></div>
+            <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">Kills</span><span style="color: var(--text-primary);">624</span></div>
+            <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">Boss Kills</span><span style="color: var(--text-primary);">2</span></div>
+            <div style="display: flex; justify-content: space-between;"><span style="color: var(--text-secondary);">Cards</span><span style="color: var(--text-primary);">18</span></div>
+          </div>
+        </div>
+        <div style="position: absolute; top: 410px; left: 24px; right: 24px; background: var(--bg-card); border: 1px solid var(--neon-cyan); border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.15em;">💎 SHARDS EARNED</div>
+          <div style="font-family: var(--font-display); font-size: 22px; color: var(--neon-cyan); margin-top: 4px;">+52</div>
+          <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted);">Total: 312</div>
+        </div>
+        <div style="position: absolute; bottom: 80px; left: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="background: var(--neon-cyan); color: var(--bg-primary); text-align: center; padding: 12px; border-radius: 8px; font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.1em;">▶ META TREE</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); text-align: center; padding: 10px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">↻ RESTART</div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">🏠 MAIN MENU</div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-07-D · RUN OVER SCREEN</p>
+
+    <h2>화면 5: 메타 트리</h2>
+
+    <p>
+      Shards로 영구 노드를 해금. 잔고가 항상 상단에 표시되어 의사결정
+      쉬움. 모바일 좁은 화면이라 한 줄기씩 세로로 펼침.
+    </p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div style="position: absolute; top: 30px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 10px;">
+          <span style="color: var(--text-secondary);">← BACK</span>
+          <span style="color: var(--neon-cyan); background: rgba(0,229,255,0.1); padding: 4px 10px; border-radius: 10px; border: 1px solid var(--neon-cyan);">💎 312</span>
+        </div>
+        <div style="position: absolute; top: 70px; left: 14px; right: 14px; bottom: 30px; overflow-y: auto;">
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--neon-cyan); letter-spacing: 0.2em; margin-bottom: 8px;">◯ STARTING POWER</div>
+
+          <div style="background: var(--bg-card); border: 1px solid var(--neon-cyan); border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: var(--neon-cyan); -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; filter: drop-shadow(0 0 3px var(--neon-cyan));"></div>
+            <div style="flex: 1; font-family: var(--font-mono); font-size: 10px;"><div style="color: var(--text-primary);">M-101 · HP +10</div></div>
+            <div style="color: var(--neon-green); font-family: var(--font-mono); font-size: 11px;">✓</div>
+          </div>
+
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: var(--text-muted); -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;"></div>
+            <div style="flex: 1; font-family: var(--font-mono); font-size: 10px;"><div style="color: var(--text-primary);">M-102 · HP +20</div></div>
+            <div style="color: var(--neon-yellow); font-family: var(--font-mono); font-size: 10px;">💎 50</div>
+          </div>
+
+          <div style="background: var(--bg-card); border: 1px solid var(--neon-cyan); border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: var(--neon-cyan); -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; filter: drop-shadow(0 0 3px var(--neon-cyan));"></div>
+            <div style="flex: 1; font-family: var(--font-mono); font-size: 10px;"><div style="color: var(--text-primary);">M-103 · DMG +10%</div></div>
+            <div style="color: var(--neon-green); font-family: var(--font-mono); font-size: 11px;">✓</div>
+          </div>
+
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: var(--text-muted); -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;"></div>
+            <div style="flex: 1; font-family: var(--font-mono); font-size: 10px;"><div style="color: var(--text-primary);">M-104 · DMG +20%</div></div>
+            <div style="color: var(--neon-yellow); font-family: var(--font-mono); font-size: 10px;">💎 80</div>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--neon-magenta); letter-spacing: 0.2em; margin-bottom: 8px;">◯ CARD POOL</div>
+
+          <div style="background: var(--bg-card); border: 1px solid var(--neon-magenta); border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: var(--neon-magenta); -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg=='); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; filter: drop-shadow(0 0 3px var(--neon-magenta));"></div>
+            <div style="flex: 1; font-family: var(--font-mono); font-size: 10px;"><div style="color: var(--text-primary);">M-201 · Unlock Pierce</div></div>
+            <div style="color: var(--neon-green); font-family: var(--font-mono); font-size: 11px;">✓</div>
+          </div>
+
+          <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: var(--text-muted); -webkit-mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); mask-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;"></div>
+            <div style="flex: 1; font-family: var(--font-mono); font-size: 10px;"><div style="color: var(--text-primary);">M-202 · Unlock Splash</div></div>
+            <div style="color: var(--neon-yellow); font-family: var(--font-mono); font-size: 10px;">💎 80</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-07-E · META TREE · 노드 리스트 (✓=해금, 비용=잠김)</p>
+
+    <h2>화면 6: 일시정지 메뉴</h2>
+
+    <p>플레이 중 일시정지 버튼 탭 시 등장. 현재 보유 카드 빠르게 확인 가능.</p>
+
+    <div class="phone-mockup">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div style="position: absolute; inset: 0; background: rgba(10,10,15,0.85); display: flex; flex-direction: column; align-items: center; padding-top: 80px;">
+          <div style="font-family: var(--font-display); font-size: 22px; color: var(--neon-cyan); letter-spacing: 0.3em; margin-bottom: 32px;">PAUSED</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; width: 75%;">
+            <div style="background: var(--neon-cyan); color: var(--bg-primary); text-align: center; padding: 10px; border-radius: 8px; font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.1em;">▶ RESUME</div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-primary); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">↻ RESTART</div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">🏠 MAIN MENU</div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); font-size: 11px;">🔇 SOUND</div>
+          </div>
+          <div style="margin-top: 30px; width: 80%;">
+            <div style="font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); letter-spacing: 0.15em; margin-bottom: 6px;">CURRENT BUILD (8 cards)</div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary); line-height: 1.6;">
+              • Sharp Edges ×2<br>
+              • Quick Fire ×1<br>
+              • Pierce I<br>
+              • Long Reach<br>
+              • Reinforce ×2<br>
+              • Splash I
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="phone-caption">FIG-07-F · PAUSE MENU · 빌드 복기 가능</p>
+
+    <h2>피드백 / 모션 규칙</h2>
+
+    <div class="card-grid">
+      <div class="card">
+        <h4 style="margin-top: 0;">탭 피드백</h4>
+        <p style="margin: 0;">모든 탭 가능한 UI는 누르는 순간 <strong>0.95 스케일</strong>로 줄어들고 떼면 원복. 모바일 터치 피드백 필수.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top: 0;">진동 (Haptic)</h4>
+        <p style="margin: 0;">카드 선택 Light · 레벨업 Medium · 보스 처치 Heavy · 사망 Strong. 설정에서 OFF 가능.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top: 0;">레벨업 전환</h4>
+        <p style="margin: 0;">XP 게이지 차는 순간 시안 플래시(0.3초) → 일시정지 → 카드 UI 슬라이드 업.</p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top: 0;">데미지 텍스트</h4>
+        <p style="margin: 0;">피격 시 작은 숫자, 0.5초 페이드아웃. 치명타는 1.5배 크기 + 노란색. 초당 10건 throttle.</p>
+      </div>
+    </div>
+
+    <h2>접근성 / QoL</h2>
+
+    <ul>
+      <li><strong>왼손/오른손 모드</strong> — 일시정지 버튼 위치 좌/우 반전</li>
+      <li><strong>색맹 모드</strong> — 적 컬러를 도형 보조 표시로 강조 (v1.1)</li>
+      <li><strong>줌</strong> — 핀치로 화면 20%까지 줌인 (소형 디바이스)</li>
+      <li><strong>FPS 옵션</strong> — 30 / 60 / Adaptive</li>
+    </ul>
+
+    <div class="divider">END OF UI</div>
+
+    <nav class="doc-nav">
+      <a class="doc-nav-prev" href="06_ecs.html">
+        <span class="doc-nav-label">ECS</span>
+        <span class="doc-nav-title">06 ECS Hybrid</span>
+      </a>
+      <a class="doc-nav-next" href="08_balance.html">
+        <span class="doc-nav-label">BALANCE</span>
+        <span class="doc-nav-title">08 밸런스</span>
+      </a>
+    </nav>
+
+  </div>
+</body>
+</html>
