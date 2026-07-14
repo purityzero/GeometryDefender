@@ -19,6 +19,10 @@ public class MemoryPooling<T> where T : Component
 
     public void Prewarm()
     {
+        // 중복 호출 시 풀 오브젝트가 배수로 늘어나는 것을 방지
+        if (m_ActiveList.Count > 0 || m_HideList.Count > 0)
+            return;
+
         for (int i = 0; i < m_MaxCount; ++i)
         {
             T obj = ResUtil.Create<T>(m_Path, m_Parent, true);

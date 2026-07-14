@@ -36,23 +36,51 @@ public class Command_CleanupDontDestroy : ICommand
 
     public void Execute()
     {
-        Debug.Log("[Command_CleanupDontDestroy] Cleaning DontDestroyOnLoad Objects...");
+        Logger.Log("Command_CleanupDontDestroy", "Cleaning DontDestroyOnLoad Objects...", Logger.eColor.Blue);
     }
 
     public void Update()
     {
-        GameObject[] dontDestroyObjects = Object.FindObjectsOfType<GameObject>();
+        GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
 
-        foreach (GameObject obj in dontDestroyObjects)
+        foreach (GameObject rootObject in allObjects)
         {
-            if (obj.scene.name == null) // DontDestroyOnLoad 영역에 있는 오브젝트
-            {
-                Object.Destroy(obj);
-                Debug.Log($"[Command_CleanupDontDestroy] Destroyed {obj.name}");
-            }
+            if (rootObject.transform.parent != null)
+                continue;
+
+            if (rootObject.scene.name != "DontDestroyOnLoad")
+                continue;
+
+            // 싱글톤 매니저(SceneManager 자신 포함)는 씬을 넘어 유지되어야 하므로 정리 대상에서 제외
+            if (HasMonoSingletonInChildren(rootObject) == true)
+                continue;
+
+            Object.Destroy(rootObject);
+            Logger.Log("Command_CleanupDontDestroy", $"Destroyed {rootObject.name}", Logger.eColor.Blue);
         }
 
         isFinished = true;
+    }
+
+    private bool HasMonoSingletonInChildren(GameObject _rootObject)
+    {
+        MonoBehaviour[] behaviours = _rootObject.GetComponentsInChildren<MonoBehaviour>(true);
+        foreach (MonoBehaviour behaviour in behaviours)
+        {
+            if (behaviour == null)
+                continue;
+
+            System.Type baseType = behaviour.GetType().BaseType;
+            while (baseType != null)
+            {
+                if (baseType.IsGenericType == true && baseType.GetGenericTypeDefinition() == typeof(MonoSingleton<>))
+                    return true;
+
+                baseType = baseType.BaseType;
+            }
+        }
+
+        return false;
     }
 
     public void Cancel() { }

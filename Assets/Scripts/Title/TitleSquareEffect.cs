@@ -2,24 +2,12 @@ using UnityEngine;
 
 public class TitleSquareEffect : MonoBehaviour
 {
-    [SerializeField] SpriteRenderer m_SpriteRenderer;
     private float Speed = 5f;
 
     private Vector2 m_Direction;
     private Camera m_MainCamera;
     private Vector2 m_HalfObjectSize;
     private float m_RotationSpeed;
-
-    private void Awake()
-    {
-        m_SpriteRenderer = GetComponent<SpriteRenderer>();
-        if (m_SpriteRenderer == null)
-        {
-            Debug.Log($"[TitleSquareEffect] SpriteRenderer 컴포넌트를 찾을 수 없어 컴포넌트를 비활성화합니다.");
-            enabled = false;
-            return;
-        }
-    }
 
     private void Start()
     {
@@ -33,13 +21,37 @@ public class TitleSquareEffect : MonoBehaviour
 
         m_Direction = Random.insideUnitCircle.normalized;
 
-        if (m_SpriteRenderer != null)
-            m_HalfObjectSize = m_SpriteRenderer.bounds.extents;
+        SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+            m_HalfObjectSize = spriteRenderer.bounds.extents;
 
         Speed = Random.Range(1f, 5f);
         m_RotationSpeed = Random.Range(30f, 120f) * (Random.value > 0.5f ? 1f : -1f);
 
-        m_SpriteRenderer.color = new Color(Random.value, Random.value, Random.value, 1f);
+        SetRandomPosition();
+    }
+
+    private void SetRandomPosition()
+    {
+        Rect moveArea = GetMoveArea();
+        Vector3 position = transform.position;
+        position.x = Random.Range(moveArea.xMin, moveArea.xMax);
+        position.y = Random.Range(moveArea.yMin, moveArea.yMax);
+        transform.position = position;
+    }
+
+    private Rect GetMoveArea()
+    {
+        float cameraHalfHeight = m_MainCamera.orthographicSize;
+        float cameraHalfWidth  = cameraHalfHeight * m_MainCamera.aspect;
+        Vector3 cameraPosition = m_MainCamera.transform.position;
+
+        float minX = cameraPosition.x - cameraHalfWidth  + m_HalfObjectSize.x;
+        float maxX = cameraPosition.x + cameraHalfWidth  - m_HalfObjectSize.x;
+        float minY = cameraPosition.y - cameraHalfHeight + m_HalfObjectSize.y;
+        float maxY = cameraPosition.y + cameraHalfHeight - m_HalfObjectSize.y;
+
+        return Rect.MinMaxRect(minX, minY, maxX, maxY);
     }
 
     private void Update()
@@ -67,29 +79,22 @@ public class TitleSquareEffect : MonoBehaviour
         if (m_MainCamera == null)
             return;
 
-        float cameraHalfHeight = m_MainCamera.orthographicSize;
-        float cameraHalfWidth  = cameraHalfHeight * m_MainCamera.aspect;
-        Vector3 cameraPosition = m_MainCamera.transform.position;
-
-        float minX = cameraPosition.x - cameraHalfWidth  + m_HalfObjectSize.x;
-        float maxX = cameraPosition.x + cameraHalfWidth  - m_HalfObjectSize.x;
-        float minY = cameraPosition.y - cameraHalfHeight + m_HalfObjectSize.y;
-        float maxY = cameraPosition.y + cameraHalfHeight - m_HalfObjectSize.y;
+        Rect moveArea = GetMoveArea();
 
         Vector3 position = transform.position;
         bool isPositionChanged = false;
 
-        if (position.x <= minX || position.x >= maxX)
+        if (position.x <= moveArea.xMin || position.x >= moveArea.xMax)
         {
             m_Direction.x = -m_Direction.x;
-            position.x = Mathf.Clamp(position.x, minX, maxX);
+            position.x = Mathf.Clamp(position.x, moveArea.xMin, moveArea.xMax);
             isPositionChanged = true;
         }
 
-        if (position.y <= minY || position.y >= maxY)
+        if (position.y <= moveArea.yMin || position.y >= moveArea.yMax)
         {
             m_Direction.y = -m_Direction.y;
-            position.y = Mathf.Clamp(position.y, minY, maxY);
+            position.y = Mathf.Clamp(position.y, moveArea.yMin, moveArea.yMax);
             isPositionChanged = true;
         }
 

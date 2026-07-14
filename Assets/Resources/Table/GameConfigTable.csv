@@ -8,3 +8,5 @@ Id,DisplayName,Value
 7,BaseX,18
 8,BaseY,0
 9,BaseZ,-8
+10,TapScale,0.95
+11,TapDuration,0.05

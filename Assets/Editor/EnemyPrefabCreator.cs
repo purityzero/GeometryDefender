@@ -5,7 +5,7 @@ using System.IO;
 public class EnemyPrefabCreator
 {
     private static readonly string PREFAB_OUTPUT_PATH = "Assets/Resources/Prefabs/Monster";
-    private static readonly string SPRITE_BASE_PATH = "Assets/Design/sprites";
+    private static readonly string SPRITE_BASE_PATH = "Assets/Resources/Image";
 
     [MenuItem("Tools/Create Enemy Prefabs")]
     public static void CreateEnemyPrefabs()

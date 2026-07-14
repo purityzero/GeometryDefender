@@ -11,17 +11,32 @@ public class UIManager : MonoSingleton<UIManager>
 
 	public T Get<T>(string _name) where T : UIBase
 	{
-		UIBase obj = null;
+		UIBase cachedUI = null;
+		m_UIDictinary.TryGetValue(_name, out cachedUI);
 
-		if(!m_UIDictinary.TryGetValue(_name, out obj))
+		// 씬 전환 등으로 인스턴스가 파괴된 경우도 재생성 대상
+		if (cachedUI == null)
 		{
-			obj = ResUtil.Load<T>(_name);
-			m_UIDictinary.Add(_name, obj);
+			cachedUI = ResUtil.Create<T>(_name, transform);
+			if (cachedUI == null)
+				return null;
+
+			m_UIDictinary[_name] = cachedUI;
 		}
 
-		obj.transform.SetAsFirstSibling();
-		obj.Show();
-		return obj as T;
+		cachedUI.transform.SetAsFirstSibling();
+		cachedUI.Show();
+
+		if (cachedUI is T == true)
+		{
+			var resultUI = cachedUI as T;
+			return resultUI;
+		}
+		else
+		{
+			Debug.Log($"cachedUI is {typeof(T).Name} convert failed!");
+			return null;
+		}
 	}
 
 	private void Update()

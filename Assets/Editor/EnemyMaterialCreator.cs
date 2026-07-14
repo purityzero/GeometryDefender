@@ -6,7 +6,7 @@ public class EnemyMaterialCreator
 {
     private static readonly string MAT_OUTPUT_PATH = "Assets/Resources/Mat/Enemy";
     private static readonly string TEMPLATE_MAT_PATH = "Assets/Resources/Mat/TestMat.mat";
-    private static readonly string SPRITE_BASE_PATH = "Assets/Design/sprites";
+    private static readonly string SPRITE_BASE_PATH = "Assets/Resources/Image";
 
     private static readonly (string shapeName, string variantName, string colorHex)[] COMBINATIONS =
     {

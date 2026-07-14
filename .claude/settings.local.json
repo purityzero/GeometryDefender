@@ -10,7 +10,24 @@
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(Get-ChildItem *)",
       "Bash(grep -E \"\\\\.\\(asset|prefab\\)$\")",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem -Recurse \"D:\\\\Unity\\\\GeometryDefender\\\\GeometryDefender\\\\Assets\\\\Resources\" -File | ForEach-Object { $_.FullName.Replace\\(\"D:\\\\Unity\\\\GeometryDefender\\\\GeometryDefender\\\\Assets\\\\Resources\\\\\", \"\"\\) })",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(git clone *)",
+      "Bash(git clone *)",
+      "Bash(echo \"exit: $?\")",
+      "PowerShell(claude *)",
+      "PowerShell(Test-Path \"C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe\"; [Environment]::Is64BitOperatingSystem; $env:PATH -split ';' | Select-String -Pattern 'claude|\\\\.local')",
+      "PowerShell(irm https://claude.ai/install.ps1 | iex)",
+      "PowerShell($html = Get-Content \"Assets\\\\Design\\\\05_meta.html\" -Raw; $index = $html.IndexOf\\('public int Shards'\\); $html.Substring\\([Math]::Max\\(0,$index-1500\\), 2200\\))",
+      "PowerShell($html = Get-Content \"Assets\\\\Design\\\\02_combat.html\" -Raw -Encoding UTF8; $index = $html.IndexOf\\('HP 시각'\\); if \\($index -lt 0\\) { $index = $html.IndexOf\\('글로우'\\) }; $html.Substring\\([Math]::Max\\(0,$index-800\\), 2500\\))",
+      "PowerShell(Get-Content \"Assets\\\\Scripts\\\\Title\\\\TitleSquareEffect.cs.meta\" | Select-String \"guid\"; Select-String -Path \"Assets\\\\Scenes\\\\TitleScene.unity\" -Pattern \"295929579\" -Context 0,12 | Select-Object -First 1 | ForEach-Object { $_.Context.PostContext })",
+      "Bash(grep -n \"m_Name:$\" Assets/Scenes/TitleScene.unity)",
+      "Bash(sed -i 's/^  m_Name:$/  m_Name: /' Assets/Scenes/TitleScene.unity)",
+      "Bash(grep -c \"m_Name:$\" Assets/Scenes/TitleScene.unity)",
+      "PowerShell($html = Get-Content \"Assets\\\\Design\\\\05_meta.html\" -Raw -Encoding UTF8; $start = $html.IndexOf\\('영구 업그레이드'\\); $end = $html.IndexOf\\('총 비용'\\); $html.Substring\\($start, [Math]::Min\\(1200, $end-$start\\)\\); \"...\"; $tableStart = $html.IndexOf\\('M-101'\\); $html.Substring\\($tableStart-2000, 4500\\))",
+      "PowerShell(python --version; Get-Content \"Assets\\\\Resources\\\\Image\\\\shape_square.png.meta\" -TotalCount 2; Get-Content \"Assets\\\\Resources\\\\Image\\\\shape_star.png.meta\" -TotalCount 2; Get-Content \"Assets\\\\Resources\\\\Image\\\\shape_circle.png.meta\" -TotalCount 2)",
+      "PowerShell(Get-ChildItem \"D:\\\\Unity\\\\Job\\\\Assets\" -Directory | Select-Object Name; \"---\"; Get-ChildItem \"D:\\\\Unity\\\\Job\\\\Assets\\\\Scripts\" -Recurse -Filter \"*.cs\" | Select-Object -ExpandProperty FullName22)"
     ]
   }
 }

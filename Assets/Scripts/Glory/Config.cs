@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 
 public enum eSeverType
@@ -25,11 +27,13 @@ public class Config : SingletonScriptableObject<Config>
 		}
 	}
 
+#if UNITY_EDITOR
 	[MenuItem("ScriptableObject/Config/Create")]
 	public static void Create()
 	{
-		var a = Config.Instance;
+		var createdConfig = Config.Instance;
 	}
+#endif
 
 
 

@@ -1,0 +1,13 @@
+public enum eCurrencyType
+{
+    None = 0,
+    Shard,
+    Max
+}
+
+public enum eFpsOption
+{
+    Adaptive = 0,
+    Fps30,
+    Fps60
+}

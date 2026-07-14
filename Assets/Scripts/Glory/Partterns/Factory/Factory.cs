@@ -53,14 +53,24 @@ public class MemoryPoolFactory<T1, TEnum1> : IMemoryPoolFactory<T1, TEnum1>
 
     public bool Recycle(TEnum1 _type, T1 _obj)
     {
+        if (_obj == null)
+        {
+            Debug.LogError($"[MemoryPoolFactory] Recycle 실패 — null 오브젝트: {_type}");
+            return false;
+        }
+
         if (m_MemoryPoolDictionary.TryGetValue(_type, out MemoryPooling<T1> pool) == false)
         {
             Debug.LogError($"[MemoryPoolFactory] 등록되지 않은 타입: {_type}");
             return false;
         }
 
+        // 풀 반납이 실제로 성공한 경우에만 Close — 이중 반납/미소속 오브젝트에 부작용 방지
+        if (pool.Push(_obj) == false)
+            return false;
+
         _obj.Close();
-        return pool.Push(_obj);
+        return true;
     }
 
     public void Prewarm()
