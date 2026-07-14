@@ -1,6 +1,6 @@
 # UIMetaTree (Assets/Resources/Prefabs/UI/UIMetaTree.prefab)
 
-연관 스크립트: UIAssetBox (스크립트는 이것만 부착 — 화면 제어용 UIBase 파생 스크립트는 아직 없음)
+연관 스크립트: UIMetaTree(루트, UIBase 상속 빈 스텁), UIAssetBox
 중첩 프리팹: 없음
 기획 근거: Assets/Design/07_ui.html 화면 5 (FIG-07-E · META TREE), 05_meta.html (노드/비용 데이터)
 
@@ -11,7 +11,7 @@
 
 ## 계층 구조
 ```
-UIMetaTree (fileID ...1000)                    — RectTransform만 (풀스트레치) — 씬 Canvas 아래에 UIManager가 생성하는 전제
+UIMetaTree (fileID ...1000)                    — RectTransform(풀스트레치) + UIMetaTree(빈 스텁, ...1900) — 씬 Canvas 아래에 UIManager가 생성하는 전제
 ├─ Image_BG (...1010)                          — Image #0A0A0F 풀스트레치, RaycastTarget ON (배경 클릭 차단)
 ├─ Panel_Top (...1020)                         — RectTransform (상단 스트레치, h80, y-64 세이프에어리어)
 │  ├─ Btn_Back (...1030)                       — 투명 Image(RaycastTarget ON) + Button (타겟=자기 Image)
@@ -78,3 +78,19 @@ UIMetaTree (fileID ...1000)                    — RectTransform만 (풀스트�
 
 ### 미검증
 부모 Canvas 아래 생성 시 풀스크린 표시 여부 확인 필요.
+
+---
+
+## 2026-07-15-2
+
+### 개요
+루트에 동명 컴포넌트(UIMetaTree, UIBase 상속 빈 스텁) 부착 + UITable(Resources/Table/UITable.csv)에 경로 등록.
+
+### 수정 (오브젝트 단위)
+
+**UIMetaTree (루트)**
+- 전: RectTransform만
+- 후: RectTransform + UIMetaTree(MonoBehaviour, fileID 뒤 4자리 1900)
+
+### 미검증
+에디터에서 스크립트 연결(Missing 아님) 확인 필요.

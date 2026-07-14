@@ -13,3 +13,16 @@
 
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)
+
+---
+
+## 2026-07-15-4
+
+### 개요
+OnClickMetatreeButton 단순화 — UIManager.Get<T>() 신설 오버로드 사용.
+
+### 수정 (함수 단위)
+
+**OnClickMetatreeButton()**
+- 전: `UIManager.instance.Get<UIMetaTree>(TableManager.instance.GetTable<UITable>().GetRecordByName("UIMetaTree").PrefabPath);` (테이블 미로드 시 NRE)
+- 후: `UIManager.instance.Get<UIMetaTree>();` (내부에서 UITable 조회, 실패 시 로그 + null)

@@ -18,6 +18,8 @@ public class TableManager : MonoSingleton<TableManager>
 		List<WaveSpawnRecord> waveSpawnRecords = LoadCsvTable<WaveSpawnRecord>("Table/WaveSpawnTable");
 		List<GameConfigRecord> gameConfigRecords = LoadCsvTable<GameConfigRecord>("Table/GameConfigTable");
 		List<TowerSlotRecord> towerSlotRecords = LoadCsvTable<TowerSlotRecord>("Table/TowerSlotTable");
+		List<MetaTreeRecord> metaTreeRecords = LoadCsvTable<MetaTreeRecord>("Table/MetaTreeTable");
+		List<UIRecord> uiRecords = LoadCsvTable<UIRecord>("Table/UITable");
 
 		EnemyTable enemyTable = new EnemyTable(enemyRecords);
 		TowerTable towerTable = new TowerTable(towerRecords);
@@ -25,6 +27,8 @@ public class TableManager : MonoSingleton<TableManager>
 		WaveSpawnTable waveSpawnTable = new WaveSpawnTable(waveSpawnRecords);
 		GameConfigTable gameConfigTable = new GameConfigTable(gameConfigRecords);
 		TowerSlotTable towerSlotTable = new TowerSlotTable(towerSlotRecords);
+		MetaTreeTable metaTreeTable = new MetaTreeTable(metaTreeRecords);
+		UITable uiTable = new UITable(uiRecords);
 
 		m_TableDictionary.Add(typeof(EnemyTable), enemyTable);
 		m_TableDictionary.Add(typeof(TowerTable), towerTable);
@@ -32,6 +36,8 @@ public class TableManager : MonoSingleton<TableManager>
 		m_TableDictionary.Add(typeof(WaveSpawnTable), waveSpawnTable);
 		m_TableDictionary.Add(typeof(GameConfigTable), gameConfigTable);
 		m_TableDictionary.Add(typeof(TowerSlotTable), towerSlotTable);
+		m_TableDictionary.Add(typeof(MetaTreeTable), metaTreeTable);
+		m_TableDictionary.Add(typeof(UITable), uiTable);
 	}
 
 	public async Task<List<T>> LoadCsvTableToAddressable<T>(string key) where T : new()

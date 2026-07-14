@@ -42,3 +42,19 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치
 
 ### 미검증
 에디터 미실행 YAML 직접 작성. 파싱/레이아웃/게이지 fillAmount 동작 확인 필요.
+
+---
+
+## 2026-07-15-2
+
+### 개요
+루트에 동명 컴포넌트(UIInGameHUD, UIBase 상속 빈 스텁) 부착 + UITable(Resources/Table/UITable.csv)에 경로 등록.
+
+### 수정 (오브젝트 단위)
+
+**UIInGameHUD (루트)**
+- 전: RectTransform만
+- 후: RectTransform + UIInGameHUD(MonoBehaviour, fileID 뒤 4자리 1900)
+
+### 미검증
+에디터에서 스크립트 연결(Missing 아님) 확인 필요.

@@ -123,3 +123,60 @@ Canvas 3개(메인 Canvas 655750134, SceneManager 하위 페이드 Canvas 148342
 
 ### 미검증
 Game 뷰에서 720×1280 / 1080×1920 / 1080×2340 등으로 바꿔가며 버튼 크기·배치 비율 유지 확인 필요.
+
+---
+
+## 2026-07-15-3
+
+### 개요
+UIManager 아래 UICanvas / PopupCanvas 2개 Canvas 신설 (UI 프리팹을 얹을 부모 Canvas).
+
+### 파일
+- Assets/Scenes/TitleScene.unity
+
+### 수정 (오브젝트 단위)
+
+**UIManager (fileID 1078791267, Transform 1078791268)**
+- 전: m_Children 없음
+- 후: 자식 2개 추가 — UICanvas(RectTransform 900100011), PopupCanvas(900100016)
+
+**UICanvas (신규, GO 900100010 / RectTransform 900100011 / Canvas 900100012 / CanvasScaler 900100013 / GraphicRaycaster 900100014)**
+- Canvas: ScreenSpaceOverlay, SortingOrder **200**
+- CanvasScaler: ScaleWithScreenSize 720×1280, MatchWidth 0 (씬 표준과 동일)
+
+**PopupCanvas (신규, GO 900100015 / RectTransform 900100016 / Canvas 900100017 / CanvasScaler 900100018 / GraphicRaycaster 900100019)**
+- 동일 구성, SortingOrder **300**
+
+### SortingOrder 배치 근거
+GlowCanvas 100 < 메인 Canvas 101 < UICanvas 200 < PopupCanvas 300 < SceneManager 페이드 Canvas 9999 — 일반 UI 위에 팝업, 그 위에 씬 전환 페이드.
+
+### 참고
+- UIManager는 MonoSingleton이라 DontDestroyOnLoad — 두 Canvas도 씬 전환 시 함께 유지됨.
+- 현재 UIManager.Get은 UIManager transform 바로 아래에 생성함 — 이 Canvas들을 실제 부모로 쓰려면 Get에 UICanvas/PopupCanvas 분기(m_UIDictinary/m_UIPopupDictinary 대응) 연결 코드가 별도로 필요 (미구현, 요청 시 진행).
+
+### 미검증
+에디터에서 씬 파싱/계층 표시, Canvas 스케일 적용 확인 필요.
+
+---
+
+## 2026-07-15-4
+
+### 개요
+GameManager 오브젝트 신설 — TableManager.init() 호출 주체가 어느 씬에도 없어 UITable 등 전 테이블이 미로드 상태였음 (Btn_MetaTree 클릭 시 NRE의 근본 원인).
+
+### 파일
+- Assets/Scenes/TitleScene.unity
+
+### 수정 (오브젝트 단위)
+
+**GameManager (신규 루트, GO 900100020 / Transform 900100021 / MonoBehaviour 900100022)**
+- GameManager 컴포넌트(guid 03f66d2cd8ce0e148a67d8e2fb05cbda) 부착 — Awake에서 base.Awake(DontDestroyOnLoad) + TableManager.instance.init()
+- SceneRoots에 등록
+
+### 검증 결과 (같은 건으로 확인한 것)
+- Btn_MetaTree(GO 1927580510) onClick → TitleScene(240471114).OnClickMetatreeButton 연결 정상
+- ResUtil 경로("Prefabs/UI/UIMetaTree") / 루트 UIMetaTree 컴포넌트 매칭 정상
+- GO 1164101812의 Btn_MetaTree(Button 비활성)와 GO 551002954는 레거시로 보임 — 정리는 사용자 판단 대기
+
+### 미검증
+플레이로 타이틀 → META TREE 버튼 → UIMetaTree 표시(UICanvas 하위 생성) 확인 필요. InGameScene 직접 플레이 시엔 GameManager가 없어 테이블 미로드 — 필요 시 InGameScene에도 추가.

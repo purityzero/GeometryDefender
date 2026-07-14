@@ -1,42 +1,39 @@
 using UnityEngine;
-using System;
 
 public class MonoSingleton<T> : MonoBehaviour where T : Component
 {
-    private static readonly Lazy<T> _instance = new Lazy<T>(CreateSingleton);
-    public static T instance => _instance.Value;
+    private static T m_Instance;
 
-    private static T CreateSingleton()
+    public static T instance
     {
-        T instance = FindFirstObjectByType<T>();
-
-        if (instance == null)
+        get
         {
-            T[] instances = Resources.FindObjectsOfTypeAll<T>();
-            if (instances.Length > 0)
+            // 파괴된 인스턴스(유니티 가짜 null)도 재생성 대상
+            if (m_Instance == null)
             {
-                instance = instances[0];
+                m_Instance = FindFirstObjectByType<T>();
+                if (m_Instance == null)
+                {
+                    GameObject singletonObject = new GameObject(typeof(T).Name);
+                    m_Instance = singletonObject.AddComponent<T>();
+                }
             }
-        }
 
-        if (instance == null)
-        {
-            GameObject singletonObj = new GameObject(typeof(T).Name);
-            instance = singletonObj.AddComponent<T>();
+            return m_Instance;
         }
-
-        return instance;
     }
 
     protected virtual void Awake()
     {
-        if (_instance.Value != this)
+        // AddComponent 시점엔 getter가 m_Instance를 할당하기 전에 Awake가 먼저 불린다 — 여기서 직접 할당
+        if (m_Instance == null || m_Instance == this)
         {
-            Destroy(gameObject); // 중복된 싱글톤 제거
+            m_Instance = this as T;
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
-            DontDestroyOnLoad(gameObject);
+            Destroy(gameObject); // 중복된 싱글톤 제거
         }
     }
 

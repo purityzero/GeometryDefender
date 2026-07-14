@@ -15,7 +15,7 @@ public class TitleScene : MonoBehaviour
 
     public void OnClickMetatreeButton()
     {
-        
+        UIManager.instance.Get<UIMetaTree>();
     }
 
     public void OnClickSettingsButton()
