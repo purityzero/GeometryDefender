@@ -1,5 +1,6 @@
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// TweenEffectBase 컴포넌트들을 등록 순서대로 TweenSequenceBuilder에 조립해 재생/제어하는 컨트롤러.
@@ -27,7 +28,7 @@ public class TweenEffectPlayer : MonoBehaviour
         Stop();
     }
 
-    public void Play()
+    public void Play(UnityAction _onComplete = null)
     {
         Stop();
 
@@ -57,6 +58,9 @@ public class TweenEffectPlayer : MonoBehaviour
 
         if (m_LoopCount != 1)
             builder.Loops(m_LoopCount, m_LoopType);
+
+        if (_onComplete != null)
+            builder.OnComplete(_onComplete);
 
         m_Sequence = builder.Play();
     }

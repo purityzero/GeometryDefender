@@ -11,3 +11,11 @@ public enum eFpsOption
     Fps30,
     Fps60
 }
+
+public enum eLanguage
+{
+    Korean = 0,
+    English,
+    Chinese,
+    Japanese
+}

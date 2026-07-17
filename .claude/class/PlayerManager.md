@@ -10,7 +10,7 @@
 - `RunRecord` (직렬화): Score, KillCount, BossKills, SurvivalSeconds, CardsObtained, PlayedAt
 - 저장: PlayerPrefs 단일 키 `"PlayerData"`에 JsonUtility JSON 문자열
 - 저장 트리거(설계 준수): 런 종료(AddRunRecord), 메타 노드 해금(UnlockMetaNode), 앱 백그라운드 전환(OnApplicationPause)
-- API: Load / Save / GetCurrencyAmount(eCurrencyType) / AddRunRecord / UnlockMetaNode
+- API: Load / Save / GetCurrencyAmount(eCurrencyType) / SpendCurrency(eCurrencyType, long) / AddRunRecord / UnlockMetaNode
 - AddRunRecord가 BestScore 갱신 + 최근 10개 초과분 제거까지 담당
 
 ## 주의
@@ -35,3 +35,36 @@
 
 ### 미검증
 에디터 미실행 상태 편집. 컴파일/동작 확인 필요.
+
+---
+
+## 2026-07-18-0
+
+### 개요
+UIMetaTree 노드 해금 구현 중 재화 차감 API가 없어 추가(GetCurrencyAmount만 있고 소비 메서드가 없었음). GetCurrencyAmount와 동일한 switch 구조로 작성.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정
+```csharp
+// 추가
+public bool SpendCurrency(eCurrencyType _currencyType, long _amount)
+{
+    switch (_currencyType)
+    {
+        case eCurrencyType.Shard:
+            if (m_PlayerData.Shards < _amount)
+                return false;
+            m_PlayerData.Shards -= (int)_amount;
+            Save();
+            return true;
+        default:
+            Debug.LogError($"[PlayerManager] SpendCurrency Failed! unknown type - {_currencyType}");
+            return false;
+    }
+}
+```
+
+### 미검증
+컴파일 확인 필요.

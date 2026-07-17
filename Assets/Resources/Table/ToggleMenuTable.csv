@@ -1,0 +1,5 @@
+Id,ToggleListId,OnText,OffText,OnImagePath,OffImagePath,OnColor
+1,MetaTreeBranch,STARTING POWER,STARTING POWER,,,00E5FF
+2,MetaTreeBranch,CARD POOL,CARD POOL,,,FF00AA
+3,MetaTreeBranch,ECONOMY,ECONOMY,,,FFD600
+4,MetaTreeBranch,UTILITY,UTILITY,,,ADFF2F

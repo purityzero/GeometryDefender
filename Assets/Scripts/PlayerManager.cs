@@ -85,6 +85,23 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         }
     }
 
+    public bool SpendCurrency(eCurrencyType _currencyType, long _amount)
+    {
+        switch (_currencyType)
+        {
+            case eCurrencyType.Shard:
+                if (m_PlayerData.Shards < _amount)
+                    return false;
+
+                m_PlayerData.Shards -= (int)_amount;
+                Save();
+                return true;
+            default:
+                Debug.LogError($"[PlayerManager] SpendCurrency Failed! unknown type - {_currencyType}");
+                return false;
+        }
+    }
+
     public void AddRunRecord(RunRecord _runRecord)
     {
         _runRecord.PlayedAt = DateTime.Now.ToString("o");

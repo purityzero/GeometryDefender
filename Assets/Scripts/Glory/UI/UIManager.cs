@@ -7,11 +7,18 @@ public class UIManager : MonoSingleton<UIManager>
 	private const string UI_CANVAS_NAME = "UICanvas";
 	private const string POPUP_CANVAS_NAME = "PopupCanvas";
 
+	private const string TOAST_PREFAB_PATH = "Prefabs/UI/UIToastMessage";
+	private const int TOAST_POOL_MAX_COUNT = 5;
+	private const float TOAST_SLOT_HEIGHT = 90f;
+
 	private Dictionary<string,  UIBase> m_UIDictinary = new Dictionary<string, UIBase>();
 	private Dictionary<string,  UIBase> m_UIPopupDictinary = new Dictionary<string, UIBase>();
 
 	private Transform m_UICanvas;
 	private Transform m_PopupCanvas;
+
+	private MemoryPooling<UIToastMessage> m_ToastPool;
+	private List<UIToastMessage> m_ActiveToasts = new List<UIToastMessage>();
 
 	private FlowCommand m_FlowCommand = new FlowCommand();
 
@@ -101,12 +108,56 @@ public class UIManager : MonoSingleton<UIManager>
 		return (m_UICanvas != null) ? m_UICanvas : transform;
 	}
 
+	public void ShowToast(string _message)
+	{
+		if (m_ToastPool == null)
+		{
+			m_ToastPool = new MemoryPooling<UIToastMessage>(TOAST_POOL_MAX_COUNT, TOAST_PREFAB_PATH, GetCanvas(true));
+			m_ToastPool.Prewarm();
+		}
+
+		if (m_ActiveToasts.Count >= TOAST_POOL_MAX_COUNT)
+		{
+			UIToastMessage oldestToast = m_ActiveToasts[m_ActiveToasts.Count - 1];
+			CloseToast(oldestToast);
+		}
+
+		UIToastMessage toast = m_ToastPool.Pop();
+		if (toast == null)
+			return;
+
+		toast.Open();
+		m_ActiveToasts.Insert(0, toast);
+		toast.Show(_message, CloseToast);
+
+		RepositionToastStack();
+	}
+
+	private void CloseToast(UIToastMessage _toast)
+	{
+		bool isRemoved = m_ActiveToasts.Remove(_toast);
+		if (isRemoved == false)
+			return;
+
+		_toast.Close();
+		m_ToastPool.Push(_toast);
+
+		RepositionToastStack();
+	}
+
+	private void RepositionToastStack()
+	{
+		for (int i = 0; i < m_ActiveToasts.Count; ++i)
+		{
+			Vector2 targetPosition = new Vector2(0f, i * TOAST_SLOT_HEIGHT);
+			m_ActiveToasts[i].MoveTo(targetPosition);
+		}
+	}
+
 	private void Update()
 	{
 		m_FlowCommand?.Update();
 	}
-
-
 
 }
 

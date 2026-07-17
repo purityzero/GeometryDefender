@@ -20,6 +20,9 @@ public class TableManager : MonoSingleton<TableManager>
 		List<TowerSlotRecord> towerSlotRecords = LoadCsvTable<TowerSlotRecord>("Table/TowerSlotTable");
 		List<MetaTreeRecord> metaTreeRecords = LoadCsvTable<MetaTreeRecord>("Table/MetaTreeTable");
 		List<UIRecord> uiRecords = LoadCsvTable<UIRecord>("Table/UITable");
+		List<ToggleListRecord> toggleListRecords = LoadCsvTable<ToggleListRecord>("Table/ToggleListTable");
+		List<ToggleMenuRecord> toggleMenuRecords = LoadCsvTable<ToggleMenuRecord>("Table/ToggleMenuTable");
+		List<StringRecord> stringRecords = LoadCsvTable<StringRecord>("Table/StringTable");
 
 		EnemyTable enemyTable = new EnemyTable(enemyRecords);
 		TowerTable towerTable = new TowerTable(towerRecords);
@@ -29,6 +32,9 @@ public class TableManager : MonoSingleton<TableManager>
 		TowerSlotTable towerSlotTable = new TowerSlotTable(towerSlotRecords);
 		MetaTreeTable metaTreeTable = new MetaTreeTable(metaTreeRecords);
 		UITable uiTable = new UITable(uiRecords);
+		ToggleListTable toggleListTable = new ToggleListTable(toggleListRecords);
+		ToggleMenuTable toggleMenuTable = new ToggleMenuTable(toggleMenuRecords);
+		StringTable stringTable = new StringTable(stringRecords);
 
 		m_TableDictionary.Add(typeof(EnemyTable), enemyTable);
 		m_TableDictionary.Add(typeof(TowerTable), towerTable);
@@ -38,6 +44,9 @@ public class TableManager : MonoSingleton<TableManager>
 		m_TableDictionary.Add(typeof(TowerSlotTable), towerSlotTable);
 		m_TableDictionary.Add(typeof(MetaTreeTable), metaTreeTable);
 		m_TableDictionary.Add(typeof(UITable), uiTable);
+		m_TableDictionary.Add(typeof(ToggleListTable), toggleListTable);
+		m_TableDictionary.Add(typeof(ToggleMenuTable), toggleMenuTable);
+		m_TableDictionary.Add(typeof(StringTable), stringTable);
 	}
 
 	public async Task<List<T>> LoadCsvTableToAddressable<T>(string key) where T : new()
