@@ -134,14 +134,29 @@ public static class ResUtil
     }
 
 
-    public static GameObject AddChild(Transform parent, GameObject prefab)
+    public static GameObject Create(GameObject _prefab, Transform _parent)
     {
-        var go = GameObject.Instantiate<GameObject>(prefab);
-        var t = go.transform;
-        t.parent = parent;
-        t.localPosition = Vector3.zero;
-        t.localRotation = Quaternion.identity;
-        t.localScale = Vector3.one;
-        return go;
+        if (null == _prefab)
+        {
+            Debug.LogError("ResUtil::Create() null == prefab");
+            return null;
+        }
+
+        GameObject _obj = GameObject.Instantiate<GameObject>(_prefab);
+        Attach(_obj.transform, _parent);
+        return _obj;
+    }
+
+    public static T Create<T>(T _prefab, Transform _parent) where T : Component
+    {
+        if (null == _prefab)
+        {
+            Debug.LogError("ResUtil::Create() null == prefab");
+            return null;
+        }
+
+        T _obj = GameObject.Instantiate<T>(_prefab);
+        Attach(_obj.transform, _parent);
+        return _obj;
     }
 }

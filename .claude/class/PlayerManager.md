@@ -6,16 +6,24 @@
 플레이어 영구 데이터(재화/메타 진행/기록/설정)를 보관하고 PlayerPrefs에 JSON 직렬화로 저장하는 매니저. Design/05_meta.html의 SaveData 설계 + 07_ui.html의 설정 항목 기반.
 
 ## 현재 상태
-- `PlayerData` (직렬화): Version, Shards, UnlockedMetaNodes(List&lt;int&gt;), BestScore, RecentRuns(List&lt;RunRecord&gt; 최근 10개), LastPlayedAt(ISO 8601 문자열), isSoundOn, isHapticOn, isLeftHandMode, FpsOption(eFpsOption)
+- 데이터 3분할 (2026-07-19-3, 각각 별도 PlayerPrefs 키에 JSON 저장):
+  - `PlayerData` (키 "PlayerData"): Version, UnlockedMetaNodes(List&lt;int&gt;), BestScore, RecentRuns(List&lt;RunRecord&gt; 최근 10개), LastPlayedAt(ISO 8601 문자열)
+  - `OptionData` (키 "OptionData"): isSoundOn, isHapticOn, isLeftHandMode, FpsOption(eFpsOption)
+  - `AssetData` (키 "AssetData"): Shards(int)만 가진 순수 데이터 클래스
+- PlayerManager 보유 필드: m_PlayerData / m_OptionData / m_AssetData + `m_ShardsObservable`(ObservableVariable&lt;int&gt;). 공개 접근자: playerData / optionData (AssetData는 비공개 — 재화 접근은 반드시 Currency API 경유)
+- 재화 변경 통지: Load 끝(모든 분기 공통) + SpendCurrency에서 `m_AssetData.Shards` 값으로 m_ShardsObservable 동기화. 싱글톤 필드라 Load로 데이터가 교체돼도 옵저버 유지
 - `RunRecord` (직렬화): Score, KillCount, BossKills, SurvivalSeconds, CardsObtained, PlayedAt
-- 저장: PlayerPrefs 단일 키 `"PlayerData"`에 JsonUtility JSON 문자열
+- 로드: 제네릭 `LoadData<T>(saveKey)` 헬퍼 — 키 없음/파싱 실패 시 new T() 반환(파싱 실패는 에러 로그)
+- 저장: Save() 한 번에 세 키 모두 기록 (호출부가 혼합 데이터를 건드리는 경우가 많아 키별 개별 저장 메서드는 두지 않음)
 - 저장 트리거(설계 준수): 런 종료(AddRunRecord), 메타 노드 해금(UnlockMetaNode), 앱 백그라운드 전환(OnApplicationPause)
-- API: Load / Save / GetCurrencyAmount(eCurrencyType) / SpendCurrency(eCurrencyType, long) / AddRunRecord / UnlockMetaNode
+- API: Load / Save / GetCurrencyAmount(eCurrencyType) / GetCurrencyObservable(eCurrencyType) / SpendCurrency(eCurrencyType, long) / AddRunRecord / UnlockMetaNode
 - AddRunRecord가 BestScore 갱신 + 최근 10개 초과분 제거까지 담당
 
 ## 주의
 - **설계 문서(05_meta)는 PlayerPrefs 금지 + persistentDataPath/save.json 명시** — 사용자 지시로 "일단" PlayerPrefs 채택. 전체 데이터가 JSON 문자열 하나라 파일 저장 전환 시 Save/Load 내부만 교체하면 됨.
 - JsonUtility가 DateTime 미지원 → 날짜는 ISO 8601 문자열(`ToString("o")`).
+- ~~Load 시 PlayerData 교체로 옵저버 무효~~ → 2026-07-19-2부터 ObservableVariable이 PlayerManager 싱글톤 필드로 이동해 Load와 무관하게 유지됨. 대신 **`Asset.Shards`를 PlayerManager 메서드를 거치지 않고 직접 수정하면 옵저버 통지가 누락**되므로, 재화 증감은 반드시 PlayerManager API(SpendCurrency 등)로만 할 것.
+- 2026-07-19 구조 변경(중첩화 → 키 분리)으로 구버전 세이브의 Shards/옵션 값은 기본값으로 리셋된다(마이그레이션 없음, 개발 단계라 미처리). "PlayerData" 키에 남은 옛 Asset/Option 중첩 JSON 조각은 무시될 뿐 해가 없음.
 - ~~SceneManager.NextScene의 DontDestroy 정리로 파괴될 위험~~ → 2026-07-14 Command_CleanupDontDestroy 수정으로 MonoSingleton 계층은 정리 대상에서 제외되어 PlayerManager는 씬 전환에도 생존함.
 
 ---
@@ -68,3 +76,112 @@ public bool SpendCurrency(eCurrencyType _currencyType, long _amount)
 
 ### 미검증
 컴파일 확인 필요.
+
+---
+
+## 2026-07-19-0
+
+### 개요
+PlayerData 평면 구조에서 옵션/재화를 하위 데이터 클래스로 분리. 재화(Shards)는 ObservableVariable 적용으로 변경 통지 가능하게 함.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정
+- 전: PlayerData에 `Shards`(int), `isSoundOn`/`isHapticOn`/`isLeftHandMode`/`FpsOption`이 직접 존재
+- 후:
+  - `OptionData` 신설: isSoundOn, isHapticOn, isLeftHandMode, FpsOption 이동
+  - `AssetData` 신설: `Shards`를 `ObservableVariable<int>`로 변경. ObservableVariable은 직렬화 불가라 `[SerializeField] private int m_Shards` + ISerializationCallbackReceiver로 동기화
+  - PlayerData: `Asset`(AssetData), `Option`(OptionData) 필드로 교체
+  - GetCurrencyAmount/SpendCurrency: `m_PlayerData.Shards` → `m_PlayerData.Asset.Shards.Value`
+  - `GetCurrencyObservable(eCurrencyType)` 추가 (같은 날 후속 작업): 타입별 ObservableVariable 반환(Shard → Asset.Shards, 그 외 에러 로그 + null) — UIAssetBox 옵저버 등록용
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/동작 확인 필요.
+
+---
+
+## 2026-07-19-1
+
+### 개요
+사용자 요청: AssetData의 직렬화 콜백(ISerializationCallbackReceiver) 해제 + PlayerManager.Load에서 Option/Asset을 명시적으로 로드하도록 변경.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정
+- 전: `AssetData : ISerializationCallbackReceiver` — OnBeforeSerialize/OnAfterDeserialize로 자동 동기화 (OnAfterDeserialize에서 ObservableVariable을 new로 교체)
+- 후: 인터페이스 제거, 자체 `Load()`/`Save()` 메서드로 대체
+```csharp
+public void Load()
+{
+    Shards.Value = m_Shards;
+}
+
+public void Save()
+{
+    m_Shards = Shards.Value;
+}
+```
+- PlayerManager.Load: `m_PlayerData = loadedData;` 뒤에 `m_PlayerData.Asset.Load();` 추가
+- PlayerManager.Save: ToJson 전에 `m_PlayerData.Asset.Save();` 추가
+- OptionData는 일반 public 필드뿐이라 FromJson이 직접 채워줌 — 별도 Load 메서드 불필요(빈 메서드 추가 안 함)
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/저장·로드 왕복 확인 필요.
+
+---
+
+## 2026-07-19-2
+
+### 개요
+사용자 정정: "AssetData에서 ObservableVariable 없애달라" — 2026-07-19-1을 잘못 해석했던 것(직렬화 콜백만 제거하고 ObservableVariable은 남겨둠). AssetData를 순수 데이터로 되돌리고, ObservableVariable은 PlayerManager 필드로 이동.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정
+- AssetData: `public int Shards;`만 남김 (m_Shards/ObservableVariable/Load/Save 전부 제거)
+- PlayerManager에 `private ObservableVariable<int> m_ShardsObservable = new ObservableVariable<int>(0);` 추가
+- Load: 조기 return 구조 → 단일 출구 구조로 변경, 마지막에 모든 분기 공통으로 `m_ShardsObservable.Value = m_PlayerData.Asset.Shards;` (신규 데이터/파싱 실패 경로 포함)
+- Save: `Asset.Save()` 호출 제거 (Shards가 일반 필드라 ToJson이 그대로 직렬화)
+- GetCurrencyAmount: `Asset.Shards.Value` → `Asset.Shards`
+- GetCurrencyObservable: `Asset.Shards` 반환 → `m_ShardsObservable` 반환
+- SpendCurrency: `Asset.Shards` 차감 후 `m_ShardsObservable.Value = m_PlayerData.Asset.Shards;` 동기화 추가
+
+### 효과
+옵저버가 싱글톤 수명을 따르므로 Load로 PlayerData가 교체돼도 UIAssetBox 등록이 유지됨(기존 "Load 이후 등록" 제약 해소). UIAssetBox 쪽 코드는 변경 없음(GetCurrencyObservable 경유 그대로).
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/재화 차감 시 UI 갱신 확인 필요.
+
+---
+
+## 2026-07-19-3
+
+### 개요
+사용자 요청: Option, Asset도 PlayerPrefs에 따로 저장. PlayerData 중첩 구조를 해체하고 세 데이터를 각각 별도 키로 저장/로드.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정
+- PlayerData: `Asset`/`Option` 필드 제거 (Version/UnlockedMetaNodes/BestScore/RecentRuns/LastPlayedAt만 유지)
+- 키 상수 추가: `OPTION_SAVE_KEY = "OptionData"`, `ASSET_SAVE_KEY = "AssetData"`
+- 필드 추가: `m_OptionData`, `m_AssetData` + 공개 접근자 `optionData` (assetData 접근자는 의도적으로 미노출 — 재화는 Currency API 경유 강제)
+- Load: 세 키 각각 `LoadData<T>()` 제네릭 헬퍼로 로드 (키 없음/파싱 실패 → new T()), 마지막에 m_ShardsObservable 동기화
+```csharp
+public void Load()
+{
+    m_PlayerData = LoadData<PlayerData>(SAVE_KEY);
+    m_OptionData = LoadData<OptionData>(OPTION_SAVE_KEY);
+    m_AssetData = LoadData<AssetData>(ASSET_SAVE_KEY);
+
+    m_ShardsObservable.Value = m_AssetData.Shards;
+}
+```
+- Save: 세 키 모두 SetString 후 PlayerPrefs.Save() 1회
+- GetCurrencyAmount/SpendCurrency: `m_PlayerData.Asset.Shards` → `m_AssetData.Shards`
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/저장·로드 왕복(세 키 각각) 확인 필요.

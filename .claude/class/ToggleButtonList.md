@@ -146,3 +146,27 @@ public string toggleListId => m_ToggleListId;
 
 ### 미검증
 컴파일, 프리팹 필드 값 반영 확인 필요.
+
+---
+
+## 2026-07-19-0
+
+### 개요
+사용자 확정 규칙("생성 관련은 다 Create으로", glory.md ResUtil 절 참고)에 따라 SetData 두 오버로드의 직접 `Instantiate` 호출을 `ResUtil.Create`(참조 기반, [ResUtil.md](./ResUtil.md) 2026-07-19-1 신규)로 전환.
+
+### 파일
+- Assets/Scripts/Glory/UI/ButtonGroup/ToggleButtonList.cs
+
+### 수정
+```csharp
+// Before (SetData 두 곳 동일)
+UIToggleButton toggleButton = Instantiate(m_ToggleButtonPrefab, m_ButtonParent);
+
+// After
+UIToggleButton toggleButton = ResUtil.Create(m_ToggleButtonPrefab, m_ButtonParent);
+```
+- ResUtil.Create는 Attach로 로컬 트랜스폼 초기화 — 템플릿이 LayoutGroup 아래라 표시 차이 없음.
+- **원본 라이브러리 미반영** — ResUtil.cs와 함께 역동기화 필요.
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/탭 생성 확인 필요.

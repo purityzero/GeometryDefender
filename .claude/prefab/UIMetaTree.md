@@ -55,7 +55,7 @@ UIMetaTree (fileID ...1000)                    — RectTransform(풀스트레치
 - m_Content → Content RectTransform(...1081)
 - m_BranchHeaderTemplate → Text_BranchHeader(...1090)
 - m_NodeTemplate → Item_Node의 UIToggleButton(...1105)
-- m_AssetBoxShard → AssetBox_Shard의 UIAssetBox(...1044, 기존)
+- ~~m_AssetBoxShard → AssetBox_Shard의 UIAssetBox(...1044)~~ — 2026-07-19-0에 제거(UIAssetBox가 옵저버로 자동 갱신, 스크립트 필드도 삭제됨)
 
 ## 설계 메모
 - 노드 상태 전환 규칙(코드에서): 잠김=Group_Cost ON / 해금=Image_Unlocked ON + Group_Cost OFF. 배경/아이콘 색은 코드로 교체.
@@ -191,3 +191,22 @@ UIMetaTree (fileID ...1000)                    — RectTransform(풀스트레치
 
 ### 미검증
 컴파일, 프리팹 컴포넌트 연결(missing 아님) 확인 필요.
+
+---
+
+## 2026-07-19-0
+
+### 개요
+UIAssetBox가 재화 옵저버로 자동 갱신되도록 바뀌면서(.claude/class/UIAssetBox.md 2026-07-19-0) UIMetaTree 스크립트의 m_AssetBoxShard 필드가 삭제됨 — 프리팹의 대응 직렬화 라인도 제거.
+
+### 파일
+- Assets/Resources/Prefabs/UI/UIMetaTree.prefab
+
+### 수정 (오브젝트 단위)
+
+**UIMetaTree(...1900, MonoBehaviour)**
+- 전: `m_AssetBoxShard: {fileID: 9001000000000001044}` 포함
+- 후: 해당 라인 제거 (AssetBox_Shard 오브젝트/UIAssetBox 컴포넌트 자체는 유지 — m_CurrencyType=Shard 직렬화 값으로 스스로 옵저버 등록)
+
+### 미검증
+에디터 미실행 상태 편집. 파싱/재화 차감 시 표시 갱신 확인 필요.

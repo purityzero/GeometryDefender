@@ -11,7 +11,7 @@ UIMetaTree.prefab 루트에 부착되는 화면 컴포넌트. 메타 트리(영�
 - 노드 아이템: [MetaTreeNodeItem](./MetaTreeNodeItem.md)(`UIToggleButton` 상속)을 붙인 Item_Node를 줄기별로 Instantiate. **토글 On/Off는 "지금 클릭 가능한가"(`IsUnlockable`) 기준** — 클릭 불가(이미 해금됐거나 선행조건 미충족)면 Image_Unlocked 표시 + SetLock(true, 비활성+dim), 클릭 가능하면 Group_Cost(비용) 표시 + 인터랙션 가능(2026-07-18-4 수정, 최초엔 `isUnlocked` 기준이라 선행조건 미충족 노드가 비용을 계속 보여주는 버그가 있었음).
 - 노드 상태 2분류(SpawnNode, IsUnlockable 기준): 클릭 가능(비용 표시) / 클릭 불가(이미 해금됨 + 선행조건 미충족을 구분하지 않고 동일하게 Image_Unlocked 표시 + SetLock 비활성+dim).
 - 클릭 흐름(OnClickNode): MetaTreeTable.IsUnlockable 체크 → PlayerManager.SpendCurrency(Shard, Cost) → 성공 시 PlayerManager.UnlockMetaNode → RefreshNodeList로 전체 재구성(부분 갱신 대신 스냅샷 재생성 — 노드 수가 적어 성능 문제 없음, 실패 시 롤백도 같은 재구성으로 처리).
-- 직렬화 필드: m_BranchTabs(ToggleButtonList), m_Content(RectTransform), m_BranchHeaderTemplate(GameObject), m_NodeTemplate(**MetaTreeNodeItem**, 2026-07-18-5에 UIToggleButton에서 변경), m_AssetBoxShard(UIAssetBox)
+- 직렬화 필드: m_BranchTabs(ToggleButtonList), m_Content(RectTransform), m_BranchHeaderTemplate(GameObject), m_NodeTemplate(**MetaTreeNodeItem**, 2026-07-18-5에 UIToggleButton에서 변경) — m_AssetBoxShard는 2026-07-19-0에 제거(UIAssetBox가 옵저버로 자동 갱신)
 - 프리팹 경로는 UITable(Resources/Table/UITable.csv)에서 조회 가능
 
 ## 주의
@@ -450,3 +450,76 @@ RefreshNodeList(m_CurrentBranch);
 
 ### 미검증
 컴파일, 실제 클릭 시 토스트 노출 확인 필요.
+
+---
+
+## 2026-07-19-0
+
+### 개요
+AssetData.Shards가 ObservableVariable로 바뀜에 따라(PlayerManager.md 2026-07-19-0 참고), UIAssetBox가 옵저버로 자동 갱신되도록 변경되어 UIMetaTree의 수동 Refresh 호출과 m_AssetBoxShard 필드가 불필요해져 제거.
+
+### 파일
+- Assets/Scripts/UI/UIMetaTree.cs
+- Assets/Resources/Prefabs/UI/UIMetaTree.prefab
+
+### 수정
+```csharp
+// 제거
+[SerializeField] private UIAssetBox m_AssetBoxShard;
+
+// Show()에서 제거
+m_AssetBoxShard.Refresh();
+
+// OnClickNode 해금 성공 경로에서 제거 (SpendCurrency 시 옵저버가 자동 갱신)
+m_AssetBoxShard.Refresh();
+```
+프리팹에서도 UIMetaTree(...1900)의 `m_AssetBoxShard: {fileID: ...1044}` 라인 제거. AssetBox_Shard 오브젝트 자체는 유지(자기 m_CurrencyType=Shard로 옵저버 등록해 스스로 갱신).
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/실제 재화 차감 시 표시 갱신 확인 필요.
+
+---
+
+## 2026-07-19-1
+
+### 개요
+사용자 요청: SpawnNode의 직접 Instantiate를 ResUtil 경유로. 기존 ResUtil.Create는 Resources 경로 기반이라 프리팹 내부 템플릿(m_NodeTemplate)에 못 쓰므로, 컴포넌트 참조를 받는 `ResUtil.AddChild<T>`를 신규 추가([ResUtil.md](./ResUtil.md) 2026-07-19-0)하고 적용.
+
+### 파일
+- Assets/Scripts/UI/UIMetaTree.cs
+
+### 수정
+```csharp
+// Before (SpawnNode)
+MetaTreeNodeItem nodeItem = Instantiate(m_NodeTemplate, m_Content);
+
+// After
+MetaTreeNodeItem nodeItem = ResUtil.AddChild(m_Content, m_NodeTemplate);
+```
+- RefreshNodeList의 헤더 `Instantiate(m_BranchHeaderTemplate, m_Content)`(GameObject)는 요청 범위 밖이라 유지. → 직후 2026-07-19-2에서 함께 전환됨.
+- AddChild는 Attach로 localScale=1 초기화 포함 — VerticalLayoutGroup 아래라 위치는 레이아웃이 결정하므로 표시 차이 없음.
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/노드 목록 표시 확인 필요.
+
+---
+
+## 2026-07-19-2
+
+### 개요
+사용자 확정 규칙("생성 관련은 다 Create으로"): ResUtil.AddChild가 Create로 리네임되고 인자 순서가 (소스, parent)로 통일됨([ResUtil.md](./ResUtil.md) 2026-07-19-1). 화면 내 생성 호출 전부 ResUtil.Create로 전환.
+
+### 파일
+- Assets/Scripts/UI/UIMetaTree.cs
+
+### 수정
+```csharp
+// SpawnNode
+MetaTreeNodeItem nodeItem = ResUtil.Create(m_NodeTemplate, m_Content);
+
+// RefreshNodeList (헤더 — 직접 Instantiate였던 곳도 전환)
+GameObject header = ResUtil.Create(m_BranchHeaderTemplate, m_Content);
+```
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/노드·헤더 표시 확인 필요.

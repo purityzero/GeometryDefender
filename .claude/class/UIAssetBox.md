@@ -9,6 +9,7 @@
 - 직렬화 필드: `m_AmountText`(TextMeshProUGUI), `m_CurrencyType`(eCurrencyType, 기본값 Max)
 - 아이콘/이름은 프리팹에 정적으로 배치하는 전제 (재화가 Shard 하나뿐이라 코드 주도 세팅 불필요)
 - 보유량 조회는 `PlayerManager.instance.GetCurrencyAmount(eCurrencyType)` 경유
+- **옵저버 자동 갱신(2026-07-19)**: OnEnable에서 자기 `m_CurrencyType`에 맞는 `PlayerManager.GetCurrencyObservable()`에 옵저버 등록, OnDisable에서 해제. 등록 즉시 1회 콜백이 와서 초기 표시도 자동 동기화 → 외부에서 수동 Refresh 불필요. SetData로 타입이 바뀌면 재등록(SetCurrencyType). m_CurrencyType이 Max면 등록 스킵.
 
 ---
 
@@ -67,6 +68,24 @@ PlayerManager 구현에 따라 보유량 조회 스텁을 실제 연동으로 �
 - 후: `return PlayerManager.instance.GetCurrencyAmount(_currencyType);`
 
 이후 사용자가 `CurrencyType` → `eCurrencyType` 리네임 반영됨.
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/동작 확인 필요.
+
+---
+
+## 2026-07-19-0
+
+### 개요
+AssetData.Shards가 ObservableVariable로 바뀜에 따라, 보유량 변경을 옵저버로 받아 자동 갱신하도록 변경 (사용자 요청: "UIMetaTree의 UIAssetBox도 자신의 타입에 맞게 옵저버에서 받아와야 됨").
+
+### 파일
+- Assets/Scripts/Glory/UI/AssetBox/UIAssetBox.cs
+
+### 수정
+- 추가: `m_RegisteredObservable` 필드, `OnEnable`/`OnDisable` 오버라이드(base 호출 포함), `RegisterCurrencyObserver`/`UnregisterCurrencyObserver`/`OnCurrencyChanged(int, int)`/`SetCurrencyType`
+- `SetData(eCurrencyType, long)` / `SetData(eCurrencyType)`: `m_CurrencyType = _currencyType` 직접 대입 → `SetCurrencyType(_currencyType)` (타입이 실제로 바뀌면 옵저버 재등록, 활성 상태일 때만)
+- Refresh/SetData 기존 메서드는 그대로 유지 (명시적 갱신 경로)
 
 ### 미검증
 에디터 미실행 상태 편집. 컴파일/동작 확인 필요.

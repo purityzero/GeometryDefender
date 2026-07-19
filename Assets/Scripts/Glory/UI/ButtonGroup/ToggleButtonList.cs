@@ -74,7 +74,7 @@ public class ToggleButtonList : MonoBehaviour
 
             for (int i = 0; i < _menuRecords.Count; ++i)
             {
-                UIToggleButton toggleButton = Instantiate(m_ToggleButtonPrefab, m_ButtonParent);
+                UIToggleButton toggleButton = ResUtil.Create(m_ToggleButtonPrefab, m_ButtonParent);
                 int index = i;
                 ToggleMenuRecord menuRecord = _menuRecords[i];
 
@@ -109,7 +109,7 @@ public class ToggleButtonList : MonoBehaviour
 
             for (int i = 0; i < _count; ++i)
             {
-                UIToggleButton toggleButton = Instantiate(m_ToggleButtonPrefab, m_ButtonParent);
+                UIToggleButton toggleButton = ResUtil.Create(m_ToggleButtonPrefab, m_ButtonParent);
                 int index = i;
                 toggleButton.SetData(false, (button) => OnClickToggle(index));
                 m_ToggleButtons.Add(toggleButton);

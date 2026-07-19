@@ -22,11 +22,18 @@ public class MonsterManager : MonoBehaviour
     public event Action<RewardData> OnMonsterDie;
     public event Action<RewardData> OnMonsterReachEnd;
 
+    private bool m_isInitialized;
+
     public void Init()
     {
         m_EntityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
         EnemyTable enemyTable = TableManager.instance.GetTable<EnemyTable>();
+        if (enemyTable == null)
+        {
+            Debug.LogError($"[MonsterManager] Init Failed! EnemyTable not loaded - TableManager.init() 선행 필요");
+            return;
+        }
 
         Dictionary<eEnemyShape, string> pathMap = new Dictionary<eEnemyShape, string>();
         foreach (KeyValuePair<eEnemyShape, List<EnemyRecord>> pair in enemyTable.shapeMap)
@@ -46,6 +53,8 @@ public class MonsterManager : MonoBehaviour
             ComponentType.ReadOnly<ReachedEndTag>(),
             ComponentType.ReadOnly<MonsterTag>(),
             ComponentType.ReadOnly<RewardData>());
+
+        m_isInitialized = true;
     }
 
     public Entity Spawn(EnemyRecord _record)
@@ -102,6 +111,9 @@ public class MonsterManager : MonoBehaviour
 
     private void Update()
     {
+        if (m_isInitialized == false)
+            return;
+
         ProcessDeadMonsters();
         ProcessReachedEndMonsters();
         m_MonsterFactory.UpdateLogic();
@@ -173,6 +185,9 @@ public class MonsterManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (m_isInitialized == false)
+            return;
+
         m_DeadQuery.Dispose();
         m_ReachedEndQuery.Dispose();
         m_MonsterFactory.Clear();

@@ -38,8 +38,18 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 - 연출 조합은 `TweenSequenceBuilder.Create().Append(...).Join(...).Play()` — 생성 시 Pause 상태라 `Play()` 전까지 재생 안 됨. `.ToCommand()`로 FlowCommand 큐에도 태울 수 있다 (`Command_Tween`).
 - TMP Fade는 무료 DOTween에 확장 모듈이 없어 TweenUtil 내부에서 `DOTween.To`로 구현되어 있다 — TMP에 `DOFade()`를 직접 호출하면 컴파일 에러.
 
+## 텍스트 연출 (TextAnimation/TextAnimatorUtil)
+- Text Animator(Febucci) 에셋 사용은 `TextAnimatorUtil` 정적 헬퍼 경유 (TweenUtil과 동일 컨셉). `SetText`(즉시+효과태그) / `PlayTypewriter`(타자기+onComplete) / `SkipTypewriter` / `HideTypewriter` / `SetTypewriterSpeed`. 컴포넌트는 자동 부착, 인스펙터에 미리 세팅돼 있으면 재사용.
+- 태그: 지속 `<wave>` 등, 등장 `{fade}`, 퇴장 `{#fade}`, 액션 `<waitfor=1>`/`<speed=2>`/`<waitinput>` — 상세는 .claude/class/TextAnimatorUtil.md 치트시트.
+- **의존 주의**: 이 폴더(TextAnimation)는 Text Animator 패키지(com.febucci.text-animator-unity) 의존 — 패키지 없는 프로젝트로 Glory 복사 시 이 폴더는 제외할 것 (허용 의존 원칙의 조건부 예외, 2026-07-20).
+- TextAnimator_TMP가 붙은 TMP에는 `text` 직접 대입 금지 — 태그 미파싱/미갱신 위험, 반드시 유틸 경유.
+
 ## 리소스 (Resource/ResUtil)
-- `Resources.Load`/`Instantiate` 직접 호출 대신 `ResUtil.Load<T>(path)` / `ResUtil.Create<T>(path, parent)` 사용 (실패 시 에러 로그 + null 반환, 로컬 트랜스폼 초기화 포함).
+- `Resources.Load`/`Instantiate` 직접 호출 대신 ResUtil 사용 (실패 시 에러 로그 + null 반환, 로컬 트랜스폼 초기화 포함).
+- **생성 함수 네이밍은 전부 `Create`로 통일** (2026-07-19, 사용자 확정 규칙 — 기존 `AddChild` 계열은 `Create`로 리네임/흡수):
+  - 경로 기반: `ResUtil.Create(path, parent)` / `Create<T>(path, parent)` — Resources 프리팹 에셋 생성
+  - 참조 기반: `ResUtil.Create(prefabGO, parent)` / `Create<T>(prefabComponent, parent)` — 프리팹 내부 템플릿(직렬화 참조, 경로 없음) 복제. 컴포넌트 참조를 주면 GetComponent 없이 타입 그대로 반환
+  - 새 생성 헬퍼가 필요해도 별도 이름을 만들지 말고 Create 오버로드로 추가할 것
 
 ## 옵저버 (Partterns/Observer)
 - `ObservableVariable<T>`: `.Value` 대입 시 변경됐을 때만 `(old, new)` 통지.

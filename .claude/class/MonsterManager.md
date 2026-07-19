@@ -243,3 +243,30 @@ D:\Unity\Job (구 작업 폴더, 06-09까지 작업분)에서 머지 — Job 버
 
 ### 미검증
 컴파일/플레이 확인 필요. 몬스터 프리팹 6종(Triangle~Star)도 함께 머지됨.
+
+---
+
+## 2026-07-19-0
+
+### 개요
+런타임 NRE 수정 (Update → ProcessDeadMonsters → m_DeadQuery.IsEmpty).
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 증상
+매 프레임 `NullReferenceException: EntityQueryImpl.get_IsEmpty` (MonsterManager.cs:112) 스팸.
+
+### 원인
+InGame 씬을 **단독 플레이**하면 씬에 GameManager가 없어(TitleScene에만 존재) `TableManager.init()`이 호출되지 않음 → `GetTable<EnemyTable>()`이 에러 로그 + null 반환 → `Init()`이 `enemyTable.shapeMap` 접근에서 NRE로 중단 → `m_DeadQuery`가 default(EntityQuery) 상태로 남음 → 매 프레임 `Update()`의 `IsEmpty` 접근에서 NRE. (정상 흐름 Title → InGame에서는 DontDestroy GameManager가 살아있어 재현 안 됨)
+
+### 수정
+- Init 시작부에 enemyTable null 가드 추가 (명확한 에러 로그 1회 + 중단)
+- `m_isInitialized` 플래그 추가 — Init 완주 시에만 true, `Update()`/`OnDestroy()` 진입 가드 (미초기화 상태의 IsEmpty/Dispose NRE 방지)
+
+### 남은 문제 (이 파일 밖, 미수정)
+1. **InGame 단독 플레이 시 테이블 미로드 자체는 여전함** — 가드는 스팸만 막고 몬스터는 안 나옴. 단독 플레이를 지원하려면 InGameScene에서 GameManager/TableManager 부트스트랩 필요 (사용자 결정 대기).
+2. **InGameScene.unity에 SpawnManager 컴포넌트 자체가 없음** — "SpawnManager" GameObject(fileID 343094390)는 Transform만 보유, guid 330e8e3d... 검색 결과 0건. InGameScene의 `m_SpawnManager` 직렬화 라인도 없음 → 정상 흐름에서도 `InGameScene.Start` 라인 10에서 NRE 예정. 에디터에서 컴포넌트 추가 + 참조 연결 필요.
+
+### 미검증
+에디터 미실행 상태 편집. 컴파일/단독 플레이 시 에러 1회만 나오는지 확인 필요.

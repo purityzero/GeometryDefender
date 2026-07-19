@@ -56,7 +56,6 @@ MonoBehaviour:
   m_Content: {fileID: 9001000000000001081}
   m_BranchHeaderTemplate: {fileID: 9001000000000001090}
   m_NodeTemplate: {fileID: 9001000000000001106}
-  m_AssetBoxShard: {fileID: 9001000000000001044}
 --- !u!1 &9001000000000001010
 GameObject:
   m_ObjectHideFlags: 0

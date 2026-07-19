@@ -8,7 +8,6 @@ public class UIMetaTree : UIBase
     [SerializeField] private RectTransform m_Content;
     [SerializeField] private GameObject m_BranchHeaderTemplate;
     [SerializeField] private MetaTreeNodeItem m_NodeTemplate;
-    [SerializeField] private UIAssetBox m_AssetBoxShard;
 
     private TextMeshProUGUI m_HeaderText;
     private List<GameObject> m_SpawnedItems = new List<GameObject>();
@@ -19,7 +18,6 @@ public class UIMetaTree : UIBase
         base.Show();
 
         SetupBranchTabs();
-        m_AssetBoxShard.Refresh();
     }
 
     private void SetupBranchTabs()
@@ -94,7 +92,7 @@ public class UIMetaTree : UIBase
         if (m_HeaderText == null)
         {
             m_BranchHeaderTemplate.SetActive(true);
-            GameObject header = Instantiate(m_BranchHeaderTemplate, m_Content);
+            GameObject header = ResUtil.Create(m_BranchHeaderTemplate, m_Content);
             m_HeaderText = header.GetComponent<TextMeshProUGUI>();
             m_BranchHeaderTemplate.SetActive(false);
         }
@@ -113,7 +111,7 @@ public class UIMetaTree : UIBase
 
     private void SpawnNode(MetaTreeTable _metaTreeTable, MetaTreeRecord _record)
     {
-        MetaTreeNodeItem nodeItem = Instantiate(m_NodeTemplate, m_Content);
+        MetaTreeNodeItem nodeItem = ResUtil.Create(m_NodeTemplate, m_Content);
         m_SpawnedItems.Add(nodeItem.gameObject);
 
         nodeItem.SetData(_record.DisplayName, _record.Cost, GetBranchColor(m_CurrentBranch));
@@ -159,7 +157,6 @@ public class UIMetaTree : UIBase
         }
 
         PlayerManager.instance.UnlockMetaNode(_nodeId);
-        m_AssetBoxShard.Refresh();
         RefreshNodeList(m_CurrentBranch);
     }
 }
