@@ -22,7 +22,9 @@ public class MonsterManager : MonoBehaviour
     public event Action<RewardData> OnMonsterDie;
     public event Action<RewardData> OnMonsterReachEnd;
 
-    private bool m_isInitialized;
+    // 플레이 중 스크립트 핫 리로드 시 private bool도 보존되지만 EntityQuery는 default로 리셋됨
+    // — 플래그만 살아남아 무효 쿼리에 접근하는 NRE를 막기 위해 보존 대상에서 제외
+    [NonSerialized] private bool m_isInitialized;
 
     public void Init()
     {

@@ -1,6 +1,6 @@
 # UIToastMessage (Assets/Resources/Prefabs/UI/UIToastMessage.prefab)
 
-연관 스크립트: [UIToastMessage](../class/UIToastMessage.md)(루트), [TweenEffectPlayer](../class/TweenEffectPlayer.md) + [FadeTweenEffect](../class/TweenEffectBase.md) ×2, [UIManager](../class/UIManager.md)(런타임 풀링/스태킹 소유자)
+연관 스크립트: [UIToastMessage](../class/UIToastMessage.md)(루트), [TweenEffectPlayer](../class/TweenEffectPlayer.md) + [FadeTweenEffect](../class/TweenEffectBase.md) ×2, [TextAnimationPlayer](../class/TextAnimationPlayer.md)(Text_Message, 타자기), [UIManager](../class/UIManager.md)(런타임 풀링/스태킹 소유자)
 중첩 프리팹: 없음
 기획 근거: 사용자 요청 — "Shard가 부족합니다" 같은 문구가 뜨는 공용 알람 토스트. 잠시 뜨면 자동으로 사라짐, 4~5개 오브젝트 풀 사용, 위로 점점 쌓이면서 사라지는 형식.
 
@@ -21,8 +21,9 @@ UIToastMessage (fileID ...1000)                — RectTransform(중앙 앵커(0
 └─ Text_Message (...1010, TMP comp 1013)        — TMP "Message" placeholder, 흰색(#EBEBF5), 20pt, 중앙정렬, 좌우 패딩 24
                                                   + FadeTweenEffect 텍스트-in(...1014, Join, Duration 0.2 TargetAlpha 1 — 이미지-in과 동시)
                                                   + FadeTweenEffect 텍스트-out(...1015, Join, Duration 0.3 TargetAlpha 0 — 이미지-out과 동시)
+                                                  + TextAnimationPlayer(...1016, Target=TMP 1013, Typewriter 모드, PlayOnStart=false, 배속 2)
 ```
-- fileID 대역: 9002000000000001000~1015 (+ Unity 자동 부여 CanvasRenderer 6496391864058027193)
+- fileID 대역: 9002000000000001000~1016 (+ Unity 자동 부여 CanvasRenderer 6496391864058027193)
 - **CanvasGroup 없음** — 배경(Image)과 텍스트(TMP) 알파를 각각 FadeTweenEffect로 직접 애니메이션(2026-07-18-1, 사용자 지적으로 CanvasGroup 제거). `FadeTweenEffect.CreateTween()`이 자기 오브젝트에서 CanvasGroup→Image→SpriteRenderer→TMP 순서로 자동 탐색하므로, 루트의 FadeTweenEffect는 Image를, Text_Message의 FadeTweenEffect는 TMP를 자동으로 찾아 애니메이션한다.
 - **대기시간(1.5초)은 이미지-out FadeTweenEffect(...1007)의 `m_Delay`로 표현** — TweenSequenceBuilder.Append가 지연을 시퀀스 갭으로 반영하는 동작을 이용. 텍스트-out(...1015)은 Join이라 자체 Delay 없이 이미지-out과 같은 시점에 시작.
 - 이미지 배경은 완전 불투명(1.0)이 아니라 0.9까지만 페이드인 — 원래 CanvasGroup으로 구현했을 때의 반투명 배경 느낌을 유지하기 위한 값(TargetAlpha 1로 하면 배경이 완전 불투명해져 버림).
@@ -31,6 +32,7 @@ UIToastMessage (fileID ...1000)                — RectTransform(중앙 앵커(0
 - UIToastMessage.cs: 235434680d79467687814e743855fcec
 - TweenEffectPlayer.cs: 7c3ea041f2d16d8ea05c9fb37e416c24
 - FadeTweenEffect.cs: 5a1c8e2fd0b94b6c8e3a7d915c2f4a02
+- TextAnimationPlayer.cs: f35d9039a8794c02afad522a498e8325
 - UnityEngine.UI.Image: fe87c0e1cc204ed48ad3b37840f39efc (UIMetaTree.prefab과 동일, 재확인)
 - TMPro.TextMeshProUGUI: f4688fdb7df04437aeb418b961361dc5
 - TMP 폰트: guid 7e00a561b2f97e04bbe6e3b6876e22e5 (에디터가 라이브 임포트 중 자동 수정 — 원래 UIMetaTree.prefab에서 재확인했던 LiberationSans SDF guid `8f586378b4e144a9851e7b34d9b748ee`와 다름. 이 프리팹은 이 값이 최신 기준)
@@ -40,6 +42,7 @@ UIToastMessage (fileID ...1000)                — RectTransform(중앙 앵커(0
 - m_Image → 루트의 Image(...1003)
 - m_MessageText → Text_Message의 TMP(...1013)
 - m_TweenPlayer → TweenEffectPlayer(...1005)
+- m_TextPlayer → Text_Message의 TextAnimationPlayer(...1016)
 - m_MoveDuration → 0.2 (스태킹 리포지션 이동 시간, UIManager의 `TOAST_SLOT_HEIGHT`와는 별개 — 위치 간격은 UIManager 소관, 이동 속도는 이 프리팹 소관)
 
 ## 설계 메모
@@ -88,3 +91,25 @@ UIToastMessage (fileID ...1000)                — RectTransform(중앙 앵커(0
 
 ### 미검증
 컴파일, 프리팹 컴포넌트 연결(missing 아님), 실제 중앙 배치/페이드 애니메이션 확인 필요.
+
+---
+
+## 2026-07-20-0
+
+### 개요
+사용자 요청 — 토스트 타자기 출력을 Util 직접 호출 대신 컴포넌트 부착 방식으로. Text_Message에 [TextAnimationPlayer](../class/TextAnimationPlayer.md) 추가, 루트 UIToastMessage의 m_TextPlayer 필드로 연결.
+
+### 파일
+- Assets/Resources/Prefabs/UI/UIToastMessage.prefab
+
+### 수정 (오브젝트 단위)
+
+**Text_Message (자식, ...1010)**
+- m_Component 목록에 TextAnimationPlayer(...1016) 추가
+- TextAnimationPlayer(...1016) 신규 블록: m_TargetText → TMP(...1013), m_PlayMode 1(Typewriter), m_Content 빈 값, m_isPlayOnStart 0(풀 재사용 시 자동재생 방지 — TweenEffectPlayer의 m_isPlayOnEnable=false와 같은 이유), m_TypewriterSpeed 2
+
+**UIToastMessage (루트, ...1004)**
+- `m_TextPlayer: {fileID: ...1016}` 필드 추가
+
+### 미검증
+컴파일, 프리팹 참조 연결, 타자기 2배속 실동작 확인 필요.

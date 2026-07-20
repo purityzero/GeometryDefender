@@ -47,3 +47,20 @@ D:\Unity\Job (구 작업 폴더, 2026-06-09까지 작업)에서 머지로 신규
 
 ### 미검증
 에디터 미실행 상태 편집. 씬이 에디터에 열려 있었다면 리로드 후 실제 크기 비교 확인 필요.
+
+---
+
+## 2026-07-20-1
+
+### 개요
+Start:10 NRE(m_SpawnManager null) 수정 — 씬의 SpawnManager 오브젝트에 컴포넌트 부착 + 참조 연결. 스크립트 변경 없음, 상세는 [SpawnManager.md](./SpawnManager.md) 2026-07-20-0 참고.
+
+### 파일
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (오브젝트 단위)
+- SpawnManager(343094390): SpawnManager 컴포넌트(343094392) 추가
+- InGameScene(532887962): `m_SpawnManager: {fileID: 0}` → `{fileID: 343094392}`
+
+### 미검증
+컴파일/씬 파싱/실동작 확인 필요.

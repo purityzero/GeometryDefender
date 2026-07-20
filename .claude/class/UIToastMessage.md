@@ -1,6 +1,6 @@
 # UIToastMessage
 
-연관 클래스: [Factory](./Factory.md)(FactoryObject 정의), [TweenEffectPlayer](./TweenEffectPlayer.md), [UIManager](./UIManager.md)(사용처, 풀링/스태킹 소유자), [TextAnimatorUtil](./TextAnimatorUtil.md)(메시지 타자기 출력)
+연관 클래스: [Factory](./Factory.md)(FactoryObject 정의), [TweenEffectPlayer](./TweenEffectPlayer.md), [UIManager](./UIManager.md)(사용처, 풀링/스태킹 소유자), [TextAnimationPlayer](./TextAnimationPlayer.md)(메시지 타자기 출력, 프리팹 부착)
 프리팹: Assets/Resources/Prefabs/UI/UIToastMessage.prefab (.claude/prefab/UIToastMessage.md 참고)
 
 ## 개요
@@ -10,12 +10,11 @@
 ```csharp
 public class UIToastMessage : FactoryObject
 {
-    private const float TYPEWRITER_SPEED = 2f;  // 메시지 타자기 배속
-
     [SerializeField] private RectTransform m_RectTransform;
     [SerializeField] private Image m_Image;
     [SerializeField] private TextMeshProUGUI m_MessageText;
     [SerializeField] private TweenEffectPlayer m_TweenPlayer;
+    [SerializeField] private TextAnimationPlayer m_TextPlayer;  // 타자기 출력 (배속은 프리팹 인스펙터 값 2)
     [SerializeField] private float m_MoveDuration = 0.2f;
 
     public RectTransform rectTransform => m_RectTransform;
@@ -164,3 +163,27 @@ m_TweenPlayer.Play(OnShowComplete);
 
 ### 미검증
 컴파일, 타자기+텍스트 알파 페이드 공존(첫 0.2초 구간), 풀 재사용 시 두 번째 Show 정상 동작 확인 필요.
+
+---
+
+## 2026-07-20-1
+
+### 개요
+사용자 요청: "Util 직접 호출 말고 컴포넌트 붙이는 식으로". 2026-07-20-0에서 넣은 TextAnimatorUtil 정적 호출을 프리팹에 부착한 [TextAnimationPlayer](./TextAnimationPlayer.md) 참조로 교체. 배속 2는 코드 상수에서 프리팹 인스펙터 값(m_TypewriterSpeed=2)으로 이동.
+
+### 파일
+- Assets/Scripts/Glory/UI/Toast/UIToastMessage.cs
+- Assets/Resources/Prefabs/UI/UIToastMessage.prefab (.claude/prefab/UIToastMessage.md 2026-07-20-0 참고)
+
+### 수정 전/후 (Show)
+```csharp
+// Before (+ private const float TYPEWRITER_SPEED = 2f;)
+TextAnimatorUtil.SetTypewriterSpeed(m_MessageText, TYPEWRITER_SPEED);
+TextAnimatorUtil.PlayTypewriter(m_MessageText, _message);
+
+// After (+ [SerializeField] private TextAnimationPlayer m_TextPlayer; 필드 추가, 상수 제거)
+m_TextPlayer.Play(_message);
+```
+
+### 미검증
+컴파일, 프리팹 참조 연결, 타자기 2배속 실동작 확인 필요.

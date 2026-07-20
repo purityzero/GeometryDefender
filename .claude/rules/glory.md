@@ -42,7 +42,7 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 - Text Animator(Febucci) 에셋 사용은 `TextAnimatorUtil` 정적 헬퍼 경유 (TweenUtil과 동일 컨셉). `SetText`(즉시+효과태그) / `PlayTypewriter`(타자기+onComplete) / `SkipTypewriter` / `HideTypewriter` / `SetTypewriterSpeed`. 컴포넌트는 자동 부착, 인스펙터에 미리 세팅돼 있으면 재사용.
 - 태그: 지속 `<wave>` 등, 등장 `{fade}`, 퇴장 `{#fade}`, 액션 `<waitfor=1>`/`<speed=2>`/`<waitinput>` — 상세는 .claude/class/TextAnimatorUtil.md 치트시트.
 - 인스펙터 부착형은 `TextAnimationPlayer` 컴포넌트 사용 (TweenEffectPlayer와 동일 컨셉) — 대상 TMP/내용/모드(SetText·Typewriter)/자동재생을 인스펙터에서 설정, `Play()/Skip()/Hide()` + `OnComplete`(UnityEvent) 제공 (2026-07-20 추가).
-- **의존 주의**: 이 폴더(TextAnimation)는 Text Animator 패키지(com.febucci.text-animator-unity) 의존 — 패키지 없는 프로젝트로 Glory 복사 시 이 폴더는 제외할 것 (허용 의존 원칙의 조건부 예외, 2026-07-20). UIToastMessage.Show도 타자기 출력을 위해 이 유틸을 호출하므로(2026-07-20, 사용자 요청) 제외 시 해당 호출을 SetText로 되돌려야 한다.
+- **의존 주의**: 이 폴더(TextAnimation)는 Text Animator 패키지(com.febucci.text-animator-unity) 의존 — 패키지 없는 프로젝트로 Glory 복사 시 이 폴더는 제외할 것 (허용 의존 원칙의 조건부 예외, 2026-07-20). UIToastMessage도 타자기 출력용 TextAnimationPlayer(이 폴더의 컴포넌트)를 프리팹 부착 + 직렬화 참조하므로(2026-07-20, 사용자 요청) 제외 시 m_TextPlayer 필드/컴포넌트를 제거하고 SetText로 되돌려야 한다.
 - TextAnimator_TMP가 붙은 TMP에는 `text` 직접 대입 금지 — 태그 미파싱/미갱신 위험, 반드시 유틸 경유.
 
 ## 리소스 (Resource/ResUtil)

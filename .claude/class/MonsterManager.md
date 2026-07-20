@@ -270,3 +270,15 @@ InGame 씬을 **단독 플레이**하면 씬에 GameManager가 없어(TitleScene
 
 ### 미검증
 에디터 미실행 상태 편집. 컴파일/단독 플레이 시 에러 1회만 나오는지 확인 필요.
+
+---
+
+## 2026-07-20-0 (최초 오진 — 아래 2026-07-20-1로 정정됨)
+
+### 개요
+2026-07-19-0과 같은 증상(EntityQueryImpl.get_IsEmpty NRE) 재발 — 이번엔 **가드(m_isInitialized)가 있는데도** 발생. 처음엔 "플레이 중 스크립트 재컴파일(핫 리로드)"로 오진하고 `m_isInitialized`에 `[NonSerialized]`를 붙였으나(SpawnManager도 동일 적용), **재현 결과 효과 없음 — 근본 원인이 아니었음**. 실제 원인과 수정은 [SceneManager.md](./SceneManager.md) 2026-07-20-0 참고(Command_CleanupDontDestroy가 DOTween/Addressables/렌더파이프라인 등 엔진 인프라 오브젝트를 파괴하면서 ECS World가 함께 깨지는 문제).
+
+`[NonSerialized]` 자체는 핫 리로드 대비책으로는 여전히 유효한 방어 코드라 되돌리지 않고 남겨둠(해가 없고, 실제 핫 리로드 시나리오에선 도움이 됨) — 다만 **이번 증상의 원인은 아니었다**는 점을 기록.
+
+### 미검증
+[SceneManager.md](./SceneManager.md) 2026-07-20-0 수정 적용 후 실제 NRE 미발생 확인 필요.

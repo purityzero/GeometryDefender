@@ -55,6 +55,12 @@ public class Command_CleanupDontDestroy : ICommand
             if (HasMonoSingletonInChildren(rootObject) == true)
                 continue;
 
+            // 프로젝트 코드가 만들지 않은 오브젝트(DOTween/Addressables/렌더 파이프라인 등 엔진·플러그인이
+            // DontDestroyOnLoad에 심어둔 내부 인프라)는 정리 대상에서 제외 — 이런 오브젝트를 지우면
+            // 해당 서브시스템(ECS World 포함)이 망가져 이후 매 프레임 NRE가 발생할 수 있다(2026-07-20 확인)
+            if (HasProjectMonoBehaviourInChildren(rootObject) == false)
+                continue;
+
             Object.Destroy(rootObject);
             Logger.Log("Command_CleanupDontDestroy", $"Destroyed {rootObject.name}", Logger.eColor.Blue);
         }
@@ -78,6 +84,21 @@ public class Command_CleanupDontDestroy : ICommand
 
                 baseType = baseType.BaseType;
             }
+        }
+
+        return false;
+    }
+
+    private bool HasProjectMonoBehaviourInChildren(GameObject _rootObject)
+    {
+        MonoBehaviour[] behaviours = _rootObject.GetComponentsInChildren<MonoBehaviour>(true);
+        foreach (MonoBehaviour behaviour in behaviours)
+        {
+            if (behaviour == null)
+                continue;
+
+            if (behaviour.GetType().Assembly == typeof(Command_CleanupDontDestroy).Assembly)
+                return true;
         }
 
         return false;

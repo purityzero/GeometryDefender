@@ -40,7 +40,12 @@
       "Bash(powershell -Command \"[guid]::NewGuid\\(\\).ToString\\('N'\\)\")",
       "PowerShell([guid]::NewGuid\\(\\).ToString\\('N'\\))",
       "Bash(sed -i 's/^  m_Name:$/  m_Name: /; s/^  m_text:$/  m_text: /' \"Assets/Scenes/TitleScene.unity\")",
-      "Bash(grep -n \"^  m_Name:$\\\\|^  m_text:$\" \"Assets/Scenes/TitleScene.unity\")"
+      "Bash(grep -n \"^  m_Name:$\\\\|^  m_text:$\" \"Assets/Scenes/TitleScene.unity\")",
+      "PowerShell($line = \\(Get-Content \"Assets/Scripts/InGame/SpawnManager.cs.meta\"\\)[1]; $guid = $line -replace 'guid: ',''; \"'$guid' length=$\\($guid.Length\\)\")",
+      "Read(//c/Users/김영태/AppData/Local/Unity/Editor/**)",
+      "Bash(awk *)",
+      "Bash(xargs grep -l \"Debug Updater\")",
+      "Bash(gh api *)"
     ]
   }
 }

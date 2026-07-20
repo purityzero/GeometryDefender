@@ -88,6 +88,7 @@ MonoBehaviour:
   m_Image: {fileID: 9002000000000001003}
   m_MessageText: {fileID: 9002000000000001013}
   m_TweenPlayer: {fileID: 9002000000000001005}
+  m_TextPlayer: {fileID: 9002000000000001016}
   m_MoveDuration: 0.2
 --- !u!114 &9002000000000001005
 MonoBehaviour:
@@ -164,6 +165,7 @@ GameObject:
   - component: {fileID: 9002000000000001013}
   - component: {fileID: 9002000000000001014}
   - component: {fileID: 9002000000000001015}
+  - component: {fileID: 9002000000000001016}
   m_Layer: 5
   m_Name: Text_Message
   m_TagString: Untagged
@@ -300,7 +302,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5a1c8e2fd0b94b6c8e3a7d915c2f4a02, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FadeTweenEffect
   m_StepType: 1
   m_Duration: 0.2
@@ -317,10 +319,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5a1c8e2fd0b94b6c8e3a7d915c2f4a02, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FadeTweenEffect
   m_StepType: 1
   m_Duration: 0.3
   m_Delay: 0
   m_Ease: 5
   m_TargetAlpha: 0
+--- !u!114 &9002000000000001016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9002000000000001010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f35d9039a8794c02afad522a498e8325, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TextAnimationPlayer
+  m_TargetText: {fileID: 9002000000000001013}
+  m_PlayMode: 1
+  m_Content: 
+  m_isPlayOnStart: 0
+  m_TypewriterSpeed: 2
+  OnComplete:
+    m_PersistentCalls:
+      m_Calls: []
