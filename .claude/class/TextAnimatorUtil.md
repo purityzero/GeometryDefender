@@ -1,6 +1,6 @@
 # TextAnimatorUtil
 
-연관 클래스: (외부) Text Animator for Unity 3.11.1 — TextAnimator_TMP, TypewriterComponent, TypingDelaysByCharacter / (Glory) TweenUtil(동일 컨셉의 DOTween 래퍼)
+연관 클래스: (외부) Text Animator for Unity 3.11.1 — TextAnimator_TMP, TypewriterComponent, TypingDelaysByCharacter / (Glory) TweenUtil(동일 컨셉의 DOTween 래퍼), TextAnimationPlayer(이 유틸의 인스펙터 부착용 컴포넌트 래퍼)
 
 ## 개요
 Text Animator(Febucci) 에셋을 TweenUtil처럼 **정적 헬퍼 한 줄 호출**로 쓰게 해주는 래퍼.
@@ -41,24 +41,25 @@ TextAnimatorUtil.SetTypewriterSpeed(m_DialogText, 2f);
 - `GetTypewriter`가 런타임 추가 시 기본값: useTypeWriter=true, startTypewriterMode=FromScriptOnly(스크립트로만 시작), 타이밍=TypingDelaysByCharacter 기본값(일반 글자 0.03초, `!?.` 0.6초, `;:)-,` 0.2초).
 - **인스펙터에서 미리 세팅한 컴포넌트가 있으면 그대로 재사용**한다(덮어쓰지 않음) — 타이밍/설정 커스텀은 인스펙터 방식 권장.
 
-## 3. 효과 태그 치트시트 (이 프로젝트 기본 데이터베이스 실측)
+## 3. 효과 태그 치트시트 (이 프로젝트 기본 데이터베이스 실측, 전체 14종)
 
-### 지속 효과 (Behaviors) — `<태그>내용</태그>`
+**모든 효과가 3가지 카테고리를 전부 지원한다** (각 효과 에셋에 persistant/appearance/disappearance 데이터가 모두 들어 있음):
+- 지속 (Behavior): `<태그>내용</태그>` — 글자가 계속 움직임
+- 등장 (Appearance): `{태그}내용{/태그}` — 글자가 나타날 때 1회
+- 퇴장 (Disappearance): `{#태그}내용{/#태그}` — HideTypewriter로 사라질 때 1회
+
 | 태그 | 효과 | 태그 | 효과 |
 |---|---|---|---|
-| `<wave>` | 물결 | `<bounce>` | 통통 튐 |
-| `<shake>` | 흔들림 | `<rot>` | 회전 |
-| `<wiggle>` | 꿈틀거림 | `<incr>` | 크기 커짐 |
-| `<swing>` | 좌우 흔들기 | `<fade>` | 깜빡임 |
-| `<slideh>` / `<slidev>` | 가로/세로 슬라이드 | `<rainb>` | 무지개 색 |
-| `<pend>` | 진자 운동 | `<dangle>` | 대롱대롱 |
-| `<expand>` | 확장 | | |
+| `wave` | 물결 (상하 파도) | `bounce` | 통통 튐 |
+| `shake` | 흔들림 (랜덤 진동) | `rot` | 회전 |
+| `wiggle` | 꿈틀거림 | `incr` | 크기 커짐 (Size) |
+| `swing` | 좌우 흔들기 | `fade` | 투명도 (지속=깜빡임, 등장=페이드 인) |
+| `slideh` | 가로 슬라이드 | `rainb` | 무지개 색 |
+| `slidev` | 세로 슬라이드 | `pend` | 진자 운동 |
+| `dangle` | 대롱대롱 | `expand` | 확장 |
 
-### 등장 효과 (Appearances) — `{태그}내용{/태그}`
-같은 태그명을 중괄호로 쓰면 "글자가 나타날 때 1회" 연출이 된다. 예: `{size}`, `{fade}`, `{bounce}`
-
-### 퇴장 효과 (Disappearances) — `{#태그}내용{/#태그}`
-HideTypewriter로 사라질 때의 연출. 예: `{#fade}`
+사용 예: 지속 `<wave>안녕</wave>`, 등장 `{fade}안녕{/fade}`, 퇴장 `{#fade}안녕{/#fade}`
+(크기 효과의 태그는 `size`가 아니라 `incr`다 — Size Effect.asset의 tagId 실측, 2026-07-20 정정)
 
 ### 타자기 액션 — 타자기 재생 중에만 동작
 | 태그 | 효과 |
@@ -100,3 +101,42 @@ typewriter.onMessage.AddListener((message) => Debug.Log(message.Message));
 
 ### 미검증
 에디터 미실행 상태 작성. 컴파일, 런타임 AddComponent 경로(특히 TypewriterComponent Awake 시점에 타이밍 null 상태 통과 여부), 타자기/효과 실동작 확인 필요.
+
+---
+
+## 2026-07-20-2
+
+### 개요
+TitleScene 테스트 오브젝트 실행에서 NRE 발생 → GetTypewriter의 localSettings null 가드 추가.
+
+### 파일
+- Assets/Scripts/Glory/TextAnimation/TextAnimatorUtil.cs
+
+### 증상
+```
+NullReferenceException at TextAnimatorUtil.GetTypewriter (TextAnimatorUtil.cs:36)
+← SetTypewriterSpeed ← TextAnimationPlayer.Play ← Start
+```
+
+### 원인
+`TypewriterComponent.localSettings`는 `[SerializeField] public UnityTypewriterSettings localSettings;` — **초기화식이 없는 직렬화 필드**라 런타임 `AddComponent` 직후 null. (씬/프리팹에 미리 붙인 컴포넌트는 직렬화 데이터로 채워져 문제 없음. 참고: 같은 패턴이라도 TextAnimator_TMP 쪽은 `= new AnimatorSettings()` 초기화식이 있어 안전.)
+
+### 수정 (GetTypewriter)
+전:
+```csharp
+typewriter = _text.gameObject.AddComponent<TypewriterComponent>();
+typewriter.localSettings.useTypeWriter = true;
+```
+후:
+```csharp
+typewriter = _text.gameObject.AddComponent<TypewriterComponent>();
+
+// 런타임 AddComponent 시 localSettings가 null로 생성된다 (초기화식 없는 직렬화 필드)
+if (typewriter.localSettings == null)
+    typewriter.localSettings = new UnityTypewriterSettings();
+
+typewriter.localSettings.useTypeWriter = true;
+```
+
+### 미검증
+수정 후 재실행 확인 필요 (NRE 해소 + 타자기 실동작).

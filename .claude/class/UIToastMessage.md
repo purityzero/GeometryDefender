@@ -1,6 +1,6 @@
 # UIToastMessage
 
-연관 클래스: [Factory](./Factory.md)(FactoryObject 정의), [TweenEffectPlayer](./TweenEffectPlayer.md), [UIManager](./UIManager.md)(사용처, 풀링/스태킹 소유자)
+연관 클래스: [Factory](./Factory.md)(FactoryObject 정의), [TweenEffectPlayer](./TweenEffectPlayer.md), [UIManager](./UIManager.md)(사용처, 풀링/스태킹 소유자), [TextAnimatorUtil](./TextAnimatorUtil.md)(메시지 타자기 출력)
 프리팹: Assets/Resources/Prefabs/UI/UIToastMessage.prefab (.claude/prefab/UIToastMessage.md 참고)
 
 ## 개요
@@ -10,6 +10,8 @@
 ```csharp
 public class UIToastMessage : FactoryObject
 {
+    private const float TYPEWRITER_SPEED = 2f;  // 메시지 타자기 배속
+
     [SerializeField] private RectTransform m_RectTransform;
     [SerializeField] private Image m_Image;
     [SerializeField] private TextMeshProUGUI m_MessageText;
@@ -128,3 +130,37 @@ private void SetAlpha(float _alpha)
 
 ### 미검증
 컴파일, 프리팹 컴포넌트 연결(missing 아님), 실제 중앙 배치/페이드 애니메이션 확인 필요.
+
+---
+
+## 2026-07-20-0
+
+### 개요
+사용자 요청: "ToastMessage에 TextAnimator 적용, 타이핑 2배". 메시지 텍스트 세팅을 직접 대입(SetText)에서 TextAnimatorUtil 타자기(2배속)로 교체. 프리팹은 변경 없음 — TextAnimator_TMP/TypewriterComponent는 첫 Show 때 유틸이 런타임 자동 부착하고 풀링으로 재사용된다.
+
+### 파일
+- Assets/Scripts/Glory/UI/Toast/UIToastMessage.cs
+
+### 수정 전/후 (Show)
+```csharp
+// Before
+m_MessageText.SetText(_message);
+m_OnClosed = _onClosed;
+
+m_TweenPlayer.Play(OnShowComplete);
+
+// After  (+ 클래스 상단에 private const float TYPEWRITER_SPEED = 2f;)
+m_OnClosed = _onClosed;
+
+TextAnimatorUtil.SetTypewriterSpeed(m_MessageText, TYPEWRITER_SPEED);
+TextAnimatorUtil.PlayTypewriter(m_MessageText, _message);
+
+m_TweenPlayer.Play(OnShowComplete);
+```
+
+### 주의
+- 이 변경으로 UIToastMessage가 Text Animator 패키지에 의존하게 됨 — 패키지 없는 프로젝트로 Glory 복사 시 이 타자기 호출 두 줄을 SetText로 되돌려야 한다 (glory.md 의존 주의 항목 갱신됨).
+- 기존 텍스트 페이드(FadeTweenEffect의 TMP.alpha 트윈)와 타자기 등장이 겹쳐 재생됨 — 이론상 TMP 갱신 이벤트로 공존하지만 실기 확인 필요.
+
+### 미검증
+컴파일, 타자기+텍스트 알파 페이드 공존(첫 0.2초 구간), 풀 재사용 시 두 번째 Show 정상 동작 확인 필요.

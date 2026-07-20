@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class UIToastMessage : FactoryObject
 {
+    private const float TYPEWRITER_SPEED = 2f;
+
     [SerializeField] private RectTransform m_RectTransform;
     [SerializeField] private Image m_Image;
     [SerializeField] private TextMeshProUGUI m_MessageText;
@@ -29,8 +31,10 @@ public class UIToastMessage : FactoryObject
 
     public void Show(string _message, UnityEngine.Events.UnityAction<UIToastMessage> _onClosed)
     {
-        m_MessageText.SetText(_message);
         m_OnClosed = _onClosed;
+
+        TextAnimatorUtil.SetTypewriterSpeed(m_MessageText, TYPEWRITER_SPEED);
+        TextAnimatorUtil.PlayTypewriter(m_MessageText, _message);
 
         m_TweenPlayer.Play(OnShowComplete);
     }

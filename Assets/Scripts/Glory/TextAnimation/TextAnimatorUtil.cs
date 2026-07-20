@@ -1,5 +1,6 @@
 using Febucci.TextAnimatorCore.Typing;
 using Febucci.TextAnimatorForUnity;
+using Febucci.TextAnimatorForUnity.TextMeshPro;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -32,6 +33,11 @@ public static class TextAnimatorUtil
         if (typewriter == null)
         {
             typewriter = _text.gameObject.AddComponent<TypewriterComponent>();
+
+            // 런타임 AddComponent 시 localSettings가 null로 생성된다 (초기화식 없는 직렬화 필드)
+            if (typewriter.localSettings == null)
+                typewriter.localSettings = new UnityTypewriterSettings();
+
             typewriter.localSettings.useTypeWriter = true;
             typewriter.localSettings.startTypewriterMode = StartTypewriterMode.FromScriptOnly;
             typewriter.TimingSettings = ScriptableObject.CreateInstance<TypingDelaysByCharacter>();

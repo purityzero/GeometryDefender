@@ -35,7 +35,12 @@
       "PowerShell($path = \"D:\\\\Unity\\\\GeometryDefender\\\\GeometryDefender\\\\Assets\\\\Scenes\\\\TitleScene.unity\"; $lines = Get-Content $path; for \\($i=0; $i -lt $lines.Count; $i++\\) { if \\($lines[$i] -match 'UnityEngine\\\\.UI\\\\.Button$'\\) { for \\($j=$i; $j -ge 0; $j--\\) { if \\($lines[$j] -match '--- !u!114 &\\(\\\\d+\\)'\\) { $compId=$Matches[1]; break } }; $enabled=''; $go=''; for \\($k=$j; $k -lt $i; $k++\\) { if \\($lines[$k] -match 'm_GameObject: \\\\{fileID: \\(\\\\d+\\)\\\\}'\\) { $go=$Matches[1] }; if \\($lines[$k] -match 'm_Enabled: \\(\\\\d\\)'\\) { $enabled=$Matches[1] } }; $calls='?'; for \\($k=$i; $k -lt [Math]::Min\\($i+60,$lines.Count\\); $k++\\) { if \\($lines[$k] -match 'm_Calls: \\\\[\\\\]'\\) { $calls='없음'; break }; if \\($lines[$k] -match 'm_MethodName: \\(.+\\)'\\) { $calls=$Matches[1].Trim\\(\\); break } }; \"Button $compId GO=$go enabled=$enabled onClick=$calls\" } })",
       "PowerShell($candidates = @\\(\"D:\\\\\", \"D:\\\\Unity\", \"D:\\\\Git\", \"D:\\\\Project\", \"D:\\\\Projects\", \"$env:USERPROFILE\", \"$env:USERPROFILE\\\\Documents\", \"$env:USERPROFILE\\\\source\\\\repos\"\\); foreach \\($base in $candidates\\) { if \\(Test-Path $base\\) { Get-ChildItem $base -Directory -ErrorAction SilentlyContinue | ForEach-Object { if \\(Test-Path \\(Join-Path $_.FullName \".git\"\\)\\) { \"REPO: $\\($_.FullName\\)\" } } } })",
       "PowerShell(\\(Get-Content \".claude\\\\class\\\\UIMetaTree.md\" | Measure-Object -Line\\).Lines)",
-      "PowerShell(\\(Get-Content \".claude\\\\class\\\\ToggleButtonList.md\" | Measure-Object -Line\\).Lines)"
+      "PowerShell(\\(Get-Content \".claude\\\\class\\\\ToggleButtonList.md\" | Measure-Object -Line\\).Lines)",
+      "Bash(python -c \"import uuid; print\\(uuid.uuid4\\(\\).hex\\)\")",
+      "Bash(powershell -Command \"[guid]::NewGuid\\(\\).ToString\\('N'\\)\")",
+      "PowerShell([guid]::NewGuid\\(\\).ToString\\('N'\\))",
+      "Bash(sed -i 's/^  m_Name:$/  m_Name: /; s/^  m_text:$/  m_text: /' \"Assets/Scenes/TitleScene.unity\")",
+      "Bash(grep -n \"^  m_Name:$\\\\|^  m_text:$\" \"Assets/Scenes/TitleScene.unity\")"
     ]
   }
 }
