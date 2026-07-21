@@ -78,4 +78,10 @@ public static class TweenUtil
     {
         return _target.DOColor(_targetColor, _duration);
     }
+
+    // SpriteRenderer.color(표준 틴트)가 아니라 커스텀 셰이더의 _Color 프로퍼티를 직접 쓰는 머테리얼용(글로우 셰이더 등)
+    public static Tween Color(Material _target, Color _targetColor, float _duration)
+    {
+        return _target.DOColor(_targetColor, _duration);
+    }
 }

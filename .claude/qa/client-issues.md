@@ -184,3 +184,62 @@ Play Mode 실측(InGameScene에서 몬스터 10마리 스폰 → `SceneManager.i
 - [Pooling.md](../class/Pooling.md) 2026-07-22-0
 - [TableManager.md](../class/TableManager.md) 2026-07-22-1
 - [GameManager.md](../class/GameManager.md)
+
+---
+
+## 2026-07-22-1
+
+### 개요
+사용자 지적("머테리얼 변화도 없고, 그냥 색만 어두어지는데, 제대로 검증이 안됬는데?" → "적군도 색이 이상해졌어") — [[TowerColorEffect]] 작업 시 프로퍼티 값만 읽고 "검증 완료"로 잘못 보고했던 것을 실제 스크린샷 재검증으로 정정. 두 가지 별개 원인 발견/수정.
+
+### 증상
+- 플레이어 HP 연출 색이 화면상 하양으로 뭉개지거나(High/Mid 티어), 코드로는 빨강을 설정했는데 실제로는 파란-회색으로 보임(Low 티어).
+- 몬스터 6종도 전부 파스텔/흰색에 가깝게 뭉개져 보임(색상 다양화 작업이 무의미해 보이는 상태).
+
+### 원인
+1. 공용 글로우 셰이더(`Glow.shadergraph`)가 `BaseColor = _Color × _GlowAmount`로 계산하는데 전 GlowMat 머테리얼이 `_GlowAmount=2` — 대부분 색상이 1.0을 넘겨 흰색 클램프. 몬스터는 최근까지 깨진 머테리얼 참조([[ActorMonster]] 2026-07-22-0)로 이 셰이더 자체가 적용된 적이 없어서 증상이 늦게 드러남.
+2. ActorPlayer의 `SpriteRenderer.color`(표준 틴트)가 예전 시안 값에 고정된 채 `material._Color`와 자동으로 곱해짐(ShaderGraph `m_DisableTint: false`) — 틴트에 없는 색 성분(빨강)이 곱연산으로 사라짐.
+
+### 수정
+- [[TowerColorEffect]] 2026-07-22-1 참고 — `_GlowAmount` 12개 머테리얼 2→1(사용자 선택 A안), `TowerColorEffect.Start()`에 `SpriteRenderer.color = Color.white` 추가.
+
+### 검증
+`manage_camera` 스크린샷을 여러 시점(원인 발견 전/GlowAmount만 테스트/틴트 리셋 테스트/최종)에 걸쳐 실제로 찍어 멀티모달로 육안 확인 — 이전처럼 프로퍼티 값만 읽는 방식이 아니라 실제 렌더링 결과로 검증. 최종 상태: High/Mid/Low 3티어가 뚜렷이 구분되는 시안/시안/빨강으로 정상 렌더링, 몬스터 5종도 서로 구분되는 색상으로 정상 렌더링. High/Mid 티어끼리는 둘 다 밝아서 다소 유사하게 남아있음(Bloom 조정은 사용자가 이번 범위 밖으로 판단, 옵션 B 미채택).
+
+### 교훈 (메모리에도 저장)
+프로퍼티 값이 의도한 값과 일치하는 것과 실제 화면에 의도대로 보이는 것은 다른 문제 — 커스텀 셰이더/포스트프로세싱이 있는 파이프라인에서는 특히. 앞으로 비주얼 변경은 반드시 스크린샷으로 검증.
+
+### ⚠️ 이 검증도 불완전했음 → 2026-07-22-2에서 정정
+"몬스터 5종이 서로 구분되는 색"을 정상으로 판단했으나 실제로는 전체적으로 채도가 낮은 파스텔 상태였음(사용자: "그 색상도 누리끼리해", "정확히는 물빠진 색상이야"). `_GlowAmount`/틴트 곱연산은 실재하는 버그였지만 전체 채도 저하의 진짜 원인은 아니었다.
+
+---
+
+## 2026-07-22-2
+
+### 개요
+2026-07-22-1로 "해결됐다"고 보고했던 채도 저하가 실제로는 해결되지 않았다는 재지적. 사용자가 "글로우 효과를 버리면 안 된다"고 명시적으로 제약을 건 상태에서 진짜 원인을 계속 추적해 확정.
+
+### 증상
+동일 HDR 색상 값(`#00E5FF`)을 커스텀 Glow 셰이더와 순정 `Sprites/Default` 셰이더 양쪽에 넣고 나란히 렌더링해도 **둘 다 똑같이 파스텔(물빠진 하늘색)로 렌더링됨** — 셰이더 종류와 무관하게 전역적으로 발생.
+
+### 원인
+셰이더 문제가 아니라 `Assets/Settings/UniversalRP.asset`(URP Pipeline Asset)의 `colorGradingMode`가 `LowDynamicRange`로 설정돼 있던 것. Volume에 Tonemapping/ColorAdjustments 오버라이드가 하나도 없어도(`TryGet` 결과 둘 다 `false`), URP는 LDR 그레이딩 모드에서 항상 내부 LUT을 거치며 이 LUT 자체가 채도를 깎는다.
+
+### 근거
+- 원본 텍스처(`shape_hexagon.png`)를 파일에서 직접 디코드해 픽셀 확인 — 순수 흰색(1,1,1,1), 무죄.
+- 배경(카메라 clear color) — 순수 검정(0,0,0,0), 무죄.
+- Bloom on/off 비교 — 결과 거의 무관(무죄, 이전 세션에서 이미 threshold 조정으로도 배제했던 것과 일치).
+- Tonemapping/ColorAdjustments — Volume Profile에 아예 없음(무죄).
+- `colorGradingMode`를 `HighDynamicRange`로 전환 → 글로우 셰이더/순정 셰이더 양쪽 모두 즉시 `#00E5FF` 원색으로 정상 렌더링됨 — 확정.
+
+### 수정
+`Assets/Settings/UniversalRP.asset`: `colorGradingMode` `LowDynamicRange` → `HighDynamicRange`(영구 저장). **프로젝트 전역 그래픽 설정**이라 InGame뿐 아니라 다른 씬에도 영향 — 다른 화면 재검증 필요(미완료).
+
+### 검증
+`manage_camera` 실제 게임 화면 스크린샷으로 확인: 타워(육각형) 쨍한 시안 + Bloom halo, 기획서("Cyan / 강한 글로우") 스펙과 일치. 몬스터 6종 나란히 스폰 확인 결과 채도 저하는 해결됐으나, Star(노랑)를 제외한 5종이 전부 동일한 핑크색으로 나오는 별개 문제 발견(아래 참고).
+
+### 관련 클래스
+- [TowerColorEffect.md](../class/TowerColorEffect.md) 2026-07-22-2
+
+### 새로 발견한 별개 이슈 — 몬스터 5종 색상 미분화
+Triangle/Circle/Square/Diamond/Pentagon이 전부 동일한 핑크색으로 렌더링됨(Star만 노랑으로 다름). 세션 초반 "적 색상을 다양하게" 요청이 완전히 반영되지 않은 상태로 추정 — 각 `GlowMat_{Shape}_Normal.mat`의 `_Color` 값 확인 필요. 미착수, 사용자 확인 후 진행 예정.

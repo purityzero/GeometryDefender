@@ -251,7 +251,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed40bbf53930f294795267561f8522e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KillCountText
-  m_KillCountText: {fileID: 1660748143}
+  m_ValueText: {fileID: 1660748143}
 --- !u!1 &343094390
 GameObject:
   m_ObjectHideFlags: 0
@@ -937,6 +937,7 @@ GameObject:
   - component: {fileID: 1165160030}
   - component: {fileID: 1165160031}
   - component: {fileID: 1165160032}
+  - component: {fileID: 1165160033}
   m_Layer: 0
   m_Name: ActorPlayer
   m_TagString: Untagged
@@ -1030,6 +1031,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e80a44b3d05f34469bdebabafd0de44, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TowerHealth
+--- !u!114 &1165160033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1165160029}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d57e752be0a8e7547a25526ebb986098, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TowerColorEffect
+  m_SpriteRenderer: {fileID: 1165160031}
+  m_HighHpColor: {r: 0, g: 0.8980392, b: 1, a: 1}
+  m_MidHpColor: {r: 0, g: 0.7372549, b: 0.83137256, a: 1}
+  m_LowHpColor: {r: 1, g: 0.2, b: 0.33333334, a: 1}
 --- !u!1 &1168820197
 GameObject:
   m_ObjectHideFlags: 0
@@ -1538,7 +1555,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44a7847fe6f354745bd81e5451bb0c41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TowerHealthText
-  m_HpText: {fileID: 1988254266}
+  m_ValueText: {fileID: 1988254266}
 --- !u!1 &1611728479
 GameObject:
   m_ObjectHideFlags: 0

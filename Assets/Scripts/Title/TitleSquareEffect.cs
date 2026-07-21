@@ -22,7 +22,11 @@ public class TitleSquareEffect : MonoBehaviour, IUpdatable
 
         SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
-            m_HalfObjectSize = spriteRenderer.bounds.extents;
+        {
+            // 오브젝트가 계속 회전하므로 축 정렬 경계(extents)를 그대로 쓰면 45도 부근에서 대각선만큼 실제 경계보다 작게 잡혀 화면 밖으로 삐져나감 — 회전각과 무관하게 항상 안전한 대각선 반지름으로 고정
+            float diagonalHalfExtent = spriteRenderer.bounds.extents.magnitude;
+            m_HalfObjectSize = new Vector2(diagonalHalfExtent, diagonalHalfExtent);
+        }
 
         Speed = Random.Range(1f, 5f);
         m_RotationSpeed = Random.Range(30f, 120f) * (Random.value > 0.5f ? 1f : -1f);

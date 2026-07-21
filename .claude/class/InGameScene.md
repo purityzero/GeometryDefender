@@ -240,3 +240,19 @@ private void OnTowerDie()
 
 ### 검증
 [[UIRunOver]] 2026-07-22-0/2026-07-22-1 참고 — Play Mode 실측으로 화면 표시/버튼 동작/일시정지 전부 확인.
+
+---
+
+## 2026-07-22-1
+
+### 개요
+사용자 요청("기획에서 보고 HP달때마다 Player색깔 변하는거 연출 적용해줘") — ActorPlayer에 [[TowerColorEffect]] 부착. 스크립트(InGameScene.cs) 변경 없음, 씬 오브젝트만 수정.
+
+### 파일
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (오브젝트 단위)
+- ActorPlayer: `TowerColorEffect` 컴포넌트 신규 추가, `m_SpriteRenderer`를 같은 오브젝트의 SpriteRenderer로 연결
+
+### 검증
+[[TowerColorEffect]] 2026-07-22-0 참고.
