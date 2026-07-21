@@ -47,3 +47,31 @@ D:\Unity\Job에서 머지 — Job 버전으로 교체. 03_enemy.html 기획 반�
 
 ### 미검증
 컴파일/테이블 로드 확인 필요.
+
+---
+
+## 2026-07-21-0
+
+### 개요
+사용자 요청(Design 관점: "적군의 색을 조금 더 알록달록하게") — Normal Variant(5종) `ColorHex`를 종족별로 구분되는 색으로 변경. Elite(#ff00aa)/Boss(#ffd600)는 변경하지 않음(아래 근거 참고).
+
+### 파일
+- Assets/Resources/Table/EnemyTable.csv (ColorHex 컬럼만, 코드 변경 없음)
+
+### 수정 (Id 1~5)
+
+| Id | 종족 | 도형 | 전 | 후 |
+|---|---|---|---|---|
+| 1 | Normal | Triangle | #ff3355 | #ff3355 (유지) |
+| 2 | Swift | Circle | #ff3355 | #ff9500 |
+| 3 | Heavy | Square | #ff3355 | #7c4dff |
+| 4 | Splitter | Diamond | #ff3355 | #29cc66 |
+| 5 | Ranged | Pentagon | #ff3355 | #3d8bff |
+
+### 설계 근거
+- Assets/Design/03_enemy.html은 "SPECIES — 5종 ... 모두 적색 베이스"라고 명시 — Normal 티어 5종이 전부 동일한 빨강인 것은 버그가 아니라 원래 의도된 설계였음. 다만 이 상태는 게임 시작 후 2분간(Elite 미출현 구간) 화면의 모든 몬스터가 도형만 다르고 색은 완전히 동일해 "알록달록"과 반대되는 결과를 냄 — 사용자가 명시적으로 재검토를 요청해 이 부분만 수정.
+- Elite(#ff00aa 마젠타)/Boss(#ffd600 골드)는 손대지 않음: 02_combat.html·03_enemy.html 모두 "엘리트=마젠타, 보스=별 도형+골드"를 변종(위험도) 등급을 한눈에 읽게 하는 의도된 신호로 명시하고 있어, 종별 색을 섞으면 이 신호가 흐려짐. Normal 티어는 항상 스폰되고(0:00~ 상시 20~100% 비중) 동시 등장 빈도가 가장 높아 색상 다양화의 체감 효과가 가장 큰 반면, 변종 등급 신호와 충돌하지 않는 유일한 티어라 이곳만 수정.
+- 5색 선정: 기존 UI에서 이미 쓰이는 시안(#00e5ff, 타워)·마젠타(#ff00aa, Elite)·골드(#ffd600, Boss)와 겹치지 않는 고채도 색 5개(빨강/주황/보라/초록/파랑)를 색상환에 고르게 분산 배치. Normal(빨강)은 기존 값 그대로 유지(가장 흔한 기준 몬스터라는 상징성 보존, 최소 침습).
+
+### 검증
+CSV 파싱 로직(EnemyRecord.cs/EnemyTable) 자체는 변경 없는 순수 데이터 수정이라 리스크 낮음. 다만 실제 씬에서 몬스터 색상이 반영되는 화면 확인은 client-issues.md 2026-07-21-1 선행 버그로 InGameScene 자연 진입 자체가 막혀 있어 이번 세션에서 눈으로 확인은 못함 — MonsterManager.SpawnVisual()의 `ColorUtility.TryParseHtmlString(_record.ColorHex, ...)` 로직 자체는 이전부터 동작하던 경로라 데이터만 바뀌면 그대로 반영될 것으로 예상.

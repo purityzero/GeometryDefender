@@ -50,7 +50,7 @@ public class Command_CheckAsset : ICommand
         {
             Addressables.Release(m_Handle);
             m_IsFinished = true;
-            Debug.Log($"CheckAsset for {m_key} has been cancelled.");
+            Logger.Log($"CheckAsset for {m_key} has been cancelled.");
         }
 	}
 

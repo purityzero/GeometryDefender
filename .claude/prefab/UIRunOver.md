@@ -60,3 +60,34 @@ UIRunOver (...1001)                  — RectTransform 풀스트레치
 
 ### 미검증
 에디터에서 스크립트 연결(Missing 아님) 확인 필요.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 요청("UIRunOver도 만들어줘") — [[UIRunOver]](../class/UIRunOver.md)가 실제 로직을 갖게 되면서, 이 프리팹의 텍스트 필드/버튼을 그 컴포넌트에 실제로 연결. Unity MCP `manage_prefabs`(open_prefab_stage)로 편집.
+
+### 수정 (오브젝트 단위)
+
+**UIRunOver (루트, fileID ...1900 컴포넌트)** — 직렬화 필드 5개 연결
+| 필드 | 연결 대상 (fileID 뒤 4자리) |
+|---|---|
+| `m_ScoreText` | Text_Score(...1043) |
+| `m_BestText` | Text_Best(...1053) |
+| `m_StatsValueText` | Text_StatsValue(...1083) |
+| `m_ShardsEarnedText` | Text_ShardsEarned(...1113) |
+| `m_ShardsTotalText` | Text_ShardsTotal(...1123) |
+
+**버튼 3개** — `m_OnClick.m_PersistentCalls`에 UIRunOver 루트(...1900)를 대상으로 하는 Persistent Call 추가
+| 버튼 | 연결된 메서드 |
+|---|---|
+| Btn_MetaTree(...1134) | `OnClickMetaTree` |
+| Btn_Restart(...1154) | `OnClickRestart` |
+| Btn_MainMenu(...1174) | `OnClickMainMenu` |
+
+### 검증
+`manage_prefabs.save_prefab_stage` 후 YAML을 직접 grep해 5개 필드 fileID와 3개 버튼의 `m_Target`/`m_MethodName`이 의도대로 저장된 것 확인. Play Mode에서 `Btn_MetaTree.onClick.Invoke()`를 실제로 호출해 `UIMetaTree`가 열리는 것까지 실측(상세는 [[UIRunOver]](../class/UIRunOver.md) 2026-07-22-0 참고).
+
+### 참고 — MCP로 컴포넌트 참조 값을 넣을 때
+`manage_components.set_property`의 object 참조 값은 **런타임 instance ID**(정수)만 받고, 프리팹 YAML의 fileID는 그대로 못 씀 — 이 문서 상단 계층 표의 fileID는 YAML을 읽을 때 대조용이고, 실제 MCP 호출 시에는 `find_gameobjects`/컴포넌트 리소스로 조회한 instance ID를 써야 한다. UnityEvent(`m_OnClick`) 같은 필드는 `{"m_PersistentCalls": {"m_Calls": [{"m_Target": <instanceID>, "m_MethodName": "...", "m_Mode": 1, "m_CallState": 2}]}}` 형태로 통째로 넘기면 정상 반영됨(직접 실험으로 확인, 공식 문서화된 스키마는 아님).

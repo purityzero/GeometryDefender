@@ -48,9 +48,9 @@ public class EnemyRecord : Record
 
 public class EnemyTable : Table<EnemyRecord>
 {
-    public Dictionary<eEnemyShape, List<EnemyRecord>> shapeMap { get; private set; }
-    public Dictionary<eEnemySpecies, List<EnemyRecord>> speciesMap { get; private set; }
-    public Dictionary<eEnemyVariant, List<EnemyRecord>> variantMap { get; private set; }
+    public Dictionary<eEnemyShape, List<EnemyRecord>> dicShape { get; private set; }
+    public Dictionary<eEnemySpecies, List<EnemyRecord>> dicSpecies { get; private set; }
+    public Dictionary<eEnemyVariant, List<EnemyRecord>> dicVariant { get; private set; }
 
     public EnemyTable(List<EnemyRecord> _listRecord) : base(_listRecord)
     {
@@ -59,25 +59,25 @@ public class EnemyTable : Table<EnemyRecord>
 
     private void BuildDictionaries()
     {
-        shapeMap = new Dictionary<eEnemyShape, List<EnemyRecord>>();
-        speciesMap = new Dictionary<eEnemySpecies, List<EnemyRecord>>();
-        variantMap = new Dictionary<eEnemyVariant, List<EnemyRecord>>();
+        dicShape = new Dictionary<eEnemyShape, List<EnemyRecord>>();
+        dicSpecies = new Dictionary<eEnemySpecies, List<EnemyRecord>>();
+        dicVariant = new Dictionary<eEnemyVariant, List<EnemyRecord>>();
 
         for (int i = 0; i < list.Count; ++i)
         {
             EnemyRecord record = list[i];
 
-            if (shapeMap.ContainsKey(record.Shape) == false)
-                shapeMap[record.Shape] = new List<EnemyRecord>();
-            shapeMap[record.Shape].Add(record);
+            if (dicShape.ContainsKey(record.Shape) == false)
+                dicShape[record.Shape] = new List<EnemyRecord>();
+            dicShape[record.Shape].Add(record);
 
-            if (speciesMap.ContainsKey(record.Species) == false)
-                speciesMap[record.Species] = new List<EnemyRecord>();
-            speciesMap[record.Species].Add(record);
+            if (dicSpecies.ContainsKey(record.Species) == false)
+                dicSpecies[record.Species] = new List<EnemyRecord>();
+            dicSpecies[record.Species].Add(record);
 
-            if (variantMap.ContainsKey(record.Variant) == false)
-                variantMap[record.Variant] = new List<EnemyRecord>();
-            variantMap[record.Variant].Add(record);
+            if (dicVariant.ContainsKey(record.Variant) == false)
+                dicVariant[record.Variant] = new List<EnemyRecord>();
+            dicVariant[record.Variant].Add(record);
         }
     }
 
@@ -88,7 +88,7 @@ public class EnemyTable : Table<EnemyRecord>
 
     public EnemyRecord GetRecordBySpeciesAndVariant(eEnemySpecies _species, eEnemyVariant _variant)
     {
-        if (speciesMap.TryGetValue(_species, out List<EnemyRecord> records) == false)
+        if (dicSpecies.TryGetValue(_species, out List<EnemyRecord> records) == false)
             return null;
 
         return records.Find(record => record.Variant == _variant);

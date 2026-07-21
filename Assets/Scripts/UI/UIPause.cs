@@ -1,3 +1,3 @@
-public class UIPause : UIBase
+public class UIPause : UIPopup
 {
 }

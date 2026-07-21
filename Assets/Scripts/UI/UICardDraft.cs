@@ -1,3 +1,3 @@
-public class UICardDraft : UIBase
+public class UICardDraft : UIPopup
 {
 }

@@ -16,7 +16,7 @@
   - `OnDestroy()`에서 `#if UNITY_EDITOR Time.timeScale = 1f; #endif`로 복구 — InGameScene을 벗어날 때(TitleScene으로 전환 등) 배속이 다른 씬까지 새어나가지 않도록 방어. TimeScaleWindow로 배속을 바꿨든 다른 경로로 바뀌었든 항상 적용됨.
 - 씬 배치: InGameScene.unity의 `InGameScene/TimerManager` 오브젝트(fileID 812340001, 컴포넌트 812340003), `InGameScene.m_TimerManager`가 이를 참조.
 - **주의**: SpawnManager는 여전히 자기 소유의 `m_ElapsedTime`을 따로 추적한다(리팩토링 요청 범위 밖이라 그대로 둠) — `Time.timeScale`을 통해 간접적으로는 같이 빨라지지만, TimerManager.elapsedTime과 SpawnManager의 내부 타이머는 서로 다른 변수다. 두 값을 하나로 합치고 싶으면 SpawnManager가 TimerManager.elapsedTime을 읽도록 바꾸는 별도 작업이 필요.
-- `public static TimerManager Current { get; private set; }` 추가(2026-07-21) — `Start()`에서 설정, `OnDestroy()`에서 해제. [[BaseScene]]의 `Current`와 같은 컨셉이지만 별도 정적 필드다 — UI(UIInGameHUD 등)처럼 InGameScene 하이어라키 밖에 있어 씬 참조로 못 찾는 소비자를 위한 용도.
+- `TimerManager.Current`는 이제 [[SceneSingleton]]&lt;TimerManager&gt; 상속으로 얻는다(2026-07-21, 아래 2026-07-21-3 참고) — `Awake()`에서 자동 설정, `Start()`/`OnDestroy()`엔 이제 이 클래스만의 나머지 로직(BaseScene 등록/해제, TimeScale 복구)만 남음. UI(TimerText 등)처럼 InGameScene 하이어라키 밖에 있어 씬 참조로 못 찾는 소비자를 위한 용도인 건 동일.
 
 ## 작업 내역
 
@@ -84,3 +84,29 @@
 
 ### 미검증
 [[TimeScaleWindow]] 참고.
+
+---
+
+## 2026-07-21-3
+
+### 개요
+사용자 요청("Current static 싱글톤 패턴이 4곳에 복붙됨" 리팩토링) — `Current` 필드/설정/해제 로직을 [[SceneSingleton]] 공용 베이스로 이관.
+
+### 파일
+- Assets/Scripts/InGame/TimerManager.cs
+
+### 수정 (함수 단위)
+**클래스 선언**
+- 전: `public class TimerManager : MonoBehaviour, IUpdatable` + 자체 `public static TimerManager Current { get; private set; }`
+- 후: `public class TimerManager : SceneSingleton<TimerManager>, IUpdatable` (Current 필드 제거, 베이스에서 상속)
+
+**Start()**
+- 전: `Current = this;` + `BaseScene.Current.Register(this);`
+- 후: `BaseScene.Current.Register(this);`만 남음(Current 설정은 베이스의 Awake로 이동)
+
+**OnDestroy()**
+- 전: `private void OnDestroy() { if (Current == this) Current = null; BaseScene.Current?.Unregister(this); #if UNITY_EDITOR Time.timeScale = 1f; #endif }`
+- 후: `protected override void OnDestroy() { base.OnDestroy(); BaseScene.Current?.Unregister(this); #if UNITY_EDITOR Time.timeScale = 1f; #endif }`
+
+### 검증
+[[SceneSingleton]] 2026-07-21-0 참고 — `elapsedTime`이 Play Mode 중 정상적으로 누적되는 것까지 실측 확인(등록/구동 체인이 리팩토링 후에도 정상).

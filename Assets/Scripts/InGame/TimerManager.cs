@@ -1,9 +1,7 @@
 using UnityEngine;
 
-public class TimerManager : MonoBehaviour, IUpdatable
+public class TimerManager : SceneSingleton<TimerManager>, IUpdatable
 {
-    public static TimerManager Current { get; private set; }
-
     public float elapsedTime { get; private set; }
 
     public void Init()
@@ -13,14 +11,12 @@ public class TimerManager : MonoBehaviour, IUpdatable
 
     private void Start()
     {
-        Current = this;
         BaseScene.Current.Register(this);
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
-        if (Current == this)
-            Current = null;
+        base.OnDestroy();
 
         BaseScene.Current?.Unregister(this);
 

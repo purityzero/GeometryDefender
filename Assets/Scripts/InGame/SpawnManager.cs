@@ -24,7 +24,7 @@ public class SpawnManager : MonoBehaviour, IUpdatable
 
         if (m_EnemyTable == null || m_WaveTable == null || m_WaveSpawnTable == null)
         {
-            Debug.LogError($"[SpawnManager] Init Failed! table not loaded - TableManager.init() 선행 필요");
+            Logger.Error($"[SpawnManager] Init Failed! table not loaded - TableManager.init() 선행 필요");
             return;
         }
 
@@ -74,7 +74,7 @@ public class SpawnManager : MonoBehaviour, IUpdatable
         EnemyRecord record = m_EnemyTable.GetRecordBySpeciesAndVariant(species, variant);
         if (record == null)
         {
-            Debug.LogError($"[SpawnManager] EnemyRecord not found! species: {species}, variant: {variant}");
+            Logger.Error($"[SpawnManager] EnemyRecord not found! species: {species}, variant: {variant}");
             return;
         }
 
@@ -97,7 +97,7 @@ public class SpawnManager : MonoBehaviour, IUpdatable
             EnemyRecord bossRecord = m_EnemyTable.GetRecordById(bossEvent.EnemyId);
             if (bossRecord == null)
             {
-                Debug.LogError($"[SpawnManager] Boss EnemyRecord not found! enemyId: {bossEvent.EnemyId}");
+                Logger.Error($"[SpawnManager] Boss EnemyRecord not found! enemyId: {bossEvent.EnemyId}");
                 continue;
             }
 

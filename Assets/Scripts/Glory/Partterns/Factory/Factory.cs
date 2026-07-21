@@ -18,32 +18,32 @@ public interface IMemoryPoolFactory<T, TEnum> : IFactory<T, TEnum>
     void Clear();
 }
 
-public class MemoryPoolFactory<T1, TEnum1> : IMemoryPoolFactory<T1, TEnum1>
-    where T1 : FactoryObject
-    where TEnum1 : struct, Enum
+public class MemoryPoolFactory<T, TEnum> : IMemoryPoolFactory<T, TEnum>
+    where T : FactoryObject
+    where TEnum : struct, Enum
 {
-    private Dictionary<TEnum1, MemoryPooling<T1>> m_MemoryPoolDictionary = new Dictionary<TEnum1, MemoryPooling<T1>>();
+    private Dictionary<TEnum, MemoryPooling<T>> m_MemoryPoolDictionary = new Dictionary<TEnum, MemoryPooling<T>>();
 
     /// <param name="_pathMap">enum 값별 Resources 경로 매핑</param>
     /// <param name="_maxCount">풀당 사전 생성(Prewarm) 개수</param>
     /// <param name="_parent">생성된 오브젝트의 부모 Transform</param>
-    public MemoryPoolFactory(Dictionary<TEnum1, string> _pathMap, int _maxCount, Transform _parent)
+    public MemoryPoolFactory(Dictionary<TEnum, string> _pathMap, int _maxCount, Transform _parent)
     {
         foreach (var entry in _pathMap)
         {
-            m_MemoryPoolDictionary.Add(entry.Key, new MemoryPooling<T1>(_maxCount, entry.Value, _parent));
+            m_MemoryPoolDictionary.Add(entry.Key, new MemoryPooling<T>(_maxCount, entry.Value, _parent));
         }
     }
 
-    public T1 Create(TEnum1 _type)
+    public T Create(TEnum _type)
     {
-        if (m_MemoryPoolDictionary.TryGetValue(_type, out MemoryPooling<T1> pool) == false)
+        if (m_MemoryPoolDictionary.TryGetValue(_type, out MemoryPooling<T> pool) == false)
         {
-            Debug.LogError($"[MemoryPoolFactory] 등록되지 않은 타입: {_type}");
+            Logger.Error($"[MemoryPoolFactory] 등록되지 않은 타입: {_type}");
             return null;
         }
 
-        T1 obj = pool.Pop();
+        T obj = pool.Pop();
         if (obj == null)
             return null;
 
@@ -51,17 +51,17 @@ public class MemoryPoolFactory<T1, TEnum1> : IMemoryPoolFactory<T1, TEnum1>
         return obj;
     }
 
-    public bool Recycle(TEnum1 _type, T1 _obj)
+    public bool Recycle(TEnum _type, T _obj)
     {
         if (_obj == null)
         {
-            Debug.LogError($"[MemoryPoolFactory] Recycle 실패 — null 오브젝트: {_type}");
+            Logger.Error($"[MemoryPoolFactory] Recycle 실패 — null 오브젝트: {_type}");
             return false;
         }
 
-        if (m_MemoryPoolDictionary.TryGetValue(_type, out MemoryPooling<T1> pool) == false)
+        if (m_MemoryPoolDictionary.TryGetValue(_type, out MemoryPooling<T> pool) == false)
         {
-            Debug.LogError($"[MemoryPoolFactory] 등록되지 않은 타입: {_type}");
+            Logger.Error($"[MemoryPoolFactory] 등록되지 않은 타입: {_type}");
             return false;
         }
 
@@ -75,7 +75,7 @@ public class MemoryPoolFactory<T1, TEnum1> : IMemoryPoolFactory<T1, TEnum1>
 
     public void Prewarm()
     {
-        foreach (MemoryPooling<T1> pool in m_MemoryPoolDictionary.Values)
+        foreach (MemoryPooling<T> pool in m_MemoryPoolDictionary.Values)
         {
             pool.Prewarm();
         }
@@ -83,7 +83,7 @@ public class MemoryPoolFactory<T1, TEnum1> : IMemoryPoolFactory<T1, TEnum1>
 
     public void Clear()
     {
-        foreach (MemoryPooling<T1> pool in m_MemoryPoolDictionary.Values)
+        foreach (MemoryPooling<T> pool in m_MemoryPoolDictionary.Values)
         {
             pool.Clear();
         }
@@ -91,7 +91,7 @@ public class MemoryPoolFactory<T1, TEnum1> : IMemoryPoolFactory<T1, TEnum1>
 
     public virtual void UpdateLogic()
     {
-        foreach (MemoryPooling<T1> pool in m_MemoryPoolDictionary.Values)
+        foreach (MemoryPooling<T> pool in m_MemoryPoolDictionary.Values)
         {
             pool.UpdateLogic();
         }

@@ -50,7 +50,7 @@ public class CullingObject : MonoBehaviour
 
         if ( objectRenderer == null && rectTransform == null )
         {
-            Debug.LogError("Neither Renderer nor RectTransform component found on the object.");
+            Logger.Error("Neither Renderer nor RectTransform component found on the object.");
         }
     }
 

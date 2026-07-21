@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-public class UIMetaTree : UIBase
+public class UIMetaTree : UIPopup
 {
     [SerializeField] private ToggleButtonList m_BranchTabs;
     [SerializeField] private RectTransform m_Content;
@@ -83,7 +83,7 @@ public class UIMetaTree : UIBase
         m_SpawnedItems.Clear();
 
         MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
-        if (metaTreeTable.branchMap.ContainsKey(_branch) == false)
+        if (metaTreeTable.dicBranch.ContainsKey(_branch) == false)
         {
             Logger.Error($"[UIMetaTree] RefreshNodeList Failed! branch not found - {_branch}");
             return;
@@ -101,7 +101,7 @@ public class UIMetaTree : UIBase
         m_HeaderText.color = GetBranchColor(_branch);
 
         m_NodeTemplate.gameObject.SetActive(true);
-        List<MetaTreeRecord> records = metaTreeTable.branchMap[_branch];
+        List<MetaTreeRecord> records = metaTreeTable.dicBranch[_branch];
         for (int i = 0; i < records.Count; ++i)
         {
             SpawnNode(metaTreeTable, records[i]);

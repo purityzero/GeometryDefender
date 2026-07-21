@@ -24,7 +24,7 @@ public class FadeTweenEffect : TweenEffectBase
         if (text != null)
             return TweenUtil.Fade(text, m_TargetAlpha, duration);
 
-        Debug.LogError($"[FadeTweenEffect] 페이드 가능한 컴포넌트가 없습니다 - {gameObject.name}");
+        Logger.Error($"[FadeTweenEffect] 페이드 가능한 컴포넌트가 없습니다 - {gameObject.name}");
         return null;
     }
 }

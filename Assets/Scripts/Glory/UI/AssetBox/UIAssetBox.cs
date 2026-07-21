@@ -38,7 +38,7 @@ public class UIAssetBox : UIBehaviour
     {
         if (m_CurrencyType == eCurrencyType.Max)
         {
-            Debug.LogError($"[UIAssetBox] SetData Failed! currencyType is Max! - {gameObject.name}");
+            Logger.Error($"[UIAssetBox] SetData Failed! currencyType is Max! - {gameObject.name}");
             return;
         }
 
@@ -50,7 +50,7 @@ public class UIAssetBox : UIBehaviour
     {
         if (m_CurrencyType == eCurrencyType.Max)
         {
-            Debug.LogError($"[UIAssetBox] SetData Failed! currencyType is Max! - {gameObject.name}");
+            Logger.Error($"[UIAssetBox] SetData Failed! currencyType is Max! - {gameObject.name}");
             return;
         }
 

@@ -14,7 +14,7 @@ public class TitleSquareEffect : MonoBehaviour, IUpdatable
         m_MainCamera = Camera.main;
         if (m_MainCamera == null)
         {
-            Debug.Log($"[TitleSquareEffect] Camera.main을 찾을 수 없어 업데이트를 건너뜁니다.");
+            Logger.Log($"[TitleSquareEffect] Camera.main을 찾을 수 없어 업데이트를 건너뜁니다.");
             return;
         }
 

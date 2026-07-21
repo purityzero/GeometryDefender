@@ -1,6 +1,6 @@
 # UIMetaTree
 
-연관 클래스: UIBase, UIManager, UITable, [ToggleButtonList](./ToggleButtonList.md), [UIToggleButton](./UIToggleButton.md), [MetaTreeNodeItem](./MetaTreeNodeItem.md), [ColorUtil](./ColorUtil.md), MetaTreeTable/MetaTreeRecord, PlayerManager, UIAssetBox
+연관 클래스: [[UIPopup]](부모, 2026-07-22부터 — 이전엔 UIBase 직접 상속), UIManager, UITable, [ToggleButtonList](./ToggleButtonList.md), [UIToggleButton](./UIToggleButton.md), [MetaTreeNodeItem](./MetaTreeNodeItem.md), [ColorUtil](./ColorUtil.md), MetaTreeTable/MetaTreeRecord, PlayerManager, UIAssetBox
 
 ## 개요
 UIMetaTree.prefab 루트에 부착되는 화면 컴포넌트. 메타 트리(영구 업그레이드) 노드 목록을 줄기(브랜치)별 탭으로 전환하며 보여주고, 노드 클릭 시 선행조건+비용을 검사해 해금한다.
@@ -523,3 +523,21 @@ GameObject header = ResUtil.Create(m_BranchHeaderTemplate, m_Content);
 
 ### 미검증
 에디터 미실행 상태 편집. 컴파일/노드·헤더 표시 확인 필요.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 요청("UIMetaTree... (Popup) 씬이 이동하면 정리대상... UIPopup을 따로 상속받아서") — [[UIPopup]] 신설과 함께 상속 전환 + UITable UIType 변경. 상세는 [[UIPopup]] 2026-07-22-0 참고.
+
+### 파일
+- Assets/Scripts/UI/UIMetaTree.cs
+- Assets/Resources/Table/UITable.csv
+
+### 수정
+- `public class UIMetaTree : UIBase` → `public class UIMetaTree : UIPopup` (기존 `Show()` 오버라이드가 이미 `base.Show()`를 부르고 있어서 이 한 줄 외엔 코드 변경 없음 — 팝업 스택 등록이 자동으로 따라옴)
+- UITable.csv: `UIType` `Normal` → `Popup` (PopupCanvas로 이동, sortingOrder가 UICanvas보다 높아 InGame HUD 등 Normal UI 위에 항상 그려짐)
+
+### 검증
+[[UIPopup]] 2026-07-22-0 참고 — `UIRunOver` 위에서 열어도 더 위(`siblingIndex` 큼)에 그려지는 것, 뒤로가기로 닫히는 것, 씬 전환 시 `CloseAllPopups()`로 정리되는 것 전부 Play Mode 실측.

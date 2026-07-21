@@ -1,16 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class BaseScene : MonoBehaviour
+public abstract class BaseScene : SceneSingleton<BaseScene>
 {
-    public static BaseScene Current { get; private set; }
-
     private List<IUpdatable> m_UpdatableList = new List<IUpdatable>();
-
-    private void Awake()
-    {
-        Current = this;
-    }
 
     private void Start()
     {
@@ -38,11 +31,5 @@ public abstract class BaseScene : MonoBehaviour
         {
             m_UpdatableList[i].UpdateLogic();
         }
-    }
-
-    private void OnDestroy()
-    {
-        if (Current == this)
-            Current = null;
     }
 }

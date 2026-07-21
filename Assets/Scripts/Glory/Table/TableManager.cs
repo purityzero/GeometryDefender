@@ -6,68 +6,77 @@ using System.Threading.Tasks;
 
 public class TableManager : MonoSingleton<TableManager>
 {
-	public Dictionary<System.Type, ITable> m_TableDictionary = new Dictionary<System.Type, ITable>();
+    public Dictionary<System.Type, ITable> m_TableDictionary = new Dictionary<System.Type, ITable>();
 
-	private FlowCommand m_FlowCommand = new FlowCommand();
+    private FlowCommand m_FlowCommand = new FlowCommand();
 
-	public void init()
-	{
-		List<EnemyRecord> enemyRecords = LoadCsvTable<EnemyRecord>("Table/EnemyTable");
-		List<TowerRecord> towerRecords = LoadCsvTable<TowerRecord>("Table/TowerTable");
-		List<WaveRecord> waveRecords = LoadCsvTable<WaveRecord>("Table/WaveTable");
-		List<WaveSpawnRecord> waveSpawnRecords = LoadCsvTable<WaveSpawnRecord>("Table/WaveSpawnTable");
-		List<GameConfigRecord> gameConfigRecords = LoadCsvTable<GameConfigRecord>("Table/GameConfigTable");
-		List<TowerSlotRecord> towerSlotRecords = LoadCsvTable<TowerSlotRecord>("Table/TowerSlotTable");
-		List<MetaTreeRecord> metaTreeRecords = LoadCsvTable<MetaTreeRecord>("Table/MetaTreeTable");
-		List<UIRecord> uiRecords = LoadCsvTable<UIRecord>("Table/UITable");
-		List<ToggleListRecord> toggleListRecords = LoadCsvTable<ToggleListRecord>("Table/ToggleListTable");
-		List<ToggleMenuRecord> toggleMenuRecords = LoadCsvTable<ToggleMenuRecord>("Table/ToggleMenuTable");
-		List<StringRecord> stringRecords = LoadCsvTable<StringRecord>("Table/StringTable");
+    private bool m_isInitialized;
 
-		EnemyTable enemyTable = new EnemyTable(enemyRecords);
-		TowerTable towerTable = new TowerTable(towerRecords);
-		WaveTable waveTable = new WaveTable(waveRecords);
-		WaveSpawnTable waveSpawnTable = new WaveSpawnTable(waveSpawnRecords);
-		GameConfigTable gameConfigTable = new GameConfigTable(gameConfigRecords);
-		TowerSlotTable towerSlotTable = new TowerSlotTable(towerSlotRecords);
-		MetaTreeTable metaTreeTable = new MetaTreeTable(metaTreeRecords);
-		UITable uiTable = new UITable(uiRecords);
-		ToggleListTable toggleListTable = new ToggleListTable(toggleListRecords);
-		ToggleMenuTable toggleMenuTable = new ToggleMenuTable(toggleMenuRecords);
-		StringTable stringTable = new StringTable(stringRecords);
+    public void init()
+    {
+        // 중복 호출 방지 — GameManager(MonoSingleton) 중복 인스턴스의 Awake()도 무조건 이 메서드를 부르므로
+        // 씬을 오가며 GameManager가 다시 생성/파괴될 때마다 재실행되면 m_TableDictionary.Add에서 예외가 난다
+        if (m_isInitialized == true)
+            return;
 
-		m_TableDictionary.Add(typeof(EnemyTable), enemyTable);
-		m_TableDictionary.Add(typeof(TowerTable), towerTable);
-		m_TableDictionary.Add(typeof(WaveTable), waveTable);
-		m_TableDictionary.Add(typeof(WaveSpawnTable), waveSpawnTable);
-		m_TableDictionary.Add(typeof(GameConfigTable), gameConfigTable);
-		m_TableDictionary.Add(typeof(TowerSlotTable), towerSlotTable);
-		m_TableDictionary.Add(typeof(MetaTreeTable), metaTreeTable);
-		m_TableDictionary.Add(typeof(UITable), uiTable);
-		m_TableDictionary.Add(typeof(ToggleListTable), toggleListTable);
-		m_TableDictionary.Add(typeof(ToggleMenuTable), toggleMenuTable);
-		m_TableDictionary.Add(typeof(StringTable), stringTable);
-	}
+        m_isInitialized = true;
 
-	public async Task<List<T>> LoadCsvTableToAddressable<T>(string key) where T : new()
-	{
+        List<EnemyRecord> enemyRecords = LoadCsvTable<EnemyRecord>("Table/EnemyTable");
+        List<TowerRecord> towerRecords = LoadCsvTable<TowerRecord>("Table/TowerTable");
+        List<WaveRecord> waveRecords = LoadCsvTable<WaveRecord>("Table/WaveTable");
+        List<WaveSpawnRecord> waveSpawnRecords = LoadCsvTable<WaveSpawnRecord>("Table/WaveSpawnTable");
+        List<GameConfigRecord> gameConfigRecords = LoadCsvTable<GameConfigRecord>("Table/GameConfigTable");
+        List<TowerSlotRecord> towerSlotRecords = LoadCsvTable<TowerSlotRecord>("Table/TowerSlotTable");
+        List<MetaTreeRecord> metaTreeRecords = LoadCsvTable<MetaTreeRecord>("Table/MetaTreeTable");
+        List<UIRecord> uiRecords = LoadCsvTable<UIRecord>("Table/UITable");
+        List<ToggleListRecord> toggleListRecords = LoadCsvTable<ToggleListRecord>("Table/ToggleListTable");
+        List<ToggleMenuRecord> toggleMenuRecords = LoadCsvTable<ToggleMenuRecord>("Table/ToggleMenuTable");
+        List<StringRecord> stringRecords = LoadCsvTable<StringRecord>("Table/StringTable");
 
-		m_FlowCommand.Add(new Command_CheckAsset(key, (exists)=> {
-			if( exists == true )
-			{
+        EnemyTable enemyTable = new EnemyTable(enemyRecords);
+        TowerTable towerTable = new TowerTable(towerRecords);
+        WaveTable waveTable = new WaveTable(waveRecords);
+        WaveSpawnTable waveSpawnTable = new WaveSpawnTable(waveSpawnRecords);
+        GameConfigTable gameConfigTable = new GameConfigTable(gameConfigRecords);
+        TowerSlotTable towerSlotTable = new TowerSlotTable(towerSlotRecords);
+        MetaTreeTable metaTreeTable = new MetaTreeTable(metaTreeRecords);
+        UITable uiTable = new UITable(uiRecords);
+        ToggleListTable toggleListTable = new ToggleListTable(toggleListRecords);
+        ToggleMenuTable toggleMenuTable = new ToggleMenuTable(toggleMenuRecords);
+        StringTable stringTable = new StringTable(stringRecords);
 
-			}
-			else
-			{
+        m_TableDictionary.Add(typeof(EnemyTable), enemyTable);
+        m_TableDictionary.Add(typeof(TowerTable), towerTable);
+        m_TableDictionary.Add(typeof(WaveTable), waveTable);
+        m_TableDictionary.Add(typeof(WaveSpawnTable), waveSpawnTable);
+        m_TableDictionary.Add(typeof(GameConfigTable), gameConfigTable);
+        m_TableDictionary.Add(typeof(TowerSlotTable), towerSlotTable);
+        m_TableDictionary.Add(typeof(MetaTreeTable), metaTreeTable);
+        m_TableDictionary.Add(typeof(UITable), uiTable);
+        m_TableDictionary.Add(typeof(ToggleListTable), toggleListTable);
+        m_TableDictionary.Add(typeof(ToggleMenuTable), toggleMenuTable);
+        m_TableDictionary.Add(typeof(StringTable), stringTable);
+    }
 
-			}
-		}));
+    public async Task<List<T>> LoadCsvTableToAddressable<T>(string key) where T : new()
+    {
+
+        m_FlowCommand.Add(new Command_CheckAsset(key, (exists)=> {
+            if( exists == true )
+            {
+
+            }
+            else
+            {
+
+            }
+        }));
 
 
-		return null;
-	}
+        return null;
+    }
 
-	public List<T> LoadCsvTable<T>(string resourcePath) where T : new()
+    public List<T> LoadCsvTable<T>(string resourcePath) where T : new()
     {
         List<T> result = new List<T>();
 
@@ -93,46 +102,46 @@ public class TableManager : MonoSingleton<TableManager>
                 string[] values = lines[i].Split(',');
 
                 // 반사(reflection)를 사용하여 클래스 객체 생성
-              	T obj = new T();
-				for (int j = 0; j < headers.Length; j++)
-				{
-					string propertyName = headers[j];
-					string value = values[j];
+                T obj = new T();
+                for (int j = 0; j < headers.Length; j++)
+                {
+                    string propertyName = headers[j];
+                    string value = values[j];
 
-					// 속성 찾기 (대소문자 구분 무시)
-					var field = typeof(T).GetField(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-					if (field != null)
-					{
-						object convertedValue;
+                    // 속성 찾기 (대소문자 구분 무시)
+                    var field = typeof(T).GetField(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                    if (field != null)
+                    {
+                        object convertedValue;
 
-						// Enum 처리
-						if (field.FieldType.IsEnum)
-						{
-							convertedValue = Enum.Parse(field.FieldType, value, ignoreCase: true); // Enum 값 변환
-						}
-						else if (field.FieldType == typeof(float))
-						{
-							// Float 변환
-							convertedValue = float.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
-						}
-						else
-						{
-							convertedValue = Convert.ChangeType(value, field.FieldType);
-						}
+                        // Enum 처리
+                        if (field.FieldType.IsEnum)
+                        {
+                            convertedValue = Enum.Parse(field.FieldType, value, ignoreCase: true); // Enum 값 변환
+                        }
+                        else if (field.FieldType == typeof(float))
+                        {
+                            // Float 변환
+                            convertedValue = float.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            convertedValue = Convert.ChangeType(value, field.FieldType);
+                        }
 
-						field.SetValue(obj, convertedValue);
-					}
-					else
-					{
-						Debug.LogError($"Property or Field '{propertyName}' not found in type {typeof(T).Name}");
-					}
-				}
+                        field.SetValue(obj, convertedValue);
+                    }
+                    else
+                    {
+                        Logger.Error($"Property or Field '{propertyName}' not found in type {typeof(T).Name}");
+                    }
+                }
                 result.Add(obj);
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError($"CSV 파일 처리 중 오류 발생: {ex.Message}");
+            Logger.Error($"CSV 파일 처리 중 오류 발생: {ex.Message}");
         }
 
         return result;
@@ -142,19 +151,19 @@ public class TableManager : MonoSingleton<TableManager>
     {
         System.Type _type = typeof(T);
 
-		ITable _find = null;
+        ITable _find = null;
         if(m_TableDictionary.TryGetValue(_type, out _find) == false )
         {
-            Debug.LogError($"{this.ToString()} ::GetTable() { _type.ToString()}");
+            Logger.Error($"{this.ToString()} ::GetTable() { _type.ToString()}");
             return null;
         }
 
         return _find as T;
     }
 
-	private void Update()
-	{
-		m_FlowCommand.Update();
-	}
+    private void Update()
+    {
+        m_FlowCommand.Update();
+    }
 
 }

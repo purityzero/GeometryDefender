@@ -13,11 +13,31 @@
 - 프로젝트에 표준 컴포넌트를 상속한 자체 확장 클래스(예: 로컬라이제이션 키 자동 바인딩, 리소스 자동 로드 등 부가 기능)가 있을 수 있다. 신규 컴포넌트 추가 전에 기존 프리팹에서 확장 클래스 사용 관례를 먼저 확인하고, 관례가 있으면 표준 대신 확장 클래스를 쓴다. (레거시 형제 오브젝트가 표준 타입이어도 최신 관례를 따른다)
 - 확장 클래스는 필드 구조가 베이스와 대부분 동일하므로, 스크립트 참조(guid)만 교체하면 나머지 직렬화 필드는 그대로 재사용 가능하다.
 
-### YAML 직접 편집 원칙
+### YAML 직접 편집 vs Unity MCP — 토큰/안전성 기준 (2026-07-21)
+**구조적 변경(컴포넌트 신규 부착/생성, 씬·프리팹 간 참조 연결) 작업을 시작하기 전에, MCP 연결 여부부터 확인한다** — 연결되어 있다고 가정하고 바로 `manage_script`/`manage_components`/`manage_gameobject`를 호출하지 말 것. 확인 순서:
+1. `mcpforunity://instances` 리소스를 조회한다(`ListMcpResourcesTool`/`ReadMcpResourceTool` 또는 해당 도구가 이미 로드돼 있으면 바로). `instance_count`가 0이거나 도구 자체가 안 잡히면(서버 미설정 등) MCP 미연결로 판단.
+2. 인스턴스가 있으면 `mcpforunity://editor/state`의 `advice.ready_for_tools`로 실제 작업 가능 상태인지 한 번 더 확인한다(컴파일 중 등으로 일시적으로 `false`일 수 있음 — 이 경우는 "미연결"이 아니라 "대기 후 재시도" 케이스).
+3. 작업 도중 MCP 호출이 계속 실패/타임아웃되면(연결이 끊긴 경우) 그 시점부터 아래 YAML 직접 편집 경로로 전환한다 — 이미 MCP로 끝낸 단계까지는 되돌리지 않고, 남은 단계만 YAML로 이어서 마무리한다.
+
+**MCP 연결 확인됨** → 구조적 변경은 MCP(`manage_script`/`manage_components`/`manage_gameobject`)에 위임하고, 이미 위치를 아는 단순 값 수정(기존 필드 하나만 변경)은 YAML/CSV 직접 편집을 쓴다.
+- 구조적 변경을 YAML로 직접 하면: ① 신규 스크립트의 `.meta`(GUID 포함)를 직접 만들어야 하고 GUID 중복 위험이 있음 ② 컴포넌트 블록(약 10줄 보일러플레이트) + `m_Component` 목록 갱신을 손으로 작성해야 함 ③ 파일 내에서 안 겹치는 fileID를 찾기 위한 사전 grep이 필요함 — 전부 직접 생성해야 하는 토큰이자 실수 지점. MCP는 이 세 가지를 자동 처리하고 성공/실패를 즉시 알려줘서, 아래 "편집 시 흔한 문제"에 적힌 **조용히 무시되는 실패**로 인한 왕복 디버깅 비용 자체를 없앤다.
+- 반대로 이미 정확한 줄을 아는 단일 필드 수정(예: `m_LocalScale` 숫자만 변경)은 MCP를 거쳐도 결국 그 한 줄을 바꾸는 것뿐이라 이득이 적다 — 직접 `Edit`이 더 저렴하다. CSV 같은 비-YAML 데이터 파일도 마찬가지로 직접 편집이 항상 더 저렴하다(MCP를 거칠 이유가 없음).
+
+**MCP 미연결(또는 연결 끊김)** → 아래 원칙대로 순수 YAML 직접 편집을 쓴다(기존 원칙, 여전히 유효). 이 경로를 탔다는 사실과 그 이유(미연결/끊김)를 작업 완료 보고에 명시할 것 — 실행 검증(컴파일/플레이) 없이 편집만 했다는 뜻이므로 "미검증"으로 남긴다.
 - 프리팹 파일은 Unity Editor 없이 YAML로 직접 편집한다.
 - 컴포넌트 추가 순서: ① GameObject의 `m_Component` 목록에 fileID 추가 → ② 해당 fileID로 컴포넌트 블록 추가 (순서가 바뀌면 파싱 실패나 missing 컴포넌트로 이어진다)
 - fileID는 파일 내 고유해야 하며, 신규 추가분은 기존 패턴을 따라 구분되는 대역을 사용한다. (예: `9001000000000000001`) 단, 정수형 최댓값 범위를 넘지 않도록 주의한다 — 너무 큰 값은 파싱 자체가 실패하는 경우가 있다.
-- GUID는 추측하지 않고 반드시 실제 파일에서 확인한다. (`.cs.meta` 파일 대조 또는 기존 프리팹 grep)
+- GUID는 추측하지 않고 반드시 실제 파일에서 확인한다. (`.cs.meta` 파일 대조 또는 기존 프리팹 grep) 신규 스크립트라 대조할 기존 GUID가 없다면, 32자리 16진수 형식(0-9a-f)을 지키되 프로젝트 내 기존 `.meta` 전체와 겹치지 않는지 grep으로 확인 후 사용한다.
+
+### MCP로 프리팹 안의 필드/버튼 연결하기 (2026-07-22)
+- 프리팹 자체(씬이 아니라)를 편집할 땐 `manage_prefabs`(`open_prefab_stage` → `manage_gameobject`/`manage_components`로 편집 → `save_prefab_stage` → `close_prefab_stage`)를 쓴다.
+- **object 참조 값은 런타임 instance ID(정수)만 받는다** — 프리팹 YAML의 fileID(`9004000000000001043` 같은 긴 숫자)를 그대로 못 넣는다. `find_gameobjects`로 대상 오브젝트를 찾은 뒤, 그 컴포넌트의 instance ID를 얻어서 써야 한다.
+  - 컴포넌트 instance ID를 매번 리소스 조회로 확인하면(특히 TMP 컴포넌트는 응답이 매우 큼) 토큰이 많이 든다 — 같은 프리팹 스테이지 세션 안에서는 오브젝트가 대체로 "GameObject, +2 RectTransform, +4 CanvasRenderer, +6(또는 +8) 실제 컴포넌트" 순으로 순차 instance ID를 받는 경향이 있다(직접 확인함). 구조가 동일한 형제 오브젝트가 많으면(예: TMP 텍스트 여러 개) 하나만 조회해 오프셋을 검증하고 나머지는 그 오프셋으로 계산해서 조회 횟수를 줄일 것 — 다만 가정이므로 최소 1개는 반드시 실측 검증할 것.
+- **UnityEvent(`Button.m_OnClick` 등)에 Persistent Call을 추가**하려면 `manage_components.set_property`의 `value`에 다음 구조를 통째로 넘긴다(공식 문서화된 스키마는 아니지만 실험으로 동작 확인됨):
+  ```json
+  {"m_PersistentCalls": {"m_Calls": [{"m_Target": <컴포넌트 instanceID>, "m_MethodName": "OnClickFoo", "m_Mode": 1, "m_CallState": 2}]}}
+  ```
+  `m_Mode: 1`은 매개변수 없는(void) 메서드 호출. **읽기 리소스(`mcpforunity://scene/gameobject/{id}/component/{name}`)로는 이게 제대로 설정됐는지 확인이 안 됨**(UnityEvent 내부를 재귀적으로 안 보여주고 `{}`로만 나옴) — 반드시 `save_prefab_stage` 후 실제 YAML 파일을 grep해서 `m_Target`/`m_MethodName`이 의도대로 들어갔는지 확인할 것.
 
 ### 신규 블록 작성 순서
 1. 동일 컴포넌트가 쓰인 기존 프리팹을 grep으로 탐색

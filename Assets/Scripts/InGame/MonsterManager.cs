@@ -6,9 +6,11 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-public class MonsterManager : MonoBehaviour, IUpdatable
+public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
 {
     [SerializeField] private Transform m_PoolParent;
+
+    public ObservableVariable<int> killCount { get; } = new ObservableVariable<int>(0);
 
     private EntityManager m_EntityManager;
     private EntityQuery m_DeadQuery;
@@ -17,7 +19,7 @@ public class MonsterManager : MonoBehaviour, IUpdatable
     private MemoryPoolFactory<ActorMonster, eEnemyShape> m_MonsterFactory;
 
     // Entity → (Shape, ActorMonster) 역참조용 — Recycle 시 Shape이 필요
-    private Dictionary<Entity, (eEnemyShape shape, ActorMonster actor)> m_VisualMap = new Dictionary<Entity, (eEnemyShape, ActorMonster)>();
+    private Dictionary<Entity, (eEnemyShape shape, ActorMonster actor)> m_DicVisual = new Dictionary<Entity, (eEnemyShape, ActorMonster)>();
 
     public event Action<RewardData> OnMonsterDie;
     public event Action<RewardData> OnMonsterReachEnd;
@@ -33,12 +35,12 @@ public class MonsterManager : MonoBehaviour, IUpdatable
         EnemyTable enemyTable = TableManager.instance.GetTable<EnemyTable>();
         if (enemyTable == null)
         {
-            Debug.LogError($"[MonsterManager] Init Failed! EnemyTable not loaded - TableManager.init() 선행 필요");
+            Logger.Error($"[MonsterManager] Init Failed! EnemyTable not loaded - TableManager.init() 선행 필요");
             return;
         }
 
         Dictionary<eEnemyShape, string> pathMap = new Dictionary<eEnemyShape, string>();
-        foreach (KeyValuePair<eEnemyShape, List<EnemyRecord>> pair in enemyTable.shapeMap)
+        foreach (KeyValuePair<eEnemyShape, List<EnemyRecord>> pair in enemyTable.dicShape)
         {
             pathMap[pair.Key] = pair.Value[0].PrefabPath;
         }
@@ -97,6 +99,22 @@ public class MonsterManager : MonoBehaviour, IUpdatable
         return entity;
     }
 
+    public int GetAliveMonsterCount()
+    {
+        if (m_isInitialized == false)
+            return 0;
+
+        EntityQuery aliveQuery = m_EntityManager.CreateEntityQuery(
+            ComponentType.ReadOnly<MonsterTag>(),
+            ComponentType.Exclude<DeadTag>(),
+            ComponentType.Exclude<ReachedEndTag>());
+
+        int aliveCount = aliveQuery.CalculateEntityCount();
+        aliveQuery.Dispose();
+
+        return aliveCount;
+    }
+
     public void TakeDamage(Entity _entity, int _amount)
     {
         if (m_EntityManager.Exists(_entity) == false)
@@ -137,6 +155,7 @@ public class MonsterManager : MonoBehaviour, IUpdatable
         for (int i = 0; i < deadEntities.Length; ++i)
         {
             RecycleVisual(deadEntities[i]);
+            killCount.Value++;
             OnMonsterDie?.Invoke(rewards[i]);
             m_EntityManager.DestroyEntity(deadEntities[i]);
         }
@@ -175,7 +194,7 @@ public class MonsterManager : MonoBehaviour, IUpdatable
 
         actorMonster.transform.localScale = Vector3.one * _record.VisualSize;
 
-        m_VisualMap[_entity] = (_record.Shape, actorMonster);
+        m_DicVisual[_entity] = (_record.Shape, actorMonster);
 
         m_EntityManager.AddComponentObject(_entity, new VisualObject
         {
@@ -185,15 +204,17 @@ public class MonsterManager : MonoBehaviour, IUpdatable
 
     private void RecycleVisual(Entity _entity)
     {
-        if (m_VisualMap.TryGetValue(_entity, out var visual) == false)
+        if (m_DicVisual.TryGetValue(_entity, out var visual) == false)
             return;
 
         m_MonsterFactory.Recycle(visual.shape, visual.actor);
-        m_VisualMap.Remove(_entity);
+        m_DicVisual.Remove(_entity);
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
+        base.OnDestroy();
+
         BaseScene.Current?.Unregister(this);
 
         if (m_isInitialized == false)

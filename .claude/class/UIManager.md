@@ -1,12 +1,14 @@
 # UIManager
 
-연관 클래스: MonoSingleton, UIBase, ResUtil, FlowCommand, [UIToastMessage](./UIToastMessage.md), MemoryPooling
+연관 클래스: MonoSingleton, UIBase, [[UIPopup]](2026-07-22부터 — 팝업 스택/뒤로가기 소유), ResUtil, FlowCommand, [UIToastMessage](./UIToastMessage.md), MemoryPooling, SceneManager(`CloseAllPopups()` 호출처)
 
 ## 개요
 화면 단위 UI(UIBase)의 로드/캐싱/표시를 담당하는 싱글톤 (Glory 라이브러리). `UIManager.instance.Get<T>(리소스경로)` 로 사용. 2026-07-18부터 토스트 메시지(`ShowToast`)도 이 클래스가 소유.
 
 ## 현재 상태
-- `Get<T>(name)`: 캐시 조회 → 없거나 파괴됐으면 `ResUtil.Create<T>`로 UIManager 하위에 인스턴스 생성 후 캐싱 → SetAsFirstSibling + Show
+- `Get<T>(name)`: 캐시 조회 → 없거나 파괴됐으면 `ResUtil.Create<T>`로 UIManager 하위에 인스턴스 생성 후 캐싱 → **SetAsLastSibling**(2026-07-22, 아래 참고) + Show
+- `m_PopupStack`(`List<UIPopup>`, 마지막 = 최근 연 것 = 최상단) — [[UIPopup]] 파생 클래스가 `Show()`/`Close()`에서 자동으로 등록/해제. `RegisterPopup`/`UnregisterPopup`/`CloseAllPopups()`(스택 스냅샷을 떠서 순회하며 전부 `Close()` + 활성 토스트도 전부 `CloseToast`) 제공.
+- `Update()`에서 `Keyboard.current.escapeKey.wasPressedThisFrame`(새 Input System — 안드로이드 하드웨어 뒤로가기가 여기로 매핑됨) 감지 시 `OnPressBackButton()` → 스택 최상단 팝업의 `OnPressBackBtn()`만 호출.
 - UI 프리팹은 자체 Canvas를 갖는 전제 (UIManager는 일반 GameObject라 Canvas 부모 제공 안 함)
 - UIBase: Show/Close 가상 메서드 (SetActive 토글)
 - `ShowToast(string _message)`: [UIToastMessage](./UIToastMessage.md) 풀(`MemoryPooling`, 최대 5개, 최초 호출 시 지연 생성+Prewarm)에서 하나 꺼내 표시. 활성 토스트 목록(`m_ActiveToasts`, 최신이 인덱스0)을 유지하며 매번 `RepositionToastStack()`으로 전체 위치 재계산(슬롯 간격 `TOAST_SLOT_HEIGHT`). 풀이 꽉 찬 상태에서 새로 뜨면 가장 오래된 토스트를 강제로 닫고(`CloseToast`) 자리를 만듦. **별도 ToastCanvas/ToastRoot를 만들지 않고 기존 `GetCanvas(true)`(PopupCanvas)를 그대로 풀 부모로 재사용** — 토스트 프리팹 자신의 RectTransform이 이미 중앙 앵커(0.5,0.5)로 만들어져 있어서 별도 위치 보정용 오브젝트가 필요 없음(2026-07-18-1, 처음엔 전용 Canvas/ToastRoot를 코드로 생성했다가 사용자 지적으로 제거).
@@ -169,3 +171,43 @@ if (m_ToastPool == null)
 
 ### 미검증
 컴파일, PopupCanvas 하위에서 실제로 중앙에 뜨는지 확인 필요.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 리포트("UIRunOver에서 MetaTree를 들어갔는데 왜 MetaTree가 아래에 있냐, 마지막에 열린 게 가장 상단이어야") — 2026-07-15-3에 "확인 필요"로만 남겨뒀던 `SetAsFirstSibling` 의심이 실제 버그로 확정됨. 겸사겸사 팝업 스택/뒤로가기 지원 추가. 상세 배경은 [[UIPopup]] 참고.
+
+### 파일
+- Assets/Scripts/Glory/UI/UIManager.cs
+
+### 수정 (함수 단위)
+
+**Get<T>(string, bool)**
+- 전: `cachedUI.transform.SetAsFirstSibling();`
+- 후: `cachedUI.transform.SetAsLastSibling();` — uGUI에서 마지막 sibling이 같은 부모 내 가장 위에 그려짐. First로는 항상 맨 뒤로 가서 새로 연 팝업이 기존 팝업 뒤에 숨는 버그였음.
+
+**신규 필드/메서드**
+```csharp
+private List<UIPopup> m_PopupStack = new List<UIPopup>();
+
+public void RegisterPopup(UIPopup _popup) { ... }   // 중복 방지 후 Add
+public void UnregisterPopup(UIPopup _popup) { ... } // Remove
+
+public void CloseAllPopups()
+{
+    // 스택/활성 토스트 스냅샷을 떠서 순회 Close (원본 컬렉션을 순회 중 변형하지 않기 위함)
+}
+
+private void OnPressBackButton()
+{
+    // 스택이 비어있지 않으면 마지막(최상단) 팝업의 OnPressBackBtn()만 호출
+}
+```
+
+**Update()**
+- 후: `Keyboard.current.escapeKey.wasPressedThisFrame == true`면 `OnPressBackButton()` 호출 추가(`using UnityEngine.InputSystem;` 신규)
+
+### 검증
+[[UIPopup]] 2026-07-22-0 참고 — Z-order 버그 재현 후 수정 확인, 팝업 스택/뒤로가기/CloseAllPopups 전부 Play Mode 실측.

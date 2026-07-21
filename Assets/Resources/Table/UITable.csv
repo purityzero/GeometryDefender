@@ -1,6 +1,6 @@
 Id,UIName,UIType,PrefabPath
-1,UIMetaTree,Normal,Prefabs/UI/UIMetaTree
+1,UIMetaTree,Popup,Prefabs/UI/UIMetaTree
 2,UIInGameHUD,Normal,Prefabs/UI/UIInGameHUD
 3,UICardDraft,Popup,Prefabs/UI/UICardDraft
-4,UIRunOver,Normal,Prefabs/UI/UIRunOver
+4,UIRunOver,Popup,Prefabs/UI/UIRunOver
 5,UIPause,Popup,Prefabs/UI/UIPause

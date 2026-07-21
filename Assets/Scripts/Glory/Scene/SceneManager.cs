@@ -10,7 +10,7 @@ public class Command_CleanupMemory : ICommand
     public void Execute()
     {
 		#if UNITY_EDITOR || LOG
-        Debug.Log("[Command_CleanupMemory] Requesting memory cleanup...");
+        Logger.Log("[Command_CleanupMemory] Requesting memory cleanup...");
 		#endif
     }
 
@@ -19,7 +19,7 @@ public class Command_CleanupMemory : ICommand
         Resources.UnloadUnusedAssets(); // 사용되지 않는 리소스 제거
         System.GC.Collect(); // 가비지 컬렉션 실행
 		#if UNITY_EDITOR || LOG
-        Debug.Log("[Command_CleanupMemory] Memory Cleanup Complete");
+        Logger.Log("[Command_CleanupMemory] Memory Cleanup Complete");
 		#endif
 
         isFinished = true;
@@ -210,6 +210,9 @@ public class SceneManager : MonoSingleton<SceneManager>
 	{
 		string currentScene = CurrentScene;
 		Logger.Log("SceneManager", $"Current Scene : {currentScene}, Next Scene :{_name}", Logger.eColor.Green);
+
+		UIManager.instance.CloseAllPopups();
+
 		m_FadeOutObject.gameObject.SetActive(true);
 		m_FadeOutObject.color = new Color(0, 0, 0, 0);
 

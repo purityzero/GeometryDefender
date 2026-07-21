@@ -51,7 +51,7 @@ public class MemoryPooling<T> where T : Component
 
         if (obj == null)
         {
-            Debug.LogError($"[MemoryPooling] Pop 실패 — 경로: {m_Path}");
+            Logger.Error($"[MemoryPooling] Pop 실패 — 경로: {m_Path}");
             return null;
         }
 
@@ -73,12 +73,19 @@ public class MemoryPooling<T> where T : Component
 
     public void Clear()
     {
+        // 씬 전환 등으로 풀 오브젝트(m_Parent의 자식)가 이미 파괴된 상태일 수 있음 — 그런 경우는 다시 Destroy할 필요 없이 건너뜀
         foreach (T obj in m_ActiveList)
         {
+            if (obj == null)
+                continue;
+
             GameObject.Destroy(obj.gameObject);
         }
         foreach (T obj in m_HideList)
         {
+            if (obj == null)
+                continue;
+
             GameObject.Destroy(obj.gameObject);
         }
 

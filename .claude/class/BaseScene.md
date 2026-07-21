@@ -3,6 +3,7 @@
 ## 연관 클래스
 - IUpdatable
 - InGameScene, TitleScene (파생 클래스)
+- [[SceneSingleton]] (부모, 2026-07-21부터 — `Current` 필드/Awake/OnDestroy가 여기로 이동)
 
 ## 개요
 씬 진입점(InGameScene/TitleScene)의 공통 베이스 클래스 (Glory 라이브러리, 프로젝트 비의존). 두 가지 역할을 한다.
@@ -11,8 +12,8 @@
 
 ## 현재 상태
 - 경로: Assets/Scripts/Glory/Scene/BaseScene.cs
-- `public static BaseScene Current { get; private set; }` — 현재 활성 씬의 BaseScene 인스턴스(Awake에서 설정, OnDestroy에서 자기 자신일 때만 해제). 다른 스크립트가 `BaseScene.Current.Register(this)`로 접근하는 진입점.
-  - Unity 생명주기상 같은 씬의 모든 오브젝트의 `Awake()`가 끝난 뒤에야 어떤 오브젝트든 `Start()`가 실행되므로, BaseScene.Awake()에서 Current를 설정하고 다른 스크립트는 자신의 Start()에서 등록하는 구조는 순서 문제 없이 항상 안전하다(등록 시점에 Current가 항상 세팅되어 있음이 보장됨).
+- `public abstract class BaseScene : SceneSingleton<BaseScene>` (2026-07-21부터) — `Current` 필드와 Awake(설정)/OnDestroy(해제)는 이제 [[SceneSingleton]]이 담당, BaseScene 자체엔 더 이상 없음.
+  - Unity 생명주기상 같은 씬의 모든 오브젝트의 `Awake()`가 끝난 뒤에야 어떤 오브젝트든 `Start()`가 실행되므로, SceneSingleton.Awake()에서 Current를 설정하고 다른 스크립트는 자신의 Start()에서 등록하는 구조는 순서 문제 없이 항상 안전하다(등록 시점에 Current가 항상 세팅되어 있음이 보장됨).
 - `Register(IUpdatable _updatable)` / `Unregister(IUpdatable _updatable)` — 내부 `List<IUpdatable>`에 추가/제거. `Register`는 이미 등록된 항목이면 무시(중복 등록 방지, 2026-07-21 추가) — DontDestroyOnLoad에 캐싱되는 UI처럼 `Start()`가 아니라 `Show()` 같은 재호출 가능한 지점에서 등록하는 소비자([[UIInGameHUD]] 참고)가 생기면서 필요해짐.
 - `protected virtual void OnSetup()` — 기본 빈 구현, 파생 클래스가 오버라이드해서 씬 진입 초기화를 넣는 지점.
 - **적용 예외**: `MonoSingleton<T>` 기반 매니저(예: Glory SceneManager)는 이 패턴을 타지 않는다 — 씬을 넘어 유지되는 전역 매니저는 계속 자기 자신의 MonoBehaviour `Update()`로 스스로 구동한다 (2026-07-21 사용자 확정). IUpdatable을 구현하지 않으면 자연히 이 목록에 들어오지 않으므로 별도 필터링 코드는 불필요.
@@ -52,3 +53,20 @@
 
 ### 미검증
 [[UIInGameHUD]] 2026-07-21-0 참고.
+
+---
+
+## 2026-07-21-2
+
+### 개요
+사용자 요청("Current static 싱글톤 패턴이 4곳에 복붙됨" 리팩토링) — `Current`/`Awake`/`OnDestroy`를 [[SceneSingleton]] 공용 베이스로 추출. 상세는 [[SceneSingleton]] 참고.
+
+### 파일
+- Assets/Scripts/Glory/Scene/BaseScene.cs
+
+### 수정 (함수 단위)
+- 전: `public abstract class BaseScene : MonoBehaviour` + 자체 `public static BaseScene Current` + `Awake() { Current = this; }` + `OnDestroy() { if (Current == this) Current = null; }`
+- 후: `public abstract class BaseScene : SceneSingleton<BaseScene>` — 위 네 줄 전부 제거(BaseScene은 Awake/OnDestroy에서 Current 관리 외에 다른 로직이 없었어서 메서드째 삭제 가능했음). `Start()`/`OnSetup()`/`Register`/`Unregister`/`Update()`는 변경 없음.
+
+### 검증
+[[SceneSingleton]] 2026-07-21-0 참고.

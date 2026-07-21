@@ -7,6 +7,8 @@
 - EnemyRecord
 - BaseScene, IUpdatable (Update 대신 구동)
 - (ECS 컴포넌트) HealthData, MoveData, RewardData, MonsterTag, DeadTag, ReachedEndTag, WaypointElement, DamageRequest, VisualObject
+- [[MonsterSpawnTestWindow]] — `GetAliveMonsterCount()` 조회 대상
+- KillCountText — `Current`/`killCount` 정적 접근자로 폴링, HUD Kill 텍스트 갱신
 
 ---
 
@@ -214,6 +216,37 @@ BaseScene.Update → MonsterManager.UpdateLogic (2026-07-21부터 자체 Update(
 
 ## 작업 내역
 
+### 2026-07-21-3
+
+#### 개요
+사용자 요청 — InGameScene UI의 킬 카운트 표시를 이 클래스와 연동. 상세는 [[TowerHealth]] 2026-07-21-5, [[KillCountText]] 참고.
+
+#### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+#### 수정 (함수 단위)
+**클래스 선언 바로 아래**
+- 전: `[SerializeField] private Transform m_PoolParent;`만 존재
+- 후: `public static MonsterManager Current { get; private set; }` + `public int killCount { get; private set; }` 추가(TimerManager.Current와 동일 패턴, UI가 씬 하이어라키를 안 거치고 폴링하기 위함)
+
+**Start()**
+- 전: `BaseScene.Current.Register(this);`
+- 후: `Current = this;` 한 줄 추가(Register 호출 이전)
+
+**OnDestroy()**
+- 전: `BaseScene.Current?.Unregister(this);`로 시작
+- 후: 맨 앞에 `if (Current == this) Current = null;` 추가
+
+**ProcessDeadMonsters()**
+- 전: `RecycleVisual(deadEntities[i]); OnMonsterDie?.Invoke(rewards[i]);`
+- 후: `RecycleVisual(deadEntities[i]); ++killCount; OnMonsterDie?.Invoke(rewards[i]);` — 처치 이벤트 발행 직전 카운트 증가
+
+#### 검증
+Unity MCP `execute_code`로 격리 테스트 — reflection으로 `killCount`를 3으로 설정 + `Current` 지정 → `KillCountText.UpdateLogic()` 호출 시 텍스트 "3" 출력 확인. 컴파일 에러 0건.
+실제 몬스터 처치 플로우를 통한 자연 증가 확인은 미검증(엔진 단독 플레이 제약은 [[TowerHealth]] 2026-07-21-5와 동일).
+
+---
+
 ### 2026-07-12-1
 - 개요: Docs/ActorMonster.md(몬스터 파이프라인 동작 구조 문서)를 이 문서의 "6. 동작 구조 (내부)" 섹션으로 병합 후 원본 삭제 (코드 수정 없음)
 - 파일: .claude/class/MonsterManager.md (갱신), Docs/ActorMonster.md (삭제)
@@ -405,3 +438,85 @@ Play Mode 종료 시 소속 ECS World가 `MonsterManager.OnDestroy()`보다 먼�
 - `refresh_unity`(compile force) → `read_console` 에러 0건 — 컴파일 정상.
 - **가드 로직 자체는 격리 검증 완료**: Play Mode 중 테스트용 `World`를 만들어 `EntityQuery`를 생성한 뒤 그 `World`를 `Dispose()`(= "OnDestroy 시점에 World가 이미 정리된" 상황 재현) → 가드 없이 `query.Dispose()`를 호출하면 실제로 `NullReferenceException` 재현됨(원 버그 메커니즘 확인) → 동일 상황에서 `OnDestroy()`에 추가한 조건(`World.DefaultGameObjectInjectionWorld != null && IsCreated == true`)을 그대로 평가하면 `false`가 나와 Dispose를 스킵, 예외 없이 통과 확인.
 - **실제 씬 흐름(TitleScene→Btn_Play 클릭→InGameScene→Stop)을 통한 자연 재현 검증은 못함** — 검증 도중 이 버그와 무관한 별도의 더 심각한 문제를 발견: 실시간(Step 강제 진행이 아닌) Play에서 TitleScene→InGameScene 전환 후 `MonsterManager.Init()` 시작 줄(`World.DefaultGameObjectInjectionWorld.EntityManager`)에서 NRE 발생 — `World.DefaultGameObjectInjectionWorld` 자체가 InGameScene 진입 시점에 이미 null. `Init()`이 여기서 즉시 중단되어 `m_isInitialized`가 계속 false로 남고, 그 결과 `OnDestroy()`도 가드 첫 줄(`m_isInitialized == false`)에서 항상 조기 return하여 오늘 수정한 Dispose 가드 코드 자체가 실행되는 상황을 자연 재현할 수 없었음. 상세는 [client-issues.md](../qa/client-issues.md) 2026-07-21-1(신규) 참고 — 별도 이슈로 분리 기록, 이번 수정 범위 밖이라 손대지 않음.
+
+---
+
+## 2026-07-21-3
+
+### 개요
+사용자 요청("테스트 툴에서 Spawn이 몇마리 되어있는지 체크해서 알려줄 수 있도록") — [[MonsterSpawnTestWindow]]가 현재 살아있는 몬스터 수를 표시할 수 있도록 조회 API 추가.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**신규 `GetAliveMonsterCount()`**
+```csharp
+public int GetAliveMonsterCount()
+{
+    if (m_isInitialized == false)
+        return 0;
+
+    EntityQuery aliveQuery = m_EntityManager.CreateEntityQuery(
+        ComponentType.ReadOnly<MonsterTag>(),
+        ComponentType.Exclude<DeadTag>(),
+        ComponentType.Exclude<ReachedEndTag>());
+
+    int aliveCount = aliveQuery.CalculateEntityCount();
+    aliveQuery.Dispose();
+
+    return aliveCount;
+}
+```
+- 기존 `m_DeadQuery`/`m_ReachedEndQuery`처럼 필드로 캐싱하지 않고 호출 시점에 즉석 생성 후 즉시 Dispose — 호출 빈도가 낮은(에디터 툴에서 프레임마다 1회 정도) 조회용이라 필드 수명 관리 복잡도를 늘리지 않는 쪽을 택함.
+
+### 검증
+Unity MCP `execute_code`로 실측 — Play Mode(InGameScene 직접 Play) 중 `GetAliveMonsterCount()`가 스폰 전 0, [[MonsterSpawnTestWindow]]로 120마리 스폰 직후 정확히 120을 반환하는 것 확인. 컴파일 에러 0건.
+
+---
+
+## 2026-07-21-4
+
+### 개요
+사용자 요청("Current static 싱글톤 패턴이 4곳에 복붙됨" 리팩토링) — `Current` 필드/설정/해제 로직을 [[SceneSingleton]] 공용 베이스로 이관. (이 시점 기준 `MonsterManager`는 이미 `Current`/`killCount`를 보유하고 있었음 — 이 문서에 아직 기록 안 된 세션 밖 변경으로 추정, 이번 항목은 그 `Current` 부분만 리팩토링.)
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**클래스 선언**
+- 전: `public class MonsterManager : MonoBehaviour, IUpdatable` + 자체 `public static MonsterManager Current { get; private set; }`
+- 후: `public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable` (Current 필드 제거, 베이스에서 상속)
+
+**Start()**
+- 전: `Current = this;` + `BaseScene.Current.Register(this);`
+- 후: `BaseScene.Current.Register(this);`만 남음
+
+**OnDestroy()**
+- 전: `private void OnDestroy() { if (Current == this) Current = null; BaseScene.Current?.Unregister(this); if (m_isInitialized == false) return; ... }`
+- 후: `protected override void OnDestroy() { base.OnDestroy(); BaseScene.Current?.Unregister(this); if (m_isInitialized == false) return; ... }` (World 생존 확인 후 Dispose하는 나머지 로직은 그대로)
+
+### 검증
+[[SceneSingleton]] 2026-07-21-0 참고 — `MonsterManager.Current`가 Play Mode 중 정상 반환되는 것(killCount=0 포함)까지 실측 확인.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 제안("killCount 같은걸 옵져버로 만들면 되지 않나") — `killCount`를 폴링 대상 plain int에서 `ObservableVariable<int>`로 전환. 상세는 [[ObservableIntText]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**필드**
+- 전: `public int killCount { get; private set; }`
+- 후: `public ObservableVariable<int> killCount { get; } = new ObservableVariable<int>(0);`
+
+**ProcessDeadMonsters()**
+- 전: `++killCount;`
+- 후: `killCount.Value++;`
+
+### 검증
+[[ObservableIntText]] 2026-07-22-0 참고 — Play Mode에서 몬스터 처치 후 `killCount.Value`가 실제로 증가하고 [[KillCountText]] 표시까지 갱신되는 것 확인.

@@ -43,7 +43,7 @@ public class Command_LoadAsset<T> : ICommand where T : Object
         {
             Addressables.Release(m_Handle);
             m_IsFinished = true;
-            Debug.Log($"Load for {m_AssetKey} has been cancelled.");
+            Logger.Log($"Load for {m_AssetKey} has been cancelled.");
         }
     }
 

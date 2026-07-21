@@ -16,7 +16,7 @@ public class ColorTweenEffect : TweenEffectBase
         if (spriteRenderer != null)
             return TweenUtil.Color(spriteRenderer, m_TargetColor, duration);
 
-        Debug.LogError($"[ColorTweenEffect] 컬러 대상 컴포넌트가 없습니다 - {gameObject.name}");
+        Logger.Error($"[ColorTweenEffect] 컬러 대상 컴포넌트가 없습니다 - {gameObject.name}");
         return null;
     }
 }

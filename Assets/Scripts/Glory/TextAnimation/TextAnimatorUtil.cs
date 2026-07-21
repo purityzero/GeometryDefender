@@ -12,7 +12,7 @@ public static class TextAnimatorUtil
     {
         if (_text == null)
         {
-            Debug.LogError($"[TextAnimatorUtil] GetAnimator Failed! text is null");
+            Logger.Error($"[TextAnimatorUtil] GetAnimator Failed! text is null");
             return null;
         }
 

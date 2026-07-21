@@ -22,3 +22,22 @@
   - CSV — 전: 9행 / 후: `10,TapScale,0.95`, `11,TapDuration,0.05` 추가
   - GameConfigTable — 전: 생성자만 존재 / 후: static TAP_SCALE·TAP_DURATION 추가(생성자에서 CSV 로드), GetValue 헬퍼 추가
 - 미검증: 컴파일/플레이 확인 필요.
+
+---
+
+## 2026-07-21-0
+
+### 개요
+사용자 요청("적군에 닿으면 HP가 닳고") 구현 중, 타워 Max HP 값의 저장소로 GameConfigTable 재사용. 상세는 [[TowerHealth]] 참고.
+
+### 파일
+- Assets/Resources/Table/GameConfigTable.csv
+
+### 수정
+- CSV — 전: 11행 / 후: `12,TowerMaxHp,100` 추가
+
+### 참고 — 기존 StartLife(10)를 재사용하지 않은 이유
+기존 2번 행 `StartLife,10`이 의미상 더 가까워 보이지만 재사용하지 않았다. Assets/Design/02_combat.html의 "타워 기본 스탯" 표는 Max HP를 100으로 명시하는데(현재 EnemyTable.csv의 DamageToBase/MoveSpeed 등 다른 수치들이 전부 이 문서와 일치하는 것으로 보아 이 문서가 현재 유효한 기준으로 판단됨), StartLife=10은 이 값과 다르다. 같은 테이블에 있는 SpawnX/Y/Z(10,0,12)·BaseX/Y/Z(18,0,-8)도 현재 구현(타워는 (0,0) 고정, 몬스터는 반경 7 원 둘레에서 스폰)과 전혀 다른 좌표계라 예전 설계(3D 좌표 기반 스폰/베이스 시스템)의 잔재로 판단, 손대지 않고 새 키만 추가.
+
+### 미검증
+컴파일 확인(Unity MCP `refresh_unity`, 에러 0건)만 완료. `GetValue("TowerMaxHp")` 실제 조회는 client-issues.md 2026-07-21-1의 선행 버그로 인해 End-to-End 확인 못함(상세는 [[TowerHealth]] 2026-07-21-4).

@@ -27,7 +27,7 @@ public class GameConfigTable : Table<GameConfigRecord>
                 return list[i].Value;
         }
 
-        Debug.LogError($"[GameConfigTable] GetValue Failed! record not found - {_displayName}");
+        Logger.Error($"[GameConfigTable] GetValue Failed! record not found - {_displayName}");
         return _defaultValue;
     }
 }

@@ -41,7 +41,7 @@ public class TextAnimationPlayer : MonoBehaviour
     {
         if (m_TargetText == null)
         {
-            Debug.LogError($"[TextAnimationPlayer] Play Failed! m_TargetText is null");
+            Logger.Error($"[TextAnimationPlayer] Play Failed! m_TargetText is null");
             return;
         }
 

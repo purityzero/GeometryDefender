@@ -34,7 +34,7 @@ public class TweenEffectPlayer : MonoBehaviour
 
         if (m_Effects == null || m_Effects.Length == 0)
         {
-            Debug.LogError($"[TweenEffectPlayer] 등록된 이펙트가 없습니다 - {gameObject.name}");
+            Logger.Error($"[TweenEffectPlayer] 등록된 이펙트가 없습니다 - {gameObject.name}");
             return;
         }
 

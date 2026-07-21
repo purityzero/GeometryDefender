@@ -34,7 +34,7 @@ public class MetaTreeRecord : Record
 
 public class MetaTreeTable : Table<MetaTreeRecord>
 {
-    public Dictionary<eMetaBranch, List<MetaTreeRecord>> branchMap { get; private set; }
+    public Dictionary<eMetaBranch, List<MetaTreeRecord>> dicBranch { get; private set; }
 
     public MetaTreeTable(List<MetaTreeRecord> _listRecord) : base(_listRecord)
     {
@@ -43,15 +43,15 @@ public class MetaTreeTable : Table<MetaTreeRecord>
 
     private void BuildDictionaries()
     {
-        branchMap = new Dictionary<eMetaBranch, List<MetaTreeRecord>>();
+        dicBranch = new Dictionary<eMetaBranch, List<MetaTreeRecord>>();
 
         for (int i = 0; i < list.Count; ++i)
         {
             MetaTreeRecord record = list[i];
 
-            if (branchMap.ContainsKey(record.Branch) == false)
-                branchMap[record.Branch] = new List<MetaTreeRecord>();
-            branchMap[record.Branch].Add(record);
+            if (dicBranch.ContainsKey(record.Branch) == false)
+                dicBranch[record.Branch] = new List<MetaTreeRecord>();
+            dicBranch[record.Branch].Add(record);
         }
     }
 

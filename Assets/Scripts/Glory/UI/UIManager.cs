@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class UIManager : MonoSingleton<UIManager>
 {
@@ -20,6 +21,9 @@ public class UIManager : MonoSingleton<UIManager>
 	private MemoryPooling<UIToastMessage> m_ToastPool;
 	private List<UIToastMessage> m_ActiveToasts = new List<UIToastMessage>();
 
+	// 마지막(리스트 끝)이 가장 최근에 열린 = 화면상 가장 위의 팝업. 뒤로가기는 이 팝업에만 전달된다
+	private List<UIPopup> m_PopupStack = new List<UIPopup>();
+
 	private FlowCommand m_FlowCommand = new FlowCommand();
 
 	public T Get<T>() where T : UIBase
@@ -31,7 +35,7 @@ public class UIManager : MonoSingleton<UIManager>
 		UIRecord record = uiTable.GetRecordByName(typeof(T).Name);
 		if (record == null)
 		{
-			Debug.Log($"[UIManager] Get Failed! UITable record not found - {typeof(T).Name}");
+			Logger.Log($"[UIManager] Get Failed! UITable record not found - {typeof(T).Name}");
 			return null;
 		}
 
@@ -62,7 +66,7 @@ public class UIManager : MonoSingleton<UIManager>
 			targetDictionary[_name] = cachedUI;
 		}
 
-		cachedUI.transform.SetAsFirstSibling();
+		cachedUI.transform.SetAsLastSibling();
 		cachedUI.Show();
 
 		if (cachedUI is T == true)
@@ -72,7 +76,7 @@ public class UIManager : MonoSingleton<UIManager>
 		}
 		else
 		{
-			Debug.Log($"cachedUI is {typeof(T).Name} convert failed!");
+			Logger.Log($"cachedUI is {typeof(T).Name} convert failed!");
 			return null;
 		}
 	}
@@ -90,7 +94,7 @@ public class UIManager : MonoSingleton<UIManager>
 		}
 		else
 		{
-			Debug.Log($"_target is RectTransform convert failed! - {_target.name}");
+			Logger.Log($"_target is RectTransform convert failed! - {_target.name}");
 		}
 	}
 
@@ -106,6 +110,44 @@ public class UIManager : MonoSingleton<UIManager>
 		if (m_UICanvas == null)
 			m_UICanvas = transform.Find(UI_CANVAS_NAME);
 		return (m_UICanvas != null) ? m_UICanvas : transform;
+	}
+
+	public void RegisterPopup(UIPopup _popup)
+	{
+		if (m_PopupStack.Contains(_popup) == true)
+			return;
+
+		m_PopupStack.Add(_popup);
+	}
+
+	public void UnregisterPopup(UIPopup _popup)
+	{
+		m_PopupStack.Remove(_popup);
+	}
+
+	// 씬 전환 등 컨텍스트 자체가 사라지는 시점에 호출 — 뒤로가기로 안 닫히게 오버라이드된 팝업도 예외 없이 전부 닫는다
+	public void CloseAllPopups()
+	{
+		List<UIPopup> popupsToClose = new List<UIPopup>(m_PopupStack);
+		for (int i = 0; i < popupsToClose.Count; ++i)
+		{
+			popupsToClose[i].Close();
+		}
+
+		List<UIToastMessage> toastsToClose = new List<UIToastMessage>(m_ActiveToasts);
+		for (int i = 0; i < toastsToClose.Count; ++i)
+		{
+			CloseToast(toastsToClose[i]);
+		}
+	}
+
+	private void OnPressBackButton()
+	{
+		if (m_PopupStack.Count <= 0)
+			return;
+
+		UIPopup topPopup = m_PopupStack[m_PopupStack.Count - 1];
+		topPopup.OnPressBackBtn();
 	}
 
 	public void ShowToast(string _message)
@@ -157,6 +199,10 @@ public class UIManager : MonoSingleton<UIManager>
 	private void Update()
 	{
 		m_FlowCommand?.Update();
+
+		// 안드로이드 하드웨어 뒤로가기가 Escape로 들어온다(새 Input System 기준, Keyboard 디바이스가 없는 환경 대비 null 체크)
+		if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame == true)
+			OnPressBackButton();
 	}
 
 }

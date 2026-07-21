@@ -10,3 +10,4 @@ Id,DisplayName,Value
 9,BaseZ,-8
 10,TapScale,0.95
 11,TapDuration,0.05
+12,TowerMaxHp,100

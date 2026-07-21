@@ -77,7 +77,7 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         T loadedData = JsonUtility.FromJson<T>(json);
         if (loadedData == null)
         {
-            Debug.LogError($"[PlayerManager] LoadData Failed! json parse error - {_saveKey} / {json}");
+            Logger.Error($"[PlayerManager] LoadData Failed! json parse error - {_saveKey} / {json}");
             return new T();
         }
 
@@ -101,7 +101,7 @@ public class PlayerManager : MonoSingleton<PlayerManager>
             case eCurrencyType.Shard:
                 return m_AssetData.Shards;
             default:
-                Debug.LogError($"[PlayerManager] GetCurrencyAmount Failed! unknown type - {_currencyType}");
+                Logger.Error($"[PlayerManager] GetCurrencyAmount Failed! unknown type - {_currencyType}");
                 return 0;
         }
     }
@@ -113,7 +113,7 @@ public class PlayerManager : MonoSingleton<PlayerManager>
             case eCurrencyType.Shard:
                 return m_ShardsObservable;
             default:
-                Debug.LogError($"[PlayerManager] GetCurrencyObservable Failed! unknown type - {_currencyType}");
+                Logger.Error($"[PlayerManager] GetCurrencyObservable Failed! unknown type - {_currencyType}");
                 return null;
         }
     }
@@ -131,7 +131,7 @@ public class PlayerManager : MonoSingleton<PlayerManager>
                 Save();
                 return true;
             default:
-                Debug.LogError($"[PlayerManager] SpendCurrency Failed! unknown type - {_currencyType}");
+                Logger.Error($"[PlayerManager] SpendCurrency Failed! unknown type - {_currencyType}");
                 return false;
         }
     }

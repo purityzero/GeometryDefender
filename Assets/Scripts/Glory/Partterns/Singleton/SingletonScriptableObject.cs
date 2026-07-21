@@ -30,7 +30,7 @@ public abstract class SingletonScriptableObject<T> : ScriptableObject where T : 
                     UnityEditor.AssetDatabase.SaveAssets();
                     UnityEditor.AssetDatabase.Refresh();
 
-                    Debug.Log($"[SingletonScriptableObject] {typeof(T).Name}을 생성했습니다: {assetPath}");
+                    Logger.Log($"[SingletonScriptableObject] {typeof(T).Name}을 생성했습니다: {assetPath}");
                     #endif
                 }
             }

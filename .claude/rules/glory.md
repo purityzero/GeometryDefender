@@ -15,8 +15,10 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 | `MonoSingleton<T>` | `T.instance` (소문자!) | MonoBehaviour 매니저. 없으면 자동 생성 + DontDestroyOnLoad |
 | `ClassSingleton<T>` | `T.Instance` | 순수 C# 클래스 |
 | `SingletonScriptableObject<T>` | `T.Instance` | Resources/{타입명}.asset 로드, 에디터에서 자동 생성 |
+| `SceneSingleton<T>` | `T.Current` (대문자) | 씬 스코프 MonoBehaviour. 자동 생성/DontDestroyOnLoad 없음 — 씬이 바뀌면 같이 사라짐 |
 
 - `MonoSingleton` 상속 시 `Awake()` 오버라이드하면 반드시 `base.Awake()` 호출 (중복 파괴 + DontDestroyOnLoad 처리).
+- `SceneSingleton<T>`은 "씬을 넘어 유지되면 안 되는" 씬 로컬 매니저/컴포넌트가 자기 자신을 `static Current`로 노출하고 싶을 때 사용 — `MonoSingleton<T>`(DontDestroyOnLoad+자동생성)을 쓰면 안 되는 자리다(2026-07-21, BaseScene/TimerManager/MonsterManager/TowerHealth 4곳에 복붙돼있던 `Current` 패턴을 추출하며 신설). 파생 클래스가 `Awake()`/`OnDestroy()`를 추가로 쓰면 반드시 `base.Awake()`/`base.OnDestroy()` 호출.
 - 접근자 대소문자가 클래스마다 다르니 주의.
 
 ## 커맨드 시퀀스 (Partterns/Command)
@@ -55,6 +57,16 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 ## 옵저버 (Partterns/Observer)
 - `ObservableVariable<T>`: `.Value` 대입 시 변경됐을 때만 `(old, new)` 통지.
 - **주의**: `RegisterObserver` 시점에 현재 값으로 즉시 1회 콜백이 온다(초기 동기화용) — 등록 시점 부작용 주의.
+- **폴링(매 프레임 값 확인) 대신 이걸 쓸지 판단 기준**: 값이 드문드문(이벤트성으로) 바뀌면 Observable이 이득(변경될 때만 콜백). 매 프레임 바뀌는 값(경과 시간 등)은 Observable로 바꿔도 콜백이 매 프레임 호출되는 건 똑같아 이득이 없다(오히려 델리게이트 호출 오버헤드만 늘 수 있음) — 이런 값은 `IUpdatable` 폴링 그대로 두는 게 낫다(2026-07-22, TimerText는 폴링 유지·KillCountText/TowerHealthText는 Observable로 전환하며 확정).
+- "씬 스코프 싱글톤(`SceneSingleton<T>`)의 `ObservableVariable<int>` 값을 텍스트로 표시"하는 반복 패턴은 `ObservableIntText<TSource>`(UI/) 재사용 — 새로 직접 구현하지 말 것.
+
+## UI 값 표시 — 옵저버 기반 텍스트 (UI/ObservableIntText)
+- `ObservableIntText<TSource>`: `TSource : SceneSingleton<TSource>`가 들고 있는 `ObservableVariable<int>`를 구독해 TMP 텍스트를 갱신하는 제네릭 베이스. 파생 클래스는 `GetSource()`(`TSource.Current` 반환) / `GetObservable(TSource)`(볼 필드 지정) / `Format(int)`(텍스트 포맷) 3개만 구현.
+- **제네릭 타입 매개변수로는 그 타입의 static 멤버(`TSource.Current`)에 직접 접근 불가**(C# 컴파일 에러 CS0704) — 그래서 `GetSource()`를 구체 타입을 아는 파생 클래스가 구현하도록 설계돼 있다. 비슷한 "제네릭 제약 타입의 static 멤버" 패턴을 새로 만들 때 동일한 제약에 부딪힐 수 있음, 미리 알아둘 것.
+- 내부적으로 `TSource.Current`가 준비될 때까지만 `IUpdatable`로 폴링하다가, 구독에 성공하면 그 뒤론 이벤트로만 갱신(폴링 목록에서 스스로 빠지진 않지만 이후 비용은 필드 null 체크 1회뿐).
+
+## 직렬화 필드 리네임 시 주의 (전 영역 공통)
+MonoBehaviour의 `[SerializeField]` 필드 이름을 바꾸면, 씬/프리팹에 이미 저장된 참조는 새 이름과 매칭이 안 돼 **에러 없이 조용히 null로 떨어진다**(런타임에야 NRE로 터짐 — 컴파일 타임엔 안 잡힘). 특히 여러 클래스에 흩어져 있던 필드를 공용 베이스 클래스로 옮기면서 이름까지 통일할 때 자주 발생(2026-07-22, KillCountText/TowerHealthText를 ObservableIntText로 합치면서 실제로 겪음). 필드를 리네임/이동할 땐 `[FormerlySerializedAs("옛이름")]`(`UnityEngine.Serialization`)을 붙여 기존 씬 데이터를 그대로 살릴 것 — 여러 옛 이름이 하나의 새 필드로 합쳐지는 경우 이 attribute를 여러 번 스택해도 된다. 코드만 보고 "리팩토링 끝났다"고 판단하지 말고, 실제로 씬을 열어(또는 MCP로 컴포넌트 속성 조회) 참조가 여전히 연결돼 있는지 확인할 것.
 
 ## 씬 전환 (Scene/SceneManager)
 - `SceneManager.instance.NextScene(name)`: 페이드아웃 → additive 로드 → 이전 씬 언로드 → DontDestroy 정리 → 메모리 정리 → 페이드인. 전환 중 여부는 `IsSceneTransitioning`.
@@ -76,8 +88,12 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 
 ## UI (UI/)
 - 화면 단위 UI는 `UIBase` 상속 (Show/Close 가상 메서드), `UIManager.Get<T>(name)` 으로 접근.
+- **오버레이로 열리고 닫히는 화면(팝업/다이얼로그류)은 `UIBase` 대신 `UIPopup` 상속** (2026-07-22 신설) — 뒤로가기 대상이 되고, 씬 전환 시 자동으로 일괄 정리된다. 기존 `Show()`를 오버라이드하는 파생 클래스도 `base.Show()`만 부르고 있으면 상속만 바꿔도 별도 코드 수정 없이 동작.
+  - 뒤로가기로 안 닫혀야 하는 팝업은 `OnPressBackBtn()`을 오버라이드(기본은 `Close()`). 단, 씬 전환 시 호출되는 `UIManager.CloseAllPopups()`는 이 오버라이드와 무관하게 무조건 전부 닫는다(뒤로가기 저항과 씬 전환 정리는 별개 경로).
+  - 새 팝업 화면을 만들 때 UITable.csv의 `UIType`도 `Popup`으로 등록해야 PopupCanvas(UICanvas보다 sortingOrder 높음)에 들어간다 — `UIPopup` 상속과 `UIType=Popup`은 세트로 맞출 것(하나만 하면 계층/레이어와 스택 관리가 어긋남).
 - 재화 표시는 `UIAssetBox`(단일) / `UIAssetBoxGroup`(일괄 Refresh) 재사용 — 보유량은 PlayerManager 경유.
-- `UIManager.Get<T>()`(파라미터리스)는 UITable에서 `typeof(T).Name`으로 경로/타입을 조회해 생성 — 컴포넌트명 == 프리팹명 == UITable.UIName 동일 규칙 전제. UIType이 Popup이면 자식 "PopupCanvas", 아니면 "UICanvas" 아래에 생성/캐싱(이름으로 Find, 없으면 UIManager 직속 폴백). 파괴된 캐시는 재생성한다 (2026-07-15 수정). `Get<T>(경로)` 직접 호출은 일반 UI 취급.
+- `UIManager.Get<T>()`(파라미터리스)는 UITable에서 `typeof(T).Name`으로 경로/타입을 조회해 생성 — 컴포넌트명 == 프리팹명 == UITable.UIName 동일 규칙 전제. UIType이 Popup이면 자식 "PopupCanvas", 아니면 "UICanvas" 아래에 생성/캐싱(이름으로 Find, 없으면 UIManager 직속 폴백). 파괴된 캐시는 재생성한다 (2026-07-15 수정). `Get<T>(경로)` 직접 호출은 일반 UI 취급. 생성/재사용 직후 `SetAsLastSibling()`으로 같은 부모 내 최상단으로 올린다(2026-07-22 수정 — 이전엔 `SetAsFirstSibling()`이라 새로 연 UI가 오히려 맨 뒤로 가는 버그가 있었음. **uGUI는 sibling index가 클수록(= 나중 형제일수록) 위에 그려진다**, 새 UI를 앞에 오게 하려면 항상 Last).
+- **뒤로가기(안드로이드/iOS) 감지는 새 Input System 기준**: 이 프로젝트는 `ProjectSettings.activeInputHandler`가 새 Input System 전용이라 레거시 `UnityEngine.Input`은 런타임에 예외를 던진다. `UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame`(null 체크 필수)로 감지할 것 — 안드로이드 하드웨어 뒤로가기가 플랫폼 레벨에서 Escape로 매핑되어 들어온다. 다른 프로젝트에 이 폴더를 복사할 때 `com.unity.inputsystem` 패키지 의존이 생긴다(허용 의존 원칙의 조건부 예외로 취급).
 
 ## 기타
 - `CullingObject`: 뷰포트 밖이면 SetActive(false). `UpdateLogic()`을 외부에서 호출해줘야 동작.

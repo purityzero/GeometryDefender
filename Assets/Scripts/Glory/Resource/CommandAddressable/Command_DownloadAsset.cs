@@ -40,7 +40,7 @@ public class Command_DownloadAsset : ICommand
         {
             Addressables.Release(m_Handle);
             m_IsFinished = true;
-            Debug.Log($"Download for {m_AssetKey} has been cancelled.");
+            Logger.Log($"Download for {m_AssetKey} has been cancelled.");
         }
     }
 

@@ -1,6 +1,6 @@
 # InGameScene
 
-연관 클래스: MonsterManager, SpawnManager, TimerManager, BaseScene(부모), IUpdatable
+연관 클래스: MonsterManager, SpawnManager, TimerManager, TowerHealth, BaseScene(부모), IUpdatable
 
 ## 개요
 인게임 씬 진입점. 씬 배치 컴포넌트로 MonsterManager / SpawnManager / TimerManager를 직렬화 참조해 Init 호출.
@@ -142,3 +142,101 @@ Start:10 NRE(m_SpawnManager null) 수정 — 씬의 SpawnManager 오브젝트에
 
 ### 수정 (함수 단위)
 **OnSetup()**: `UIManager.instance.Get<UIInGameHUD>();` 줄 제거 (2026-07-21-1 이전 상태로 복귀)
+
+---
+
+## 2026-07-21-4
+
+### 개요
+사용자 요청 — "적군에 닿으면 HP가 닳고" 기능 배선. 상세는 [[TowerHealth]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (함수 단위)
+
+**필드**: `[SerializeField] private TowerHealth m_TowerHealth;` 추가
+
+**OnSetup()**
+- 전:
+```csharp
+protected override void OnSetup()
+{
+    m_MonsterManager.Init();
+    m_SpawnManager.Init();
+    m_TimerManager.Init();
+}
+```
+- 후:
+```csharp
+protected override void OnSetup()
+{
+    m_MonsterManager.Init();
+    m_SpawnManager.Init();
+    m_TimerManager.Init();
+
+    GameConfigTable gameConfigTable = TableManager.instance.GetTable<GameConfigTable>();
+    if (gameConfigTable == null)
+    {
+        Debug.LogError($"[InGameScene] OnSetup Failed to init TowerHealth! GameConfigTable not loaded - TableManager.init() 선행 필요");
+        return;
+    }
+
+    int towerMaxHp = (int)gameConfigTable.GetValue("TowerMaxHp", 100f);
+    m_TowerHealth.Init(towerMaxHp);
+    m_MonsterManager.OnMonsterReachEnd += m_TowerHealth.OnEnemyReachTower;
+}
+```
+- null 가드는 `MonsterManager.Init()`의 `enemyTable` 가드와 동일 패턴(InGame 단독 플레이 등 TableManager 미초기화 상황 대비).
+
+### 수정 (오브젝트 단위, InGameScene.unity)
+- ActorPlayer(fileID 1165160029): TowerHealth 컴포넌트(fileID 1165160032) 신규 추가 (Unity MCP `manage_components` 경유, guid 자동 발급)
+- InGameScene(532887962): `m_TowerHealth: {fileID: 1165160032}` 추가
+
+### 검증
+Unity MCP로 컴파일 확인(에러 0건). 실제 씬 흐름 End-to-End 검증은 client-issues.md 2026-07-21-1의 선행 버그로 막힘 — 격리 로직 검증은 [[TowerHealth]] 2026-07-21-4 참고.
+
+---
+
+## 2026-07-21-5
+
+### 개요
+사용자 지적 — 위 2026-07-21-4에서 추가한 `OnSetup()`의 `Debug.LogError`가 glory.md의 "빌드에서 제거돼야 할 로그는 `Debug.Log` 대신 `Logger.Log`/`Error` 사용" 규칙을 놓침. `Logger.Error`로 교체(같은 실수가 TowerHealth.cs에도 있어 함께 수정, [[TowerHealth]] 2026-07-21-6 참고).
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+**OnSetup()**
+- 전: `Debug.LogError($"[InGameScene] OnSetup Failed to init TowerHealth! GameConfigTable not loaded - TableManager.init() 선행 필요");`
+- 후: `Logger.Error($"[InGameScene] OnSetup Failed to init TowerHealth! GameConfigTable not loaded - TableManager.init() 선행 필요");`
+
+### 검증
+컴파일 확인(Unity MCP `refresh_unity` + `read_console`, 에러 0건).
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 요청("UIRunOver도 만들어줘" → "RunOver가 뜨면 뒤에 게임은 멈춰야 할꺼 같아") — `TowerHealth.OnDie` 구독 + 게임 일시정지. 상세는 [[UIRunOver]] 2026-07-22-0/2026-07-22-1 참고(이 문서엔 InGameScene.cs 변경분만 요약).
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+**OnSetup()**
+- 후: `m_TowerHealth.OnDie += OnTowerDie;` 추가(`m_MonsterManager.OnMonsterReachEnd += m_TowerHealth.OnEnemyReachTower;` 다음 줄)
+
+**OnTowerDie() (신규)**
+```csharp
+private void OnTowerDie()
+{
+    Time.timeScale = 0f;
+    UIManager.instance.Get<UIRunOver>();
+}
+```
+
+### 검증
+[[UIRunOver]] 2026-07-22-0/2026-07-22-1 참고 — Play Mode 실측으로 화면 표시/버튼 동작/일시정지 전부 확인.

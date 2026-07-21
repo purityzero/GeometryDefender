@@ -15,7 +15,7 @@ public static class ResUtil
     {
         if (string.IsNullOrEmpty(_path) == true)
         {
-            Debug.LogError("Load Path == null");
+            Logger.Error("Load Path == null");
             return null;
         }
 
@@ -23,7 +23,7 @@ public static class ResUtil
         T _res = Resources.Load<T>(_path);
         if (null == _res)
         {
-            Debug.LogErrorFormat("ResUtil::Load() Load Failed : {0}", _path);
+            Logger.Error($"ResUtil::Load() Load Failed : {_path}");
             return null;
         }
         return _res;
@@ -71,7 +71,7 @@ public static class ResUtil
         T _component = _obj.GetComponent<T>();
         if(_component == null )
         {
-            Debug.LogErrorFormat("ResUtil::TCreate() Create no Component : {0} ", _path);
+            Logger.Error($"ResUtil::TCreate() Create no Component : {_path} ");
             GameObject.Destroy(_obj);
             return null;
         }
@@ -82,13 +82,13 @@ public static class ResUtil
     {
         if (null == _self)
         {
-            Debug.LogError("ResUtil::Attach() null == self");
+            Logger.Error("ResUtil::Attach() null == self");
             return;
         }
 
         if (null == _parent)
         {
-            Debug.LogError("ResUtil::Attach() null == parent");
+            Logger.Error("ResUtil::Attach() null == parent");
             return;
         }
 
@@ -102,13 +102,13 @@ public static class ResUtil
     {
         if (null == _self)
         {
-            Debug.LogError("ResUtil::Attach() null == self");
+            Logger.Error("ResUtil::Attach() null == self");
             return;
         }
 
         if (null == _parent)
         {
-            Debug.LogError("ResUtil::Attach() null == parent");
+            Logger.Error("ResUtil::Attach() null == parent");
             return;
         }
 
@@ -123,7 +123,7 @@ public static class ResUtil
     {
         if( null == _transform )
         {
-            Debug.LogError("ResUtil::SetAllLayer() Transform == null ");
+            Logger.Error("ResUtil::SetAllLayer() Transform == null ");
             return;
         }
         _transform.gameObject.layer = _layer;
@@ -138,7 +138,7 @@ public static class ResUtil
     {
         if (null == _prefab)
         {
-            Debug.LogError("ResUtil::Create() null == prefab");
+            Logger.Error("ResUtil::Create() null == prefab");
             return null;
         }
 
@@ -151,7 +151,7 @@ public static class ResUtil
     {
         if (null == _prefab)
         {
-            Debug.LogError("ResUtil::Create() null == prefab");
+            Logger.Error("ResUtil::Create() null == prefab");
             return null;
         }
 

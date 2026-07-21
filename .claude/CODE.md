@@ -43,6 +43,7 @@
 | 콜백 / 이벤트 / Action / delegate | `On` 만 사용 | `event Action OnDie` |
 | 버튼 핸들러 | `OnClick` + 파스칼 표기법 | `void OnClickStartButton()` |
 | 인터페이스 | `I` + 파스칼 표기법 (handler 등 수식어 금지) | `IInteractable`, `IDamageable` |
+| Dictionary 필드/변수 | `Map` 대신 `Hash` 또는 `Dic`을 접두사로 사용 | `m_HashEnemy`, `dicScore` |
 
 ---
 
@@ -62,6 +63,19 @@ if (isAlive == false)
 
 // ❌ 잘못된 사용
 if (!isAlive)
+    return;
+```
+
+### 숫자 비교
+- 정수/실수 값을 비교할 때 `==`/`!=`를 쓰지 않는다. `<=`, `>=`, `<`, `>` 같은 범위 비교로 작성한다 — 계산이 정확히 그 값을 지나치지 않는다는 보장이 없거나(클램프가 나중에 풀리는 등), 부동소수점 오차가 있을 수 있는 값은 정확한 일치 비교가 위험하다.
+
+```csharp
+// ✅ 올바른 사용
+if (currentHp <= 0)
+    return;
+
+// ❌ 잘못된 사용
+if (currentHp == 0)
     return;
 ```
 

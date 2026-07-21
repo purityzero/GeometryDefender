@@ -1,6 +1,6 @@
 # SceneManager
 
-연관 클래스: MonoSingleton, FlowCommand, Command_Fade, Logger, TitleScene(호출처)
+연관 클래스: MonoSingleton, FlowCommand, Command_Fade, Logger, TitleScene(호출처), UIManager/[[UIPopup]](2026-07-22부터 — `NextScene()`이 `CloseAllPopups()` 호출)
 
 ## 개요
 씬 전환 매니저 (Glory 라이브러리). `NextScene(name)`: 페이드아웃 → additive 로드 → 이전 씬 언로드 → DontDestroy 정리 → 메모리 정리 → 페이드인. 같은 파일에 씬 전환용 커맨드 4종(Command_LoadScene/UnloadScene/CleanupMemory/CleanupDontDestroy) 포함.
@@ -89,3 +89,20 @@ Object.Destroy(rootObject);
 - 컴파일 정상.
 - TitleScene→InGameScene 전환(실제 UI 버튼 클릭 경로) 후 `EntityQueryImpl.get_IsEmpty` NRE 재현 안 됨. `World.All.Count`가 전환 전(6) → 전환 중 → 전환 후(6)로 프레임 단위로 추적해도 한 번도 줄지 않음 — `Command_CleanupDontDestroy`가 ECS World를 더 이상 건드리지 않는 것으로 확인.
 - `[DOTween]`/`[Debug Updater]`/Addressables 헬퍼 개별 생존 여부는 이번에도 이름 기준으로 직접 조회하지 않음(여전히 미확인) — 다만 이 셋(혹은 조합) 파괴가 ECS World 손상의 트리거였다는 게 기존 결론이었고, World가 안 깨졌으므로 최소한 트리거가 되는 파괴는 더 이상 발생하지 않는 것으로 간접 확인.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 요청("씬이 이동하면 (팝업이) 정리대상이야") — [[UIPopup]] 신설과 함께, 씬을 실제로 넘어가기 전에 열려있던 팝업/토스트를 전부 닫도록 배선. 상세는 [[UIPopup]] 2026-07-22-0 참고.
+
+### 파일
+- Assets/Scripts/Glory/Scene/SceneManager.cs
+
+### 수정 (함수 단위)
+**NextScene(string)**
+- 후: 맨 앞(로그 다음 줄)에 `UIManager.instance.CloseAllPopups();` 추가 — 페이드아웃이 시작되기도 전에 즉시 닫음(굳이 FlowCommand로 감쌀 필요 없이 동기 호출로 충분).
+
+### 검증
+[[UIPopup]] 2026-07-22-0 참고 — 실제 TitleScene→InGameScene 전환 경로로 팝업 스택/토스트 정리 흐름 자체는 코드 배선만 확인, `NextScene()` 호출 시점에 열린 팝업이 있는 상태에서의 End-to-End 검증(전환 직전에 팝업을 띄워둔 채 전환)은 별도로 안 함(CloseAllPopups() 자체는 [[UIPopup]]에서 직접 호출 검증 완료).
