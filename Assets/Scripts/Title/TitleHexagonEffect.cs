@@ -11,10 +11,4 @@ public class TitleHexagonEffect : MonoBehaviour
     {
         HexagonImage.DOFade(0f, Speed).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.Linear);
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

@@ -60,6 +60,12 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 - `SceneManager.instance.NextScene(name)`: 페이드아웃 → additive 로드 → 이전 씬 언로드 → DontDestroy 정리 → 메모리 정리 → 페이드인. 전환 중 여부는 `IsSceneTransitioning`.
 - 전환 시 `Command_CleanupDontDestroy` 가 DontDestroyOnLoad 루트 오브젝트를 정리하되, **`MonoSingleton<>` 컴포넌트를 포함한 계층은 제외**한다 (2026-07-14 수정). 씬을 넘어 유지할 오브젝트는 MonoSingleton 기반으로 만들 것 — 아니면 전환 시 파괴된다.
 
+## 씬 진입점 베이스 + 중앙 Update (Scene/BaseScene, Scene/IUpdatable)
+- 씬 진입점 컴포넌트(TitleScene, InGameScene 등)는 `MonoBehaviour` 대신 `BaseScene`을 상속한다. `Start()`를 직접 갖지 말고 `protected override void OnSetup()`에 씬 진입 초기화를 넣는다(BaseScene.Start()가 대신 호출).
+- 씬에 배치된 매니저(예: MonsterManager, SpawnManager)의 매 프레임 로직은 자기 자신의 MonoBehaviour `Update()` 대신 `IUpdatable.UpdateLogic()`으로 구현하고, `Start()`에서 `BaseScene.Current.Register(this)`로 등록한다(등록은 Awake가 아니라 Start에서 — BaseScene.Awake가 Current를 먼저 세팅해두므로 순서가 항상 안전함). `OnDestroy()`에서 `BaseScene.Current?.Unregister(this)` 호출.
+- **예외**: `MonoSingleton<T>` 기반 전역 매니저(SceneManager 등 씬을 넘어 유지되는 것)는 이 패턴을 타지 않고 계속 자기 자신의 Update()로 스스로 구동한다(2026-07-21 사용자 확정) — IUpdatable을 구현하지 않으면 되므로 별도 분기 코드 불필요.
+- 새 씬 진입점이나 씬 로컬 매니저를 추가할 때 이 패턴부터 재사용할 것 — 상세는 .claude/class/BaseScene.md, .claude/class/IUpdatable.md.
+
 ## 테이블 (Table/)
 - 흐름: `TableManager.instance.init()` (GameManager.Awake에서 호출) → `GetTable<T>()`.
 - CSV는 `Resources/Table/*.csv`, 레코드는 `Record` 상속(+`Table<T>` 파생 클래스), **CSV 헤더명 == 필드명** (리플렉션 매핑, 불일치 시 LogError만 나오고 기본값 유지 — CLAUDE.md 데이터 레이어 버그 유형 (1) 참고).

@@ -1,11 +1,8 @@
-using UnityEngine;
-
-public class TitleScene : MonoBehaviour
+public class TitleScene : BaseScene
 {
-    private void Start()
+    protected override void OnSetup()
     {
         //하지마라
-
     }
 
     public void OnClickPlayButton()

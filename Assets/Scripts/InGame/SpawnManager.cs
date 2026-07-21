@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class SpawnManager : MonoBehaviour
+public class SpawnManager : MonoBehaviour, IUpdatable
 {
     [SerializeField] private MonsterManager m_MonsterManager;
     [SerializeField] private float m_SpawnInterval = 1f;
@@ -35,7 +35,17 @@ public class SpawnManager : MonoBehaviour
         m_isInitialized = true;
     }
 
-    private void Update()
+    private void Start()
+    {
+        BaseScene.Current.Register(this);
+    }
+
+    private void OnDestroy()
+    {
+        BaseScene.Current?.Unregister(this);
+    }
+
+    public void UpdateLogic()
     {
         if (m_isInitialized == false)
             return;

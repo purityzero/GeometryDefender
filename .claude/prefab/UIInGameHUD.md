@@ -1,6 +1,6 @@
 # UIInGameHUD (Assets/Resources/Prefabs/UI/UIInGameHUD.prefab)
 
-연관 스크립트: 없음 (구성요소만 — 화면 제어 스크립트 미작성)
+연관 스크립트: [[UIInGameHUD]] (루트 부착, 빈 스텁 — 실사용처 없음, 아래 2026-07-21-1 참고)
 중첩 프리팹: 없음
 기획 근거: Assets/Design/07_ui.html 화면 2 (FIG-07-B · INGAME HUD)
 
@@ -58,3 +58,29 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치
 
 ### 미검증
 에디터에서 스크립트 연결(Missing 아님) 확인 필요.
+
+---
+
+## 2026-07-21-0 (2026-07-21-1에서 되돌림)
+
+### 개요
+사용자 요청: 인게임 시간 UI 갱신. UIInGameHUD(루트, fileID ...1900)의 `m_TimeText`를 Text_Time(TextMeshProUGUI, fileID 9002000000000001027)에 연결. 상세 로직은 [[UIInGameHUD]] 참고.
+
+### 수정 (오브젝트 단위)
+
+**UIInGameHUD (루트, ...1900)**
+- 전: `m_Script`만 있고 직렬화 필드 없음
+- 후: `m_TimeText: {fileID: 9002000000000001027}` 추가
+
+---
+
+## 2026-07-21-1
+
+### 개요
+사용자 지적으로 위 작업이 잘못 짚었다는 걸 확인 — 이 prefab은 실제 게임에 연결된 적이 없었고, 진짜 HUD는 InGameScene.unity에 이미 손으로 배치돼 있었음(Canvas/Top/Timer 등). 상세 경위는 [[UIInGameHUD]] 2026-07-21-1, 실제 연결처는 [[TimerText]] 참고.
+
+### 수정 (오브젝트 단위)
+
+**UIInGameHUD (루트, ...1900)**
+- 전: `m_TimeText: {fileID: 9002000000000001027}`
+- 후: 해당 줄 제거 (2026-07-21-0 이전 상태로 복귀)

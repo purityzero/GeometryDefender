@@ -6,7 +6,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-public class MonsterManager : MonoBehaviour
+public class MonsterManager : MonoBehaviour, IUpdatable
 {
     [SerializeField] private Transform m_PoolParent;
 
@@ -111,7 +111,12 @@ public class MonsterManager : MonoBehaviour
         m_EntityManager.GetBuffer<DamageRequest>(_entity).Add(new DamageRequest { Amount = _amount });
     }
 
-    private void Update()
+    private void Start()
+    {
+        BaseScene.Current.Register(this);
+    }
+
+    public void UpdateLogic()
     {
         if (m_isInitialized == false)
             return;
@@ -168,6 +173,8 @@ public class MonsterManager : MonoBehaviour
         if (ColorUtility.TryParseHtmlString(_record.ColorHex, out Color color) == true)
             actorMonster.SetColor(color);
 
+        actorMonster.transform.localScale = Vector3.one * _record.VisualSize;
+
         m_VisualMap[_entity] = (_record.Shape, actorMonster);
 
         m_EntityManager.AddComponentObject(_entity, new VisualObject
@@ -187,11 +194,19 @@ public class MonsterManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        BaseScene.Current?.Unregister(this);
+
         if (m_isInitialized == false)
             return;
 
-        m_DeadQuery.Dispose();
-        m_ReachedEndQuery.Dispose();
+        // Play Mode 종료 시 World가 MonsterManager보다 먼저 정리되는 타이밍이 있음
+        // — 이미 무효화된 EntityQuery를 Dispose하면 NRE가 나므로 World 생존 여부를 먼저 확인
+        if (World.DefaultGameObjectInjectionWorld != null && World.DefaultGameObjectInjectionWorld.IsCreated == true)
+        {
+            m_DeadQuery.Dispose();
+            m_ReachedEndQuery.Dispose();
+        }
+
         m_MonsterFactory.Clear();
     }
 }

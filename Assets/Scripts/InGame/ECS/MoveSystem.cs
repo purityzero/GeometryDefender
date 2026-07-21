@@ -30,9 +30,11 @@ public partial struct MoveSystem : ISystem
             Vector2 waypointPosition = waypoints[moveData.ValueRO.CurrentWaypointIndex].Position;
             float3 targetPosition = new float3(waypointPosition.x, waypointPosition.y, 0f);
             float3 currentPosition = localTransform.ValueRO.Position;
+            float distanceToTarget = math.distance(currentPosition, targetPosition);
+            float moveDistance = math.min(moveData.ValueRO.MoveSpeed * deltaTime, distanceToTarget);
             float3 direction = math.normalizesafe(targetPosition - currentPosition);
 
-            localTransform.ValueRW.Position = currentPosition + direction * moveData.ValueRO.MoveSpeed * deltaTime;
+            localTransform.ValueRW.Position = currentPosition + direction * moveDistance;
 
             if (math.distance(localTransform.ValueRO.Position, targetPosition) < 0.05f)
             {

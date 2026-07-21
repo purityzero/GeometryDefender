@@ -1,13 +1,13 @@
 # InGameScene
 
-연관 클래스: MonsterManager, SpawnManager
+연관 클래스: MonsterManager, SpawnManager, TimerManager, BaseScene(부모), IUpdatable
 
 ## 개요
-인게임 씬 진입점. 씬 배치 컴포넌트로 MonsterManager / SpawnManager를 직렬화 참조해 Start에서 Init 호출.
+인게임 씬 진입점. 씬 배치 컴포넌트로 MonsterManager / SpawnManager / TimerManager를 직렬화 참조해 Init 호출.
 
 ## 현재 상태
-- `Start()`: m_MonsterManager.Init() → m_SpawnManager.Init()
-- Update는 비어 있음
+- `BaseScene`을 상속(2026-07-21). `Start()`를 직접 갖지 않고 `OnSetup()`(protected override)에서 m_MonsterManager.Init() → m_SpawnManager.Init() → m_TimerManager.Init() 호출 — BaseScene.Start()가 대신 호출해줌.
+- 자체 `Update()` 없음 — MonsterManager/SpawnManager가 각자 `IUpdatable.UpdateLogic()`을 구현하고 씬의 `BaseScene.Current`(= 이 InGameScene 인스턴스)에 등록, BaseScene의 Update()가 대신 구동. 상세는 [[BaseScene]] 참고.
 
 ---
 
@@ -64,3 +64,81 @@ Start:10 NRE(m_SpawnManager null) 수정 — 씬의 SpawnManager 오브젝트에
 
 ### 미검증
 컴파일/씬 파싱/실동작 확인 필요.
+
+---
+
+## 2026-07-21-0
+
+### 개요
+사용자 요청: InGameScene/TitleScene이 공통 BaseScene을 상속받도록 구조 변경 + 씬에 배치된 매니저들의 Update를 Scene 스크립트가 대신 구동. 상세 설계는 [[BaseScene]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+
+**클래스 선언**
+- 전: `public class InGameScene : MonoBehaviour`
+- 후: `public class InGameScene : BaseScene`
+
+**Start() → OnSetup()**
+- 전: `void Start() { m_MonsterManager.Init(); m_SpawnManager.Init(); }`
+- 후: `protected override void OnSetup() { m_MonsterManager.Init(); m_SpawnManager.Init(); }` (내용 동일, 호출 주체만 BaseScene.Start()로 이동 — 실행 시점은 동일하게 Start 단계)
+
+**Update()**
+- 전: `void Update() { }` (빈 구현)
+- 후: 메서드 자체 삭제 (BaseScene이 대신 구동)
+
+### 미검증
+컴파일/에디터 미실행 상태 편집. 실제 Play Mode로 MonsterManager/SpawnManager 정상 동작(Init 호출 시점, Update 틱) 확인 필요.
+
+---
+
+## 2026-07-21-1
+
+### 개요
+사용자 요청: InGame에서 쓸 TimerManager 신설(QA용 에디터 전용 TimeScale 조정 포함). 상세는 [[TimerManager]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (함수 단위)
+**필드**: `[SerializeField] private TimerManager m_TimerManager;` 추가
+**OnSetup()**: `m_MonsterManager.Init(); m_SpawnManager.Init();` 다음 줄에 `m_TimerManager.Init();` 추가
+
+### 수정 (씬, 오브젝트 단위)
+- InGameScene 하위에 TimerManager 오브젝트 신규 배치(GameObject 812340001/Transform 812340002/MonoBehaviour 812340003)
+- InGameScene(532887962): `m_TimerManager: {fileID: 812340003}` 추가
+
+### 미검증
+컴파일/에디터 미실행 상태 편집. [[TimerManager]] 참고.
+
+---
+
+## 2026-07-21-2
+
+### 개요
+사용자 요청: InGameScene에서 UI의 시간도 갱신되게. HUD를 실제로 띄우는 호출이 프로젝트 어디에도 없어서 추가. 상세는 [[UIInGameHUD]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+**OnSetup()**: 매니저 Init 3종 호출 다음 줄에 `UIManager.instance.Get<UIInGameHUD>();` 추가
+
+### 미검증
+[[UIInGameHUD]] 2026-07-21-0 참고.
+
+---
+
+## 2026-07-21-3 (위 2026-07-21-2 되돌림)
+
+### 개요
+사용자 지적으로 2026-07-21-2가 잘못된 대상(안 쓰이던 UIInGameHUD.prefab)에 연결했다는 게 드러나 되돌림 — 상세는 [[UIInGameHUD]] 2026-07-21-1, 실제 연결은 [[TimerText]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+**OnSetup()**: `UIManager.instance.Get<UIInGameHUD>();` 줄 제거 (2026-07-21-1 이전 상태로 복귀)

@@ -77,3 +77,15 @@ Object.Destroy(rootObject);
 
 ### 미검증
 컴파일, 실제 Title→InGame 전환 후 NRE 미발생 확인 필요. [DOTween]/[Debug Updater]/Addressables 헬퍼가 계속 씬을 넘어 생존하는지도 함께 확인(부작용: 원래 이 커맨드가 지우려던 "진짜" 프로젝트 leftover가 있었다면 그건 계속 정리됨 — 영향 없음).
+
+---
+
+## 2026-07-20-1
+
+### 개요
+위 미검증 항목 중 컴파일/NRE 재발 여부를 실제 Play Mode로 검증(코드 수정 없음, md 갱신만). 검증 방법은 [SpawnManager.md](./SpawnManager.md) 2026-07-20-1 참고.
+
+### 검증 결과
+- 컴파일 정상.
+- TitleScene→InGameScene 전환(실제 UI 버튼 클릭 경로) 후 `EntityQueryImpl.get_IsEmpty` NRE 재현 안 됨. `World.All.Count`가 전환 전(6) → 전환 중 → 전환 후(6)로 프레임 단위로 추적해도 한 번도 줄지 않음 — `Command_CleanupDontDestroy`가 ECS World를 더 이상 건드리지 않는 것으로 확인.
+- `[DOTween]`/`[Debug Updater]`/Addressables 헬퍼 개별 생존 여부는 이번에도 이름 기준으로 직접 조회하지 않음(여전히 미확인) — 다만 이 셋(혹은 조합) 파괴가 ECS World 손상의 트리거였다는 게 기존 결론이었고, World가 안 깨졌으므로 최소한 트리거가 되는 파괴는 더 이상 발생하지 않는 것으로 간접 확인.

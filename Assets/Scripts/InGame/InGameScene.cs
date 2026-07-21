@@ -1,18 +1,15 @@
 using UnityEngine;
 
-public class InGameScene : MonoBehaviour
+public class InGameScene : BaseScene
 {
     [SerializeField] private MonsterManager m_MonsterManager;
     [SerializeField] private SpawnManager m_SpawnManager;
-    void Start()
+    [SerializeField] private TimerManager m_TimerManager;
+
+    protected override void OnSetup()
     {
         m_MonsterManager.Init();
         m_SpawnManager.Init();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
+        m_TimerManager.Init();
     }
 }

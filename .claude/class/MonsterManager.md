@@ -5,6 +5,7 @@
 - MemoryPoolFactory
 - WayPoint
 - EnemyRecord
+- BaseScene, IUpdatable (Update 대신 구동)
 - (ECS 컴포넌트) HealthData, MoveData, RewardData, MonsterTag, DeadTag, ReachedEndTag, WaypointElement, DamageRequest, VisualObject
 
 ---
@@ -33,10 +34,9 @@ void Start()
 Inspector에서 `PoolParent` Transform을 반드시 연결해두어야 합니다.
 풀링된 몬스터 오브젝트들이 이 Transform 아래에 생성됩니다.
 
-몬스터 프리팹 경로는 Init()에 하드코딩되어 있습니다:
-- Cube: `Prefabs/Monster/Cube`
-- Sphere: `Prefabs/Monster/Sphere`
-- Capsule: `Prefabs/Monster/Capsule`
+몬스터 프리팹 경로는 하드코딩이 아니라 `TableManager.instance.GetTable<EnemyTable>().shapeMap`을 순회해 각 Shape의 `PrefabPath`로 구성됩니다(2026-07-15-0에 하드코딩에서 테이블 기반으로 변경, 아래 "1. 초기화"의 예시 코드만 옛 버전이라 이 문단으로 정정 — 상세는 이 문서 하단 2026-07-15-0 항목 참고). 2026-07-20 기준 실제 EnemyTable 데이터는 Cube/Sphere/Capsule이 아니라 다음 6종:
+- Triangle(Normal), Circle(Swift), Square(Heavy), Diamond(Splitter), Pentagon(Ranged) — 각 Normal/Elite 변형
+- Star — 5종 species 공통 Boss 변형
 
 ---
 
@@ -188,7 +188,7 @@ MonsterManager
 
 ### 생명주기
 
-1. **스폰** — `Spawn(EnemyRecord)`: `WayPoint.GetRandomWayPoint()`로 외곽 원 위 랜덤 위치에 스폰, WaypointBuffer에 목적지(`Vector2.zero`) 추가, MemoryPoolFactory에서 ActorMonster를 꺼내 색상 설정, VisualObject로 Entity ↔ ActorMonster 연결.
+1. **스폰** — `Spawn(EnemyRecord)`: `WayPoint.GetRandomWayPoint()`로 외곽 원 위 랜덤 위치에 스폰, WaypointBuffer에 목적지(`Vector2.zero`) 추가, MemoryPoolFactory에서 ActorMonster를 꺼내 색상 설정 + `_record.VisualSize`로 크기 설정(2026-07-21, [[EnemyRecord]] VisualSize 섹션 참고), VisualObject로 Entity ↔ ActorMonster 연결.
 2. **이동** — MoveSystem (SimulationSystemGroup): `WaypointBuffer[CurrentWaypointIndex]` 방향으로 직선 이동, 도착(`distance < 0.05f`) 시 인덱스 증가, 소진 시 `ReachedEndTag` 추가.
 3. **데미지** — HealthSystem (MoveSystem 이후): DamageRequestBuffer 합산 → CurrentHp 감소, 0 이하면 `DeadTag` 추가.
 4. **위치 동기화** — VisualSyncSystem (PresentationSystemGroup): Entity의 `LocalTransform.Position` → `ActorMonster.transform.position` 복사. ECS 데이터가 실제 GameObject 위치를 결정.
@@ -204,7 +204,7 @@ SimulationSystemGroup
 PresentationSystemGroup
 └── VisualSyncSystem    GameObject 위치 동기화
 
-MonoBehaviour.Update (MonsterManager)
+BaseScene.Update → MonsterManager.UpdateLogic (2026-07-21부터 자체 Update() 아님, [[BaseScene]] 참고)
 └── DeadTag / ReachedEndTag 감지 → 이벤트 발행 → Entity 제거
 ```
 
@@ -282,3 +282,126 @@ InGame 씬을 **단독 플레이**하면 씬에 GameManager가 없어(TitleScene
 
 ### 미검증
 [SceneManager.md](./SceneManager.md) 2026-07-20-0 수정 적용 후 실제 NRE 미발생 확인 필요.
+
+---
+
+## 2026-07-20-1
+
+### 개요
+위 미검증 항목 실제 Play Mode로 검증(코드 수정 없음, md 갱신만). 검증 방법은 [SpawnManager.md](./SpawnManager.md) 2026-07-20-1 참고(TitleScene→InGameScene 실제 UI 클릭 + `EditorApplication.Step()`으로 프레임 수동 진행).
+
+### 검증 결과
+- `Init()` 정상 완주(`m_isInitialized == true`), `World.DefaultGameObjectInjectionWorld`가 씬 전환 전후로 계속 유지됨(`World.All.Count`가 전환 전/직후/이후 147초 동안 6으로 불변) → [SceneManager.md](./SceneManager.md) 2026-07-20-0의 `HasProjectMonoBehaviourInChildren` 수정이 의도대로 ECS World를 보호하는 것으로 확인.
+- `EntityQueryImpl.get_IsEmpty` NRE 재현 안 됨(147초 동안 콘솔 에러 0건).
+- `Spawn()`으로 생성된 ECS Entity 수와 `ActorMonster` 비주얼 오브젝트 수가 항상 일치(예: MonsterTag 엔티티 5개 ↔ ActorMonster 5개) — Entity↔Visual 동기화 정상.
+- 목적지 도달(`ReachedEndTag`) 처리도 정상 확인: 데미지를 주는 주체가 없는 상태로 오래 플레이하면 몬스터가 계속 끝까지 걸어가 자동으로 정리됨(살아있는 개체 수가 누적되지 않고 일정 수준 유지).
+
+### 참고 — DOTween/Addressables/Debug Updater 자체의 생존 여부는 이번엔 미확인
+이번 검증은 ECS World 생존 여부(`World.All.Count`)만 직접 확인했고, SceneManager.md가 언급한 개별 인프라 오브젝트(`[DOTween]`, Addressables 헬퍼, `[Debug Updater]`)가 실제로 씬을 넘어 살아있는지는 별도로 조회하지 않았다. 증상(NRE)이 사라진 것으로 간접 확인된 상태.
+
+---
+
+## 2026-07-21-0
+
+### 개요
+사용자 요청: InGameScene 소속 매니저들의 Update를 BaseScene이 대신 구동하도록 구조 변경(MonoSingleton 매니저는 제외, 자기 자신이 계속 구동). 상세 설계는 [[BaseScene]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+
+**클래스 선언**
+- 전: `public class MonsterManager : MonoBehaviour`
+- 후: `public class MonsterManager : MonoBehaviour, IUpdatable`
+
+**Update() → UpdateLogic()**
+- 전: `private void Update() { ... }` (Unity가 매 프레임 자동 호출)
+- 후: `public void UpdateLogic() { ... }` (내용 동일) — `BaseScene.Current`가 대신 호출
+- 신규 `private void Start() { BaseScene.Current.Register(this); }` 추가 — 씬의 BaseScene에 자신을 등록
+
+**OnDestroy()**
+- 전: `m_isInitialized == false`면 바로 return
+- 후: 가드보다 먼저 `BaseScene.Current?.Unregister(this);` 무조건 실행 추가 (등록은 Init 성공 여부와 무관하게 Start에서 이뤄지므로)
+
+### 미검증
+컴파일/에디터 미실행 상태 편집. 실제 Play Mode로 몬스터 스폰/이동/사망 처리가 계속 정상 틱되는지(= BaseScene 경유로도 매 프레임 호출되는지) 확인 필요.
+
+---
+
+## 2026-07-21-1
+
+### 개요
+사용자 요청: 일반몹 크기를 테이블(EnemyTable.VisualSize)로 정할 수 있게. 일반몹은 플레이어와 같은 크기를 기준으로, 보스/엘리트 크기는 자체 판단으로 재설계. 데이터 설계 상세는 [[EnemyRecord]] "VisualSize" 섹션 참고.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+
+**SpawnVisual(Entity, EnemyRecord)**
+- 전: 색상만 설정(`actorMonster.SetColor(color)`), 크기는 프리팹에 baked된 값 그대로 사용(테이블 미반영, VisualSize 필드는 존재했지만 미사용).
+- 후: 색상 설정 다음 줄에 `actorMonster.transform.localScale = Vector3.one * _record.VisualSize;` 추가 — 매 스폰마다 EnemyTable.csv의 VisualSize를 실제 크기에 반영. 몬스터 프리팹 6종(Triangle/Circle/Square/Diamond/Pentagon/Star)의 baked scale은 전부 `{1,1,1}`로 되돌림([[BaseScene]]과 무관, 별도 정리 — 상세는 .claude/prefab/README.md 2026-07-21-0).
+
+### 미검증
+컴파일/에디터 미실행 상태 편집. 실제 Play Mode로 각 종족/Variant별 몬스터가 의도한 상대 크기(Heavy > Splitter > Normal=Ranged > Swift, Elite/Boss일수록 커짐)로 보이는지, 특히 Normal 종족 Normal Variant(Triangle)가 ActorPlayer와 화면상 동일 크기로 보이는지 확인 필요.
+
+---
+
+## 2026-07-21-2
+
+### 개요
+qa-tester가 발견한 Client 이슈([client-issues.md](../qa/client-issues.md) 2026-07-21-0) 수정 — Play Mode 종료 시 `OnDestroy()`의 `EntityQuery.Dispose()`에서 NRE 발생.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 증상
+Play Mode 종료(에디터 정지) 시 콘솔에 `NullReferenceException`(`UnsafeParallelHashMap.Remove` → `EntityQueryImpl.Dispose` → `EntityQuery.Dispose` → `MonsterManager.OnDestroy` line 202) 발생.
+
+### 원인
+Play Mode 종료 시 소속 ECS World가 `MonsterManager.OnDestroy()`보다 먼저 정리(Dispose)되는 타이밍이 있음 → 이미 무효화된 `EntityQuery`를 `Dispose()`하려다 NRE. `m_isInitialized` 가드는 "미초기화 상태" 접근만 막고, "초기화는 됐지만 World가 먼저 죽은" 이 케이스는 커버하지 못함.
+
+### 수정 (함수 단위)
+
+**OnDestroy()**
+- 전:
+  ```csharp
+  private void OnDestroy()
+  {
+      BaseScene.Current?.Unregister(this);
+
+      if (m_isInitialized == false)
+          return;
+
+      m_DeadQuery.Dispose();
+      m_ReachedEndQuery.Dispose();
+      m_MonsterFactory.Clear();
+  }
+  ```
+- 후:
+  ```csharp
+  private void OnDestroy()
+  {
+      BaseScene.Current?.Unregister(this);
+
+      if (m_isInitialized == false)
+          return;
+
+      // Play Mode 종료 시 World가 MonsterManager보다 먼저 정리되는 타이밍이 있음
+      // — 이미 무효화된 EntityQuery를 Dispose하면 NRE가 나므로 World 생존 여부를 먼저 확인
+      if (World.DefaultGameObjectInjectionWorld != null && World.DefaultGameObjectInjectionWorld.IsCreated == true)
+      {
+          m_DeadQuery.Dispose();
+          m_ReachedEndQuery.Dispose();
+      }
+
+      m_MonsterFactory.Clear();
+  }
+  ```
+- `World.DefaultGameObjectInjectionWorld`/`World.IsCreated`는 `unity_reflect`로 실제 존재 확인 후 사용(`EntityManager.IsCreated`는 존재하지 않아 채택 안 함).
+
+### 검증
+- `refresh_unity`(compile force) → `read_console` 에러 0건 — 컴파일 정상.
+- **가드 로직 자체는 격리 검증 완료**: Play Mode 중 테스트용 `World`를 만들어 `EntityQuery`를 생성한 뒤 그 `World`를 `Dispose()`(= "OnDestroy 시점에 World가 이미 정리된" 상황 재현) → 가드 없이 `query.Dispose()`를 호출하면 실제로 `NullReferenceException` 재현됨(원 버그 메커니즘 확인) → 동일 상황에서 `OnDestroy()`에 추가한 조건(`World.DefaultGameObjectInjectionWorld != null && IsCreated == true`)을 그대로 평가하면 `false`가 나와 Dispose를 스킵, 예외 없이 통과 확인.
+- **실제 씬 흐름(TitleScene→Btn_Play 클릭→InGameScene→Stop)을 통한 자연 재현 검증은 못함** — 검증 도중 이 버그와 무관한 별도의 더 심각한 문제를 발견: 실시간(Step 강제 진행이 아닌) Play에서 TitleScene→InGameScene 전환 후 `MonsterManager.Init()` 시작 줄(`World.DefaultGameObjectInjectionWorld.EntityManager`)에서 NRE 발생 — `World.DefaultGameObjectInjectionWorld` 자체가 InGameScene 진입 시점에 이미 null. `Init()`이 여기서 즉시 중단되어 `m_isInitialized`가 계속 false로 남고, 그 결과 `OnDestroy()`도 가드 첫 줄(`m_isInitialized == false`)에서 항상 조기 return하여 오늘 수정한 Dispose 가드 코드 자체가 실행되는 상황을 자연 재현할 수 없었음. 상세는 [client-issues.md](../qa/client-issues.md) 2026-07-21-1(신규) 참고 — 별도 이슈로 분리 기록, 이번 수정 범위 밖이라 손대지 않음.

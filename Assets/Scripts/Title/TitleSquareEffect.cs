@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class TitleSquareEffect : MonoBehaviour
+public class TitleSquareEffect : MonoBehaviour, IUpdatable
 {
     private float Speed = 5f;
 
@@ -14,8 +14,7 @@ public class TitleSquareEffect : MonoBehaviour
         m_MainCamera = Camera.main;
         if (m_MainCamera == null)
         {
-            Debug.Log($"[TitleSquareEffect] Camera.main을 찾을 수 없어 컴포넌트를 비활성화합니다.");
-            enabled = false;
+            Debug.Log($"[TitleSquareEffect] Camera.main을 찾을 수 없어 업데이트를 건너뜁니다.");
             return;
         }
 
@@ -29,6 +28,13 @@ public class TitleSquareEffect : MonoBehaviour
         m_RotationSpeed = Random.Range(30f, 120f) * (Random.value > 0.5f ? 1f : -1f);
 
         SetRandomPosition();
+
+        BaseScene.Current.Register(this);
+    }
+
+    private void OnDestroy()
+    {
+        BaseScene.Current?.Unregister(this);
     }
 
     private void SetRandomPosition()
@@ -54,7 +60,7 @@ public class TitleSquareEffect : MonoBehaviour
         return Rect.MinMaxRect(minX, minY, maxX, maxY);
     }
 
-    private void Update()
+    public void UpdateLogic()
     {
         if(SceneManager.instance.IsSceneTransitioning == true)
             return;

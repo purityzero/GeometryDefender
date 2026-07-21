@@ -1,5 +1,10 @@
 # 프리팹 현황
 
+## 2026-07-21-0
+- `Assets/Resources/Prefabs/Monster/` 6종(Triangle/Circle/Square/Diamond/Pentagon/Star) 전부 Transform `m_LocalScale`을 `{1, 1, 1}`로 되돌림 (직전 세션에서 사용자가 수동으로 `{0.45, 0.45, 0.45}`로 임시 조정해뒀던 것, 커밋 전 상태).
+- 사유: `EnemyRecord.VisualSize`가 [[MonsterManager]] `SpawnVisual()`에서 매 스폰마다 `actorMonster.transform.localScale`에 실제로 적용되도록 바뀌어([[EnemyRecord]] 2026-07-21 VisualSize 섹션 참고), 이제 크기의 단일 소스는 EnemyTable.csv다. 프리팹 자체에 남아있는 baked scale은 스폰 시 항상 덮어써져 죽은 값이 되므로, 혼란을 막기 위해 중립값(1,1,1)으로 정리.
+- 상세 계산 근거(플레이어 기준 앵커 0.40625, 종족별 상대 비율, Elite/Boss 배수)는 [[EnemyRecord]] 참고.
+
 ## 2026-07-15 기준 (Job 머지)
 - `Assets/Resources/Prefabs/Monster/` — Triangle/Circle/Square/Diamond/Pentagon/Star 6종 (D:\Unity\Job에서 머지). 각각 SpriteRenderer + ActorMonster(m_Renderer 연결). 스프라이트 참조는 현재 프로젝트의 `Resources/Image/shape_*.png` guid로 재타겟 완료.
 - 관련 에셋 함께 머지: `Resources/Mat/Enemy/GlowMat_*` 11종(텍스처 guid 재타겟 완료), `Resources/Image/UI/`(frame/icon 6종), `Assets/font/`(DungGeunMo, PressStart2P SDF), `Assets/Editor/`(EnemyPrefabCreator, EnemyMaterialCreator — 스프라이트 경로를 Resources/Image로 패치).
