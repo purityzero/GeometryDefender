@@ -241,5 +241,27 @@ Play Mode 실측(InGameScene에서 몬스터 10마리 스폰 → `SceneManager.i
 ### 관련 클래스
 - [TowerColorEffect.md](../class/TowerColorEffect.md) 2026-07-22-2
 
-### 새로 발견한 별개 이슈 — 몬스터 5종 색상 미분화
-Triangle/Circle/Square/Diamond/Pentagon이 전부 동일한 핑크색으로 렌더링됨(Star만 노랑으로 다름). 세션 초반 "적 색상을 다양하게" 요청이 완전히 반영되지 않은 상태로 추정 — 각 `GlowMat_{Shape}_Normal.mat`의 `_Color` 값 확인 필요. 미착수, 사용자 확인 후 진행 예정.
+### 몬스터 5종 색상 관련 — 재확인 결과 버그 아님
+Triangle/Circle/Square/Diamond/Pentagon이 전부 동일한 핑크색인 것은 기획서(`03_enemy.html` 36줄 "모두 적색 베이스")와 정확히 일치하는 정상 상태로 확인됨(머테리얼 `_Color` 실측값도 Normal `#FF3355`/Elite `#FF00AA`/Boss `#FFD600` 전부 기획서 hex와 정확히 일치). 추가 수정 불필요.
+
+---
+
+## 2026-07-22-3
+
+### 개요
+사용자 리포트: "TitleSquareEffect가 설정 영역 밖으로 빠져나가는 버그".
+
+### 증상
+TitleScene 배경 장식 사각형(7개)이 떠다니다가 카메라 화면 경계를 넘어 밖으로 삐져나감.
+
+### 원인
+`TitleSquareEffect.Start()`가 오브젝트 반크기(`m_HalfObjectSize`)를 `spriteRenderer.bounds.extents`로 **1회만** 캐싱하는데, 오브젝트가 계속 회전(`Rotate()`)하므로 축정렬 경계(AABB)는 회전각에 따라 최대 `halfSide×√2`(45° 부근)까지 커진다. 경계 판정(`CheckBounce`/`GetMoveArea`)이 낡은(더 작은) 캐시값으로 클램프해 회전 중 모서리가 카메라 밖으로 나감.
+
+### 수정
+`Assets/Scripts/Title/TitleSquareEffect.cs` `Start()` — `m_HalfObjectSize`를 `bounds.extents.magnitude`(= `halfSide×√2`, 회전각 무관 상한값)로 고정 계산. 상세는 [TitleSquareEffect.md](../class/TitleSquareEffect.md) 2026-07-22-0 참고.
+
+### 검증
+Play Mode 실측으로 수정 전 캐시값(0.25) < 실제 경계(0.32) 확인 → 수정 후 캐시값(0.37) = 이론적 최댓값과 일치 확인. **사용자가 에디터에서 직접 육안 확인 완료.** 콘솔 에러 0건.
+
+### 관련 클래스
+- [TitleSquareEffect.md](../class/TitleSquareEffect.md) 2026-07-22-0
