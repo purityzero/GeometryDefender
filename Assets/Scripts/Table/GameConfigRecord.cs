@@ -13,10 +13,21 @@ public class GameConfigTable : Table<GameConfigRecord>
     public static float TAP_SCALE = 0.95f;
     public static float TAP_DURATION = 0.05f;
 
+    // Assets/Design/08_balance.html "적 스폰 곡선"/"적 스탯 시간 보정" 공식 상수
+    public static float SPAWN_BASE_RATE = 1.0f;
+    public static float SPAWN_RATE_EXPONENT = 1.3f;
+    public static float HP_MULTIPLIER_GROWTH = 0.4f;
+    public static float DAMAGE_MULTIPLIER_GROWTH = 0.25f;
+
     public GameConfigTable(List<GameConfigRecord> listRecord) : base(listRecord)
     {
         TAP_SCALE = GetValue("TapScale", TAP_SCALE);
         TAP_DURATION = GetValue("TapDuration", TAP_DURATION);
+
+        SPAWN_BASE_RATE = GetValue("SpawnBaseRate", SPAWN_BASE_RATE);
+        SPAWN_RATE_EXPONENT = GetValue("SpawnRateExponent", SPAWN_RATE_EXPONENT);
+        HP_MULTIPLIER_GROWTH = GetValue("HpMultiplierGrowth", HP_MULTIPLIER_GROWTH);
+        DAMAGE_MULTIPLIER_GROWTH = GetValue("DamageMultiplierGrowth", DAMAGE_MULTIPLIER_GROWTH);
     }
 
     public float GetValue(string _displayName, float _defaultValue)

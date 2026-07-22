@@ -12,7 +12,7 @@
 
 ## 직렬화 필드
 - `m_MonsterManager` — 씬의 MonsterManager(fileID 70920722) 연결
-- `m_SpawnInterval` — 페이즈 스폰 간격 초 (기본 1). 테이블에 대응 필드가 없어 인스펙터 값으로 둠 (WaveRecord의 SpawnInterval은 2026-07-15 머지 때 제거됨)
+- ~~`m_SpawnInterval`~~ — 2026-07-22 제거, 아래 참고
 
 ## 동작 조건
 - `Init()`은 InGameScene.Start가 호출. 테이블 3종 중 하나라도 미로드면 에러 로그 후 비활성(멱등 가드 겸용, m_isInitialized).
@@ -103,3 +103,26 @@ EntityQueryImpl.get_IsEmpty ← MonsterManager.ProcessDeadMonsters (MonsterManag
 
 ### 미검증
 컴파일/에디터 미실행 상태 편집. 실제 Play Mode로 스폰 루프가 계속 정상 틱되는지 확인 필요.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+`Assets/Design/08_balance.html` "적 스폰 곡선"이 코드에 구현돼 있지 않던 것을 발견(고정 1초 간격이었음) — 상세 배경은 `.claude/design/difficulty-progression.md` 참고. 이번에 기본 시간 곡선부터 구현(난이도 진행/샤드 획득의 선행 작업).
+
+### 파일
+- Assets/Scripts/InGame/SpawnManager.cs
+- Assets/Scripts/Table/GameConfigRecord.cs ([[GameConfigRecord]] 참고)
+- Assets/Resources/Table/GameConfigTable.csv
+
+### 수정 (함수 단위)
+**필드**
+- 제거: `[SerializeField] private float m_SpawnInterval = 1f;` — 씬 오버라이드 값도 기본값(1)과 동일해서 데이터 유실 없음.
+
+**UpdatePhaseSpawn()**
+- 전: `m_SpawnTimer += Time.deltaTime; if (m_SpawnTimer < m_SpawnInterval) return; m_SpawnTimer -= m_SpawnInterval;` (고정 간격)
+- 후: `spawnRate = GameConfigTable.SPAWN_BASE_RATE × (1 + m_ElapsedTime/60)^GameConfigTable.SPAWN_RATE_EXPONENT` 로 매 프레임 스폰 속도를 계산, `spawnInterval = 1f / spawnRate`를 그 프레임의 임계값으로 사용 — 08_balance.html의 `spawnRate(t) = baseRate × (1 + t/60)^1.3` 공식 그대로.
+
+### 검증 (2026-07-22, Play Mode)
+Title→Btn_Play→InGame 실제 흐름으로 확인. `GameConfigTable.SPAWN_BASE_RATE=1, SPAWN_RATE_EXPONENT=1.3` 정상 로드. 5배속 진행 중 alive 몬스터 수가 자연스럽게 늘어나는 것 확인(스폰 가속 반영). 콘솔 에러 0건.

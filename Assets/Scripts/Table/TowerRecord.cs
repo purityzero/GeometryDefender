@@ -3,7 +3,11 @@ using System.Collections.Generic;
 public enum eTargetingType
 {
     First,
-    Strongest
+    Strongest,
+    Closest,
+    Weakest,
+    Fastest,
+    Random
 }
 
 public class TowerRecord : Record
@@ -17,9 +21,17 @@ public class TowerRecord : Record
     public float SplashRadius;
     public float ProjectileSpeed;
     public eTargetingType DefaultTargeting;
+    public float CritChance;
+    public float CritMultiplier;
+    public int ProjectileId;
 }
 
 public class TowerTable : Table<TowerRecord>
 {
     public TowerTable(List<TowerRecord> listRecord) : base(listRecord) { }
+
+    public TowerRecord GetRecordById(int _id)
+    {
+        return list.Find(record => record.Id == _id);
+    }
 }

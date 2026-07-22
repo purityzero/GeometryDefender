@@ -11,15 +11,13 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
     [SerializeField] private Transform m_PoolParent;
 
     public ObservableVariable<int> killCount { get; } = new ObservableVariable<int>(0);
+    public ObservableVariable<int> bossKillCount { get; } = new ObservableVariable<int>(0);
 
     private EntityManager m_EntityManager;
     private EntityQuery m_DeadQuery;
     private EntityQuery m_ReachedEndQuery;
 
     private MemoryPoolFactory<ActorMonster, eEnemyShape> m_MonsterFactory;
-
-    // Entity → (Shape, ActorMonster) 역참조용 — Recycle 시 Shape이 필요
-    private Dictionary<Entity, (eEnemyShape shape, ActorMonster actor)> m_DicVisual = new Dictionary<Entity, (eEnemyShape, ActorMonster)>();
 
     public event Action<RewardData> OnMonsterDie;
     public event Action<RewardData> OnMonsterReachEnd;
@@ -66,10 +64,19 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         Entity entity = m_EntityManager.CreateEntity();
         Vector2 wayPoint = WayPoint.instance.GetRandomWayPoint();
 
+        // Assets/Design/08_balance.html "적 스탯 시간 보정": 스폰 시점 경과 시간이 길수록 HP/DamageToBase가 커짐, 난이도 배율은 추가로 곱해짐
+        float elapsedMinutes = (TimerManager.Current != null) ? TimerManager.Current.elapsedTime / 60f : 0f;
+        float difficultyMultiplier = (DifficultyManager.Current != null) ? DifficultyManager.Current.GetDifficultyMultiplier() : 1f;
+        float hpMultiplier = (1f + elapsedMinutes * GameConfigTable.HP_MULTIPLIER_GROWTH) * difficultyMultiplier;
+        float damageMultiplier = (1f + elapsedMinutes * GameConfigTable.DAMAGE_MULTIPLIER_GROWTH) * difficultyMultiplier;
+
+        int scaledMaxHp = Mathf.RoundToInt(_record.MaxHp * hpMultiplier);
+        int scaledDamageToBase = Mathf.RoundToInt(_record.DamageToBase * damageMultiplier);
+
         m_EntityManager.AddComponentData(entity, new HealthData
         {
-            MaxHp = _record.MaxHp,
-            CurrentHp = _record.MaxHp,
+            MaxHp = scaledMaxHp,
+            CurrentHp = scaledMaxHp,
         });
         m_EntityManager.AddComponentData(entity, new MoveData
         {
@@ -79,9 +86,15 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         m_EntityManager.AddComponentData(entity, new RewardData
         {
             GoldReward = _record.GoldReward,
-            DamageToBase = _record.DamageToBase,
+            DamageToBase = scaledDamageToBase,
+            IsBoss = (_record.Variant == eEnemyVariant.Boss),
         });
         m_EntityManager.AddComponentData(entity, new MonsterTag());
+        m_EntityManager.AddComponentData(entity, new CombatRadius
+        {
+            // VisualSize(스프라이트 스케일 배율)의 절반을 대략적인 충돌 반경으로 사용 — 투사체 충돌 판정용 근사치
+            Value = _record.VisualSize * 0.5f,
+        });
         m_EntityManager.AddComponentData(entity, LocalTransform.FromPosition(new float3(
             wayPoint.x,
             wayPoint.y,
@@ -156,6 +169,8 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         {
             RecycleVisual(deadEntities[i]);
             killCount.Value++;
+            if (rewards[i].IsBoss == true)
+                bossKillCount.Value++;
             OnMonsterDie?.Invoke(rewards[i]);
             m_EntityManager.DestroyEntity(deadEntities[i]);
         }
@@ -194,21 +209,22 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
 
         actorMonster.transform.localScale = Vector3.one * _record.VisualSize;
 
-        m_DicVisual[_entity] = (_record.Shape, actorMonster);
-
         m_EntityManager.AddComponentObject(_entity, new VisualObject
         {
             transform = actorMonster.transform,
         });
     }
 
+    // 타입(Shape)은 MemoryPoolFactory가 Create() 시점에 스스로 기억하므로, 여기선 VisualObject(entity에 이미 붙어있는 참조)에서
+    // ActorMonster만 꺼내면 된다 — 별도의 Entity→(Shape,오브젝트) 역참조 테이블이 필요 없다.
     private void RecycleVisual(Entity _entity)
     {
-        if (m_DicVisual.TryGetValue(_entity, out var visual) == false)
+        if (m_EntityManager.HasComponent<VisualObject>(_entity) == false)
             return;
 
-        m_MonsterFactory.Recycle(visual.shape, visual.actor);
-        m_DicVisual.Remove(_entity);
+        VisualObject visualObject = m_EntityManager.GetComponentObject<VisualObject>(_entity);
+        ActorMonster actorMonster = visualObject.transform.GetComponent<ActorMonster>();
+        m_MonsterFactory.Recycle(actorMonster);
     }
 
     protected override void OnDestroy()

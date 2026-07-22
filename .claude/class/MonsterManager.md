@@ -520,3 +520,65 @@ Unity MCP `execute_code`로 실측 — Play Mode(InGameScene 직접 Play) 중 `G
 
 ### 검증
 [[ObservableIntText]] 2026-07-22-0 참고 — Play Mode에서 몬스터 처치 후 `killCount.Value`가 실제로 증가하고 [[KillCountText]] 표시까지 갱신되는 것 확인.
+
+---
+
+## 2026-07-22-1
+
+### 개요
+사용자 지적("m_DicVisual FactoryPool 사용하면 되지않나?") — Entity→(Shape, ActorMonster) 역참조용 `Dictionary`가 ECS `VisualObject` 컴포넌트와 사실상 같은 관계(Entity↔시각 오브젝트)를 중복 추적하고 있던 것을 [[Factory]] 쪽 개선(팩토리가 `Create()` 시점에 타입을 스스로 기억)으로 제거. 상세 배경은 [[Factory]] 2026-07-22-0 참고.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**필드**
+- 제거: `private Dictionary<Entity, (eEnemyShape shape, ActorMonster actor)> m_DicVisual`
+
+**SpawnVisual(Entity, EnemyRecord)**
+- 제거: `m_DicVisual[_entity] = (_record.Shape, actorMonster);` 한 줄만 삭제, 나머지 로직 동일.
+
+**RecycleVisual(Entity)**
+- 전: `m_DicVisual.TryGetValue(_entity, out var visual)` → `m_MonsterFactory.Recycle(visual.shape, visual.actor)` → `m_DicVisual.Remove(_entity)`
+- 후: `m_EntityManager.GetComponentObject<VisualObject>(_entity).transform.GetComponent<ActorMonster>()`로 Actor를 직접 얻어 `m_MonsterFactory.Recycle(actorMonster)` 한 줄 호출(타입 인자 불필요 — 팩토리가 스스로 기억).
+
+### 검증
+Unity MCP `refresh_unity`(force+compile) → `read_console` 에러/경고 0건. 실제 Play Mode에서 처치/도달 후 반납 동작 재검증은 미실시(구조적으로 [[ProjectileManager]] 2026-07-22-2와 동일 패턴이며, 그쪽에서 killCount 등 파생 로직은 이번 변경과 무관하게 그대로 유지됨).
+
+---
+
+## 2026-07-22-2
+
+### 개요
+`Assets/Design/08_balance.html` "적 스탯 시간 보정" 공식 구현(기본 곡선이 코드에 없던 것을 발견 — 상세는 `.claude/design/difficulty-progression.md`). 난이도 진행/샤드 획득 작업의 선행 단계.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**Spawn(EnemyRecord)**
+- 전: `HealthData { MaxHp = _record.MaxHp, ... }`, `RewardData { ..., DamageToBase = _record.DamageToBase }` — 시간에 따른 보정 없이 테이블 값 그대로 사용.
+- 후: 스폰 시점의 `TimerManager.Current.elapsedTime`(분 단위)으로 `hpMultiplier = 1 + elapsedMinutes × GameConfigTable.HP_MULTIPLIER_GROWTH`, `damageMultiplier = 1 + elapsedMinutes × GameConfigTable.DAMAGE_MULTIPLIER_GROWTH` 계산 → `MaxHp`/`DamageToBase`에 각각 곱해서(반올림) 적용. **스폰 시점 1회 적용**(이미 스폰된 몬스터가 나중에 더 강해지진 않음 — 08_balance.html의 예시 표(baseHP 20이 t=300에 HP 60)도 "그 시점에 스폰되는 개체"를 의미하는 것으로 해석).
+
+### 검증 (2026-07-22, Play Mode)
+Title→Btn_Play→InGame 실제 흐름. `TimerManager.Current.elapsedTime≈18.5s` 시점에 스폰된 Triangle(Normal, baseHP 20/baseDamage 5)의 `HealthData.MaxHp=22`(20×1.123≈22.5, 반올림 22 — 실측치와 정확히 일치), `elapsedTime≈28.5s` 시점엔 `MaxHp=23~24`, `RewardData.DamageToBase=6`(5×1.119≈5.6→6)로 시간에 따라 증가하는 것 실측 확인. 콘솔 에러 0건.
+
+---
+
+## 2026-07-22-3
+
+### 개요
+[[UIRunOver]]의 샤드 정산(`BossKills`)에 보스 처치 수가 필요해 추가 — 상세는 [[RewardComponent]] 2026-07-22-0 참고.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**필드**: `killCount`와 동일한 패턴으로 `public ObservableVariable<int> bossKillCount { get; } = new ObservableVariable<int>(0);` 추가.
+
+**Spawn(EnemyRecord)**: `RewardData.IsBoss = (_record.Variant == eEnemyVariant.Boss)` 설정.
+
+**ProcessDeadMonsters()**: `killCount.Value++;` 다음 줄에 `if (rewards[i].IsBoss == true) bossKillCount.Value++;` 추가.
+
+### 검증
+[[UIRunOver]] 2026-07-22-3 참고.

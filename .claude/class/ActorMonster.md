@@ -51,3 +51,23 @@ D:\Unity\Job에서 머지 — Job 버전으로 교체.
 
 ### 검증
 Unity MCP 컴파일 확인(에러 0건). Play Mode 실측 — 6개 도형 전부 스폰 후 `SpriteRenderer.sharedMaterial.name`이 각각 `GlowMat_Triangle_Normal`/`GlowMat_Circle_Normal`/`GlowMat_Square_Normal`/`GlowMat_Diamond_Normal`/`GlowMat_Pentagon_Normal`/`GlowMat_Star_Boss`로 정상 반영(런타임엔 `(Instance)` 접미사 붙음 — `SetColor()`가 `.material` 접근으로 자동 인스턴스화하기 때문, 기존 동작 그대로).
+
+---
+
+## 2026-07-22-1
+
+### 개요
+사용자 지적("적군 InGameScene에서 적군 색상 물빠진색으로 나오는거") — 진짜 원인은 Bloom/Tonemapping이 아니라 **색공간(sRGB vs Linear) 미변환**이었음.
+
+### 원인
+`ColorUtility.TryParseHtmlString(hex, out Color)`는 hex를 sRGB 기준으로 해석한 `Color`를 돌려주는데, 이 프로젝트는 Linear 색공간(URP 기본)이라 이 값을 그대로 `material.color`(=커스텀 Glow 셰이더의 `_Color`)에 넣으면 실제 화면 출력 시 감마 보정이 어긋나 색이 원래보다 밝고 채도 낮게(예: `#7c4dff`가 연보라 `#B995FF`로) 보인다. Bloom을 완전히 꺼봐도(threshold/intensity 조정, Tonemapping 추가 등 다 시도) 워시아웃이 그대로여서 Bloom이 원인이 아님을 픽셀 단위로 직접 확인 후 색공간 문제로 특정(`Camera.Render()`+`ReadPixels`로 실제 픽셀 hex를 여러 지점에서 비교).
+
+### 수정 (함수 단위)
+- **전**: `SetColor(Color _color) { m_Renderer.material.color = _color; }`
+- **후**: `m_Renderer.material.color = _color.linear;` — `.linear`로 변환해서 넣어야 화면에 원래 hex 그대로 보임.
+
+### 검증
+Play Mode에서 Normal/Swift/Heavy/Ranged 4종 동시 스폰 후 `Camera.Render()+ReadPixels`로 각 픽셀의 실제 hex를 확인 — 4종 전부 EnemyTable의 `ColorHex`와 거의 정확히 일치(`ff3355→FF355A`, `ff9500→FF9900`, `7c4dff→8050FF`, `3d8bff→3F91FF`, 미세한 차이는 8비트 양자화 수준). 스크린샷으로도 정사각형이 더 이상 연보라가 아니라 선명한 보라로 보이는 것 확인. 콘솔 에러 0건.
+
+### 참고
+`ActorProjectile.SetColor()`도 동일 버그 패턴이라 같은 수정 적용(2026-07-22, [[ProjectileManager]] 테이블화 작업과 함께). `TowerColorEffect`의 색상 필드들은 hex 파싱이 아니라 인스펙터/코드에서 `new Color(r,g,b)`로 직접 수치를 넣은 것이라 이 버그와 무관(그쪽은 이미 육안으로 맞을 때까지 튜닝된 값이라 손대지 않음).

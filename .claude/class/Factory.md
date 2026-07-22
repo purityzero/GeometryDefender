@@ -13,6 +13,37 @@
 
 ## 작업 내역
 
+### 2026-07-22-0
+
+#### 개요
+사용자 지적("m_DicVisual FactoryPool 사용하면 되지않나?") — `MonsterManager`/`ProjectileManager`가 각자 `Dictionary<Entity, (Enum, T)>`를 따로 들고 있던 것을 보고, "Entity→어느 타입 풀에서 나왔는지" 역참조를 호출부가 아니라 팩토리 자신이 기억하도록 개선 요청. 팩토리는 이미 `Create(TEnum)` 시점에 어느 풀에서 꺼냈는지 알고 있으므로, 그 사실 자체를 내부에 저장해두면 호출부의 중복 Dictionary가 필요 없어짐(같은 "Entity→시각 오브젝트" 관계를 ECS `VisualObject` 컴포넌트와 별도 Dictionary 두 곳에서 중복 추적하던 문제, CLAUDE.md "여러 개념이 하나의 저장소를 공유" 계열 이슈의 변형).
+
+#### 파일
+- Assets/Scripts/Glory/Partterns/Factory/Factory.cs
+
+#### 수정 (함수 단위)
+**신규 필드**
+- 추가: `private Dictionary<T, TEnum> m_ObjectTypeDictionary` — `Create()`가 내준 오브젝트가 어느 enum 타입(풀)에서 나왔는지 팩토리가 스스로 기억.
+
+**Create(TEnum _type)**
+- 후: `pool.Pop()` 성공 직후 `m_ObjectTypeDictionary[obj] = _type;` 한 줄 추가.
+
+**Recycle** — 시그니처 변경
+- 전: `public bool Recycle(TEnum _type, T _obj)` — 호출부가 타입을 알고 있어야 호출 가능.
+- 후: `public bool Recycle(T _obj)` — `m_ObjectTypeDictionary`에서 타입을 자체 조회, 없으면(이 팩토리가 생성한 적 없는 오브젝트) 에러 로그 후 false. 조회 성공 시 이후 로직(풀 조회 → Push → Close)은 기존과 동일. 반납 성공 시 `m_ObjectTypeDictionary.Remove(_obj)`로 정리.
+- `IMemoryPoolFactory<T, TEnum>` 인터페이스도 시그니처 함께 변경.
+
+**Clear()**
+- 추가: `m_ObjectTypeDictionary.Clear()` — 풀 오브젝트 파괴와 함께 추적 정보도 정리.
+
+#### 영향받은 호출부
+- `MonsterManager.RecycleVisual()`/`ProjectileManager.RecycleVisual()` — 둘 다 자체 `Dictionary<Entity, (Enum,Actor)>`를 완전히 제거하고, ECS `VisualObject` 컴포넌트(entity에 이미 붙어있는 시각 Transform 참조)에서 `GetComponent<T>()`로 Actor를 직접 얻어 `Recycle(actor)` 호출로 단순화. 상세는 [[MonsterManager]]/[[ProjectileManager]] 2026-07-22 항목 참고.
+
+#### 검증
+Unity MCP `refresh_unity`(force+compile) → `read_console` 에러/경고 0건.
+
+---
+
 ### 2026-07-12-0
 - 개요: Recycle의 Close 호출 순서 수정 + null 방어 추가
 - 파일: Assets/Scripts/Glory/Partterns/Factory/Factory.cs

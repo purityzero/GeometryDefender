@@ -1,0 +1,6 @@
+Id,Type,ColorHex,Size,TrailDuration,DamageMultiplier,Pierce,SplashRadius,ChainJumps,ChainRadius,PrefabPath
+1,Basic,#00e5ff,0.22,0.2,1.0,0,0.0,0,0.0,Prefabs/Projectile/Basic
+2,Pierce,#00e5ff,0.3,0.2,1.0,1,0.0,0,0.0,Prefabs/Projectile/Basic
+3,Splash,#ff00aa,0.3,0.2,1.0,0,1.5,0,0.0,Prefabs/Projectile/Basic
+4,Homing,#00ff88,0.3,0.2,1.0,0,0.0,0,0.0,Prefabs/Projectile/Basic
+5,Chain,#ffd600,0.3,0.2,1.0,0,0.0,3,2.0,Prefabs/Projectile/Basic

@@ -34,10 +34,53 @@ public class UIRunOver : UIPopup
 - **게임 일시정지**: 실제 트리거는 [[InGameScene]]의 `OnTowerDie()`에서 `Time.timeScale = 0f;`(아래 "작업 내역" 참고) — `Time.deltaTime` 기반 로직(ECS 몬스터 이동, `SpawnManager`/`TimerManager`의 타이머)은 전부 멈추지만, uGUI 클릭/이벤트 처리는 `Time.timeScale`과 무관하게 계속 동작하므로 이 화면과 버튼은 정상 작동한다. `OnClickRestart`/`OnClickMainMenu`가 씬 전환 직전에 `Time.timeScale = 1f`로 복구(안 하면 다음 씬도 멈춘 채로 시작함) — `OnClickMetaTree`는 복구하지 않음(런이 끝난 화면 위에 계속 떠 있는 것뿐이라 배속을 되돌릴 이유가 없음).
 
 ## 설계 판단 — 알려진 단순화 (후속 검토 필요)
-- **Score/BossKills/CardsObtained가 실제 값이 아님**: 이 프로젝트엔 아직 (a) 킬 수와 별개인 "점수" 계산식 (b) 보스 처치만 별도로 세는 카운터 (c) 카드 시스템 자체가 없음. 그래서 `Score`는 `killCount`를 그대로 대입한 임시 지표, `BossKills`/`CardsObtained`는 0 고정, "Shards Earned"도 런당 보상 지급 로직이 없어 0 고정. 이 세 시스템이 실제로 생기면 `UIRunOver.Show()`의 해당 대입부만 교체하면 됨(주석으로 표시해둠).
+- **Score/CardsObtained가 실제 값이 아님**: 이 프로젝트엔 아직 (a) 킬 수와 별개인 "점수" 계산식 (b) 카드 시스템 자체가 없음. 그래서 `Score`는 `killCount`를 그대로 대입한 임시 지표, `CardsObtained`는 0 고정. 이 두 시스템이 실제로 생기면 `UIRunOver.Show()`의 해당 대입부만 교체하면 됨(주석으로 표시해둠).
+- ~~BossKills/Shards Earned 미구현~~ → 2026-07-22-3에서 반영 완료(아래 참고). `BossKills`는 `MonsterManager.bossKillCount`, "Shards Earned"는 `05_meta.html` 공식 × `DifficultyManager.GetShardMultiplier()`로 실제 계산됨.
 - UI가 `PlayerManager.instance.AddRunRecord(...)`를 직접 호출 — 별도 서비스/컨트롤러 계층 없이 UI가 데이터 저장을 직접 트리거하는 기존 프로젝트 컨벤션([[UIMetaTree]].OnClickNode()가 `PlayerManager.instance.SpendCurrency`/`UnlockMetaNode`를 직접 부르는 것과 동일 패턴)을 그대로 따름.
 
 ## 작업 내역
+
+### 2026-07-22-3
+
+#### 개요
+`.claude/design/shard-acquisition.md` 스펙 구현 완료 — 하드코딩돼 있던 `BossKills=0`/`shardsEarned=0`을 실제 값으로 채움. 연관: [[MonsterManager]](`bossKillCount`), [[PlayerManager]](`AddCurrency`), [[DifficultyManager]](`GetShardMultiplier`).
+
+#### 파일
+- Assets/Scripts/UI/UIRunOver.cs
+
+#### 수정 (함수 단위)
+**Show()**
+- 전: `int shardsEarned = 0;`, `RunRecord.BossKills = 0`
+- 후:
+  - `bossKillCount`를 `MonsterManager.Current.bossKillCount.Value`에서 읽어 `RunRecord.BossKills`에 대입.
+  - `baseShards = floor(SurvivalSeconds/10) + (KillCount/50) + (BossKills×10)`(05_meta.html 공식) 계산 → `DifficultyManager.Current.GetShardMultiplier()`를 곱해 `shardsEarned` 산출.
+  - `PlayerManager.instance.AddCurrency(eCurrencyType.Shard, shardsEarned)` 호출(실제 재화 적립 — 이전엔 이 호출 자체가 없었음).
+
+#### 검증 (2026-07-22, Play Mode)
+Title→Btn_Play→InGame 실제 흐름. 리플렉션으로 `TimerManager.elapsedTime=300`, `MonsterManager.killCount=200`, `bossKillCount=1`로 맞춘 뒤 `UIManager.instance.Get<UIRunOver>()` 호출 →
+- `+44`/`Total: 44` 텍스트 표시, `PlayerManager.GetCurrencyAmount(Shard)=44` — `05_meta.html` 예시("5분 생존, 200킬, 보스 1처치 → 44")와 정확히 일치.
+- `PlayerPrefs`의 `AssetData` 키에 `{"Shards":44}`로 실제 저장되는 것 확인.
+- 콘솔 에러 0건.
+
+---
+
+### 2026-07-22-4
+
+#### 개요
+[[MetaTreeRecord]] 2026-07-22-0의 일부 — "Metatree 업그레이드가 스탯에 반영 안 됨" 버그 수정 중, 샤드 정산에도 메타 트리(ECONOMY 줄기 `ShardPercent`, 예: M-303 Shard Bonus)가 빠져있던 것을 함께 반영.
+
+#### 파일
+- Assets/Scripts/UI/UIRunOver.cs
+
+#### 수정 (함수 단위)
+**Show()**
+- 전: `shardsEarned = round(baseShards × difficultyShardMultiplier)` — 난이도 배율만 반영.
+- 후: `MetaTreeTable.GetTotalEffectValue(eMetaEffectType.ShardPercent, ...)`로 해금된 퍼센트 합산 → `metaShardMultiplier = 1 + (합산%/100)` 추가 계산, `shardsEarned = round(baseShards × difficultyShardMultiplier × metaShardMultiplier)`.
+
+#### 검증
+컴파일 확인(에러 0건). Shard Bonus 노드(M-303)를 실제로 해금한 상태에서의 End-to-End 재계산은 별도로 하지 않음(로직은 [[MetaTreeRecord]].GetTotalEffectValue()와 동일 패턴이라 그쪽 검증으로 갈음) — 필요 시 추가 확인 권장.
+
+---
 
 ### 2026-07-22-2
 

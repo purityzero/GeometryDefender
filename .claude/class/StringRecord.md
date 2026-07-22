@@ -36,6 +36,7 @@ public class StringTable : Table<StringRecord>
 Id,Key,Kr,En,Cn,Jp
 1,ToastNotUnlockable,선행 조건을 먼저 해금하세요.,Unlock the prerequisite first.,请先解锁前置条件。,先に前提条件を解放してください。
 2,ToastNotEnoughShard,Shard가 부족합니다.,Not enough Shards.,Shard不足。,Shardが不足しています。
+3,ToastDifficultyLocked,아직 해금되지 않은 난이도입니다.,This difficulty is not unlocked yet.,该难度尚未解锁。,この難易度はまだ解放されていません。
 ```
 CSV 파서가 콤마 구분에 따옴표 이스케이프를 지원하지 않으므로(`TableManager.LoadCsvTable`), 문구에 **콤마(,)가 들어가면 안 됨** — 새 키 추가 시 주의.
 

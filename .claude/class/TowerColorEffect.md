@@ -2,39 +2,19 @@
 
 ## 연관 클래스
 - TowerHealth (`Current.currentHp` — `ObservableVariable<int>` 구독 대상)
-- [[TweenUtil]] (`Color(Material, Color, float)` — 2026-07-22 신규 오버로드로 이 클래스 때문에 추가됨)
+- [[TweenUtil]] (`Color(Material, Color, float)`, `Float(Material, string, float, float)` — 둘 다 이 클래스 때문에 추가됨)
 - BaseScene, IUpdatable (Current 준비될 때까지만 재시도용 — [[ObservableIntText]]와 동일한 패턴)
 - ActorPlayer(InGameScene.unity) — 부착 대상, `GlowMat_Tower` 머테리얼을 쓰는 SpriteRenderer 보유
 
 ## 개요
-타워(플레이어) HP 비율에 따라 스프라이트 머테리얼 색을 3단계로 서서히 바꾸는 연출 컴포넌트. `Assets/Design/02_combat.html`의 "타워 HP 시각 표현" 스펙(100~70% Cyan / 70~30% Dim Cyan / 30~0% Red) 기준.
+타워(플레이어) HP 비율에 따라 스프라이트 머테리얼 색 + 글로우 강도를 3단계로 바꾸는 연출 컴포넌트. `Assets/Design/02_combat.html`의 "타워 HP 시각 표현" 스펙(100~70% Cyan/강한 글로우 · 70~30% Dim Cyan/중간 글로우 · 30~0% Red/펄스 점멸) 기준.
 
 ## 현재 상태
 - 경로: Assets/Scripts/InGame/TowerColorEffect.cs
-```csharp
-public class TowerColorEffect : MonoBehaviour, IUpdatable
-{
-    private const float COLOR_TWEEN_DURATION = 0.5f;
-    private const float MID_HP_RATIO = 0.7f;
-    private const float LOW_HP_RATIO = 0.3f;
-
-    [SerializeField] private SpriteRenderer m_SpriteRenderer;
-    [SerializeField] private Color m_HighHpColor = new Color(0f, 0.8980392f, 1f);       // #00E5FF
-    [SerializeField] private Color m_MidHpColor = new Color(0f, 0.7372549f, 0.83137256f); // #00BCD4
-    [SerializeField] private Color m_LowHpColor = new Color(1f, 0.2f, 0.33333334f);       // #FF3355
-
-    // ObservableIntText와 동일한 "Current 준비될 때까지 폴링 → 구독 성공하면 이벤트로만" 패턴
-    public void UpdateLogic() { ... }
-    private void OnHpChanged(int _oldValue, int _newValue)
-    {
-        float hpRatio = (float)_newValue / TowerHealth.Current.maxHp;
-        Color targetColor = GetColorForRatio(hpRatio);
-        TweenUtil.Color(m_SpriteRenderer.material, targetColor, COLOR_TWEEN_DURATION);
-    }
-}
-```
-- `TowerHealth.currentHp`(ObservableVariable&lt;int&gt;)를 구독 — HP가 바뀔 때마다 비율을 계산해 해당 구간 색으로 **`m_SpriteRenderer.material`을 DOTween으로 트윈**(스냅 아님, 0.5초).
-- 색상 3종은 `[SerializeField]`로 노출 — 디자인 튜닝은 인스펙터에서 가능(코드 재수정 불필요).
+- `TowerHealth.currentHp`(ObservableVariable&lt;int&gt;)를 구독 — HP 비율이 **티어(High/Mid/Low)를 실제로 넘나들 때만** 색+글로우를 갱신(동일 티어 내 HP 변화는 무시 — 2026-07-22-3에서 티어 추적 도입, 이유는 아래 참고).
+- 색 전환: `m_SpriteRenderer.material`(`_Color`)을 DOTween으로 0.5초 트윈(기존과 동일).
+- 글로우 강도(`_GlowAmount`): High/Mid는 정적값으로 0.5초 트윈, **Low(30% 이하)는 min~max 사이를 무한 반복하는 Yoyo 트윈으로 펄스 점멸**(0.4초 반주기) — 02_combat.html "적색 펄스가 점멸" 스펙.
+- 색상 3종 + 글로우 4종(High/Mid 정적값, Low pulse min/max)은 전부 `[SerializeField]`로 노출 — 디자인 튜닝은 인스펙터에서 가능(코드 재수정 불필요).
 - 씬 배치: InGameScene.unity의 ActorPlayer 오브젝트에 부착, `m_SpriteRenderer`는 같은 오브젝트의 SpriteRenderer(= `GlowMat_Tower` 머테리얼 사용)를 참조.
 
 ## 설계 근거
@@ -119,4 +99,80 @@ ActorPlayer의 `SpriteRenderer.color`가 씬에 예전부터 시안(#00E5FF 근�
 ### 남은 작업
 1. Title 등 다른 씬도 HDR 전환 후 이상 없는지 재확인
 2. 몬스터 5종 동일 핑크색 문제(색상 다양화 재작업) — 사용자 승인 후 착수
-3. 기획서에 명시된 "글로우 강도 티어별 변화 + 30% 이하 적색 펄스 점멸"은 아직 미구현(색상 전환만 구현됨) — 사용자 확인 결과 이번 채도 버그 수정 이후 순서로 진행 예정
+
+---
+
+## 2026-07-22-3
+
+### 개요
+`.claude/UNFINISHED.md`에 남아있던 마지막 항목 — 02_combat.html "타워 HP 시각 표현" 스펙 중 미구현이던 **글로우 강도 티어별 변화 + 30% 이하 적색 펄스 점멸** 구현. 채도 버그(2026-07-22-2)가 먼저 해결된 뒤 사용자 승인으로 착수.
+
+### 수정 전 (`OnHpChanged`/`GetColorForRatio`만 존재)
+```csharp
+private void OnHpChanged(int _oldValue, int _newValue)
+{
+    if (TowerHealth.Current == null || TowerHealth.Current.maxHp <= 0)
+        return;
+
+    float hpRatio = (float)_newValue / TowerHealth.Current.maxHp;
+    Color targetColor = GetColorForRatio(hpRatio);
+
+    TweenUtil.Color(m_SpriteRenderer.material, targetColor, COLOR_TWEEN_DURATION);
+}
+
+private Color GetColorForRatio(float _hpRatio)
+{
+    if (_hpRatio <= LOW_HP_RATIO)
+        return m_LowHpColor;
+
+    if (_hpRatio <= MID_HP_RATIO)
+        return m_MidHpColor;
+
+    return m_HighHpColor;
+}
+```
+
+### 수정 후
+- `eHpTier`(private enum: High/Mid/Low) 신설 — HP 비율을 색이 아니라 티어로 먼저 분류하고, `m_CurrentTier`로 직전 티어를 기억해 **티어가 실제로 바뀔 때만** 색+글로우 갱신을 트리거하도록 변경(`OnHpChanged`에 `if (m_CurrentTier != null && m_CurrentTier.Value == targetTier) return;` 가드 추가).
+- `GetColorForRatio(float)` → `GetTierForRatio(float)` + `GetColorForTier(eHpTier)`로 분리(색상 조회와 티어 판정을 분리해 글로우 조회에도 재사용).
+- `ApplyGlowForTier(Material, eHpTier)` 신규: High/Mid는 `TweenUtil.Float(material, "_GlowAmount", 정적값, 0.5초)`로 정적 트윈, Low는 `material.SetFloat`로 먼저 min값 스냅 후 `TweenUtil.Float(..., max값, 0.4초).SetLoops(-1, LoopType.Yoyo)`로 무한 펄스.
+- `m_GlowTween`(Tween) 필드 추가 — 티어 전환마다 `Kill()` 후 재생성(안 죽이면 이전 티어의 무한 루프 펄스가 새 트윈과 동시에 계속 돔), `OnDestroy()`에서도 `Kill()`(무한 루프 트윈은 자동 종료가 없어 누수 방지 필수).
+- 신규 `[SerializeField]`: `m_HighGlowAmount`(1f) / `m_MidGlowAmount`(0.5f) / `m_LowPulseMinGlowAmount`(0.15f) / `m_LowPulseMaxGlowAmount`(0.7f).
+
+### 설계 근거
+- **수치 산출**: 02_combat.html의 글로우 CSS 참고치(High `drop-shadow 8px+20px`=28 / Mid `4px+10px`=14 / Low `6px+14px`=20)의 비율을 그대로 `_GlowAmount`에 대입 — Mid = High×(14/28) = 0.5, Low pulse max = High×(20/28) ≈ 0.7. Low의 min(0.15)은 CSS 정적 목업엔 "점멸"의 최저점이 없어(애니메이션은 스크린샷에 안 담김) 임의로 낮게 잡음 — 인스펙터에서 디자이너가 조정 가능하도록 SerializeField로 노출.
+- **`_GlowAmount` 상한선 재확인**: 2026-07-22-1에서 `_GlowAmount=2`가 `_Color × _GlowAmount` 증폭으로 흰색 클램프를 일으켰던 전례가 있어(`GlowMat_Tower.mat` 현재 baseline은 1), 신규 값(High=1, Mid=0.5, Low pulse max=0.7)을 전부 1 이하로 유지해 동일 클램프 재발을 피함.
+- **티어 변경 시에만 트윈 트리거(값마다 트리거 안 함)**: 기존엔 HP가 바뀔 때마다 색을 무조건 재트윈했는데(같은 티어 내에서도), Low 펄스가 무한 루프 트윈이라 HP가 조금씩 깎일 때마다 펄스가 처음부터 재시작되면 끊기는 것처럼 보임 — 티어 단위로만 갱신하도록 가드를 추가해 펄스가 방해받지 않게 함. 부작용으로 색 트윈도 동일 티어 내 재요청이 스킵되지만, 어차피 같은 목표색으로 재트윈하는 것이라 시각적 차이는 없음.
+- **미검증**: 이번 세션은 Unity MCP 브릿지 미연결 상태(도구 목록에 없음) — 컴파일/Play Mode 실측을 못 했다. 다음 세션에서 MCP 연결 확인 후 (1) 컴파일 에러 없는지, (2) Low 티어 진입 시 실제로 펄스가 점멸하는지, (3) `_GlowAmount` 조정으로 다시 흰색 클램프가 재발하지 않는지 스크린샷으로 검증 필요.
+
+### 파일
+- Assets/Scripts/InGame/TowerColorEffect.cs
+- Assets/Scripts/Glory/Tween/TweenUtil.cs ([[TweenUtil]] `Float(Material, string, float, float)` 오버로드 신규 추가)
+
+### 남은 작업
+1. Title 등 다른 씬도 HDR 전환 후 이상 없는지 재확인
+2. 몬스터 5종 동일 핑크색 문제(색상 다양화 재작업) — 사용자 승인 후 착수
+
+---
+
+## 2026-07-22-4
+
+### 개요
+2026-07-22-3에서 미검증으로 남겼던 3항목(컴파일/Play Mode 펄스/흰색 클램프 재발 여부)을 Unity MCP 연결 후 실제로 검증. **전부 정상 확인, 추가 수정 없음.**
+
+### 검증 방법 및 결과
+- 컴파일: `read_console` 에러/경고 0건.
+- Play Mode(InGameScene, `TowerHealth.Current.Init(100)` → `TakeDamage`로 티어 전환 유도):
+  - High(100%): `_GlowAmount=1`, `material.color=(0, 0.898, 1)` — 기획값과 정확히 일치. 스크린샷: 쨍한 시안 + 강한 글로우.
+  - Mid(55%): `_GlowAmount=0.5`, `material.color=(0, 0.737, 0.831)` — 정확히 일치. 스크린샷: 어두운 시안 + 약한 글로우, High와 뚜렷이 구분됨.
+  - Low(25%): `material.color=(1, 0.2, 0.333)` 고정, `_GlowAmount`를 연속 샘플링(0.57→0.44→0.21 등)해 0.15~0.7 범위 내에서 계속 변하는 것을 확인 — Yoyo 무한 펄스 정상 작동. 강제로 0.15로 덮어써도 다음 틱에 트윈이 다시 자체 값(0.62 등)으로 되돌림 — 트윈이 안 끊기고 살아있음을 확인.
+  - 흰색 클램프 재발 여부: 3티어 모두 스크린샷상 완전한 흰색으로 뭉개지는 현상 없음(Low는 Bloom 영향으로 핑크빛이 도나, 이는 2026-07-22-1에서 이미 "명확한 빨강/핑크"로 정상 판정했던 것과 동일한 정도 — 신규 회귀 아님).
+- 콘솔 에러: 이번 기능(TowerColorEffect/TweenUtil) 관련 에러/경고 0건.
+
+### 검증 중 발견한 별개 이슈(이번 스코프 밖, 코드 수정 안 함)
+- **TableManager/GameConfigTable — 정상 플로우(Title 씬 Play → `SceneManager.instance.NextScene("InGameScene")`)로 전환해도 InGame 진입 시 `TableManager.instance.GetTable<GameConfigTable>()`이 null로 나옴.** InGameScene.OnSetup의 Logger.Error 호출이 실제로 발생했을 가능성이 높으나, 아래 TextAnimator 예외 폭주가 콘솔 링버퍼를 밀어내 직접 로그로는 재확인 못 함 — `TowerHealth.Current.Init(100)`을 직접 호출해 테스트를 우회함.
+- **TextAnimator(Febucci) NullReferenceException이 InGameScene 진입 직후부터 매 프레임 `Update()`에서 계속 발생**(`TextAnimatorComponentBase.cs:372`, `TypewriterComponent.cs:305` 등) — 콘솔이 이 예외로 도배되어 다른 에러를 찾기 어렵게 만듦.
+- 둘 다 이번 세션의 검증 대상(글로우 펄스)과는 무관한 기존/별개 버그로 판단, 사용자 확인 없이 손대지 않음.
+
+### 파일
+- (수정 없음 — 검증만 수행)

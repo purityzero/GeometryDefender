@@ -256,3 +256,46 @@ private void OnTowerDie()
 
 ### 검증
 [[TowerColorEffect]] 2026-07-22-0 참고.
+
+---
+
+## 2026-07-22-2
+
+### 개요
+[[DifficultyManager]] 신설 배선. 상세는 그 문서 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (함수 단위)
+**필드**: `[SerializeField] private DifficultyManager m_DifficultyManager;` 추가
+
+**OnSetup()**
+- 전: `m_MonsterManager.Init(); m_SpawnManager.Init(); m_TimerManager.Init();` 순서로 시작
+- 후: 맨 앞에 `m_DifficultyManager.Init();` 추가(다른 매니저들이 나중에 이 배율을 참조하므로 가장 먼저 초기화)
+
+### 수정 (씬, 오브젝트 단위, Unity MCP)
+- InGameScene 하위에 `DifficultyManager` 오브젝트 신규 생성(`DifficultyManager` 컴포넌트 부착)
+- InGameScene 컴포넌트의 `m_DifficultyManager` 필드를 새 컴포넌트에 연결 → 저장 후 fileID로 직접 확인(`grep`)
+
+### 검증
+[[DifficultyManager]] 2026-07-22-0 참고 — Play Mode 실측 완료, 컴파일 에러 0건.
+
+---
+
+## 2026-07-22-3
+
+### 개요
+사용자 지적("Metatree 업그레이드 했는데, 그 스펙이 적용 안되는거 같아") — 해금된 메타 트리 노드의 `EffectType`/`EffectValue`가 실제 스탯에 전혀 반영되지 않던 버그를 수정. 상세는 [[MetaTreeRecord]] 2026-07-22-0 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+**OnSetup()**
+- 전: `int towerMaxHp = (int)gameConfigTable.GetValue("TowerMaxHp", 100f); m_TowerHealth.Init(towerMaxHp);`
+- 후: `towerMaxHp`에 `MetaTreeTable.GetTotalEffectValue(eMetaEffectType.MaxHp, PlayerManager.instance.playerData.UnlockedMetaNodes)` 합산분을 더한 뒤 `Init()` 호출 — 05_meta.html "STARTING POWER" 줄기의 MaxHp 노드(Starting HP I/II)가 실제 최대 체력에 반영됨.
+
+### 검증
+[[MetaTreeRecord]] 2026-07-22-0 참고 — Play Mode에서 HP I(+10)/HP II(+20) 해금 후 `TowerHealth.maxHp=130`(기본 100 포함) 실측 확인.

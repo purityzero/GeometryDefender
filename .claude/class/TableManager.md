@@ -7,7 +7,7 @@ CSV 테이블 로더/보관소 싱글톤 (Glory). `init()`에서 전 테이블 �
 
 ## 현재 상태
 - 로드 방식: `Resources/Table/*.csv` → 헤더명 == 필드명 리플렉션 매핑 (enum/float 특별 처리, 그 외 Convert.ChangeType)
-- 등록 테이블: Enemy / Tower / Wave / WaveSpawn / GameConfig / TowerSlot / MetaTree / UI / ToggleList / ToggleMenu / [String](./StringRecord.md)(2026-07-18, 실제 상태 반영 — 이전 기록에 누락돼 있던 UI/ToggleList/ToggleMenu도 함께 보정)
+- 등록 테이블: Enemy / Tower / Projectile / Wave / WaveSpawn / GameConfig / TowerSlot / MetaTree / [Difficulty](./DifficultyRecord.md)(2026-07-22 추가) / UI / ToggleList / ToggleMenu / [String](./StringRecord.md)
 - 필드명 불일치 시 LogError만 출력되고 기본값 유지 (CLAUDE.md 데이터 레이어 버그 유형 (1))
 - LoadCsvTableToAddressable은 미완성 스텁
 
@@ -89,3 +89,20 @@ Unity MCP 컴파일 확인, 에러 0건.
 
 ### 검증
 Play Mode 실측 — InGameScene에서 몬스터 스폰 후 `SceneManager.instance.NextScene("TitleScene")`으로 전환(= GameManager 중복 인스턴스 생성 경로 자연 재현) → 수정 전엔 `ArgumentException` 재현, 수정 후 콘솔 에러 0건 + `TableManager.GetTable<EnemyTable>()`이 전환 후에도 15개 레코드를 정상 유지하는 것 확인.
+
+---
+
+## 2026-07-22-2
+
+### 개요
+[[DifficultyRecord]] 신규 등록 — 상세는 그 문서 참고.
+
+### 파일
+- Assets/Scripts/Glory/Table/TableManager.cs
+
+### 수정 (함수 단위)
+**init()**
+- 후: `LoadCsvTable<DifficultyRecord>("Table/DifficultyTable")` 로드 + `new DifficultyTable(...)` + 딕셔너리 등록 3줄 추가(`MetaTreeTable` 로딩 라인들과 같은 블록, 기존 패턴 그대로).
+
+### 검증
+[[DifficultyRecord]]/[[DifficultyManager]] 2026-07-22 항목 참고 — Play Mode에서 4행 정상 로드 확인.

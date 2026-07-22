@@ -7,7 +7,7 @@ public class TitleScene : BaseScene
 
     public void OnClickPlayButton()
     {
-        SceneManager.instance.NextScene(EScene.InGameScene.ToString());
+        UIManager.instance.Get<UIDifficultySelect>();
     }
 
     public void OnClickMetatreeButton()

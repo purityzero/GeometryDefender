@@ -7,8 +7,9 @@
 
 ## 현재 상태
 - 경로: Assets/Scripts/Title/TitleScene.cs
-- `OnClickPlayButton()` — `SceneManager.instance.NextScene(EScene.InGameScene.ToString())`로 인게임 씬 전환.
+- `OnClickPlayButton()` — 2026-07-22부터 바로 씬 전환하지 않고 `UIManager.instance.Get<UIDifficultySelect>();`로 난이도 선택 팝업을 먼저 띄움([[UIDifficultySelect]] 참고). 실제 `SceneManager.instance.NextScene(EScene.InGameScene.ToString())` 호출은 그 팝업에서 난이도를 고른 뒤 실행됨.
 - `BaseScene`을 상속(2026-07-21). `OnSetup()`(protected override)에 주석 "하지마라"만 있음 — 예전에 `TableManager.instance.init()`을 여기서 호출했다가 GameManager.Awake()의 호출과 중복돼 되돌린 이력이 있음(2026-06-07 커밋). **이 메서드에 초기화 로직을 추가하지 말 것.**
+- **주의(사용자 지시)**: `TitleScene.unity`(씬 파일)는 이 프로젝트에서 사용자가 직접 수동으로 편집 중이라 건드리지 말 것 — 단, `TitleScene.cs`(스크립트)는 사용자 승인 하에 수정 가능(2026-07-22 확인됨). 둘을 혼동하지 말 것.
 
 ## 작업 내역
 

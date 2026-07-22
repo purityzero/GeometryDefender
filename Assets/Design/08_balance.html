@@ -217,18 +217,54 @@ damageMultiplier(t) = 1.0 + (t / 60) × 0.25
       <strong>4~5시간 플레이</strong>면 메타 완료.
     </p>
 
-    <h2>난이도 옵션 (MVP 이후)</h2>
+    <h2>난이도 진행 (Normal → Hard → Hell → Infinite)</h2>
+
+    <p>
+      난이도는 <strong>처음부터 전부 선택 가능한 옵션이 아니라, 순차 언락 체인</strong>이다.
+      Normal을 클리어해야 Hard가, Hard를 클리어해야 Hell이, Hell을 클리어해야
+      Infinite가 열린다. <strong>클리어 조건은 동일</strong>: 마지막으로 정의된
+      웨이브(WaveTable 기준 480초, Wave 5)에 도달한 시점까지 타워가 생존해 있으면
+      해당 난이도는 클리어로 간주하고 다음 난이도를 해금한다(생존 자체는 그 이후로도
+      계속— 클리어는 "언락 조건"이지 런의 끝이 아니다).
+    </p>
 
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>모드</th><th>변경 사항</th><th>Shards 배율</th></tr></thead>
+        <thead><tr><th>모드</th><th>변경 사항</th><th>Shards 배율</th><th>언락 조건</th></tr></thead>
         <tbody>
-          <tr><td>EASY</td><td>스폰 -30%, 적 HP -20%</td><td class="num">×0.7</td></tr>
-          <tr><td>NORMAL</td><td>기준 (MVP)</td><td class="num">×1.0</td></tr>
-          <tr><td>HARD</td><td>스폰 +30%, 적 HP +30%</td><td class="num">×1.5</td></tr>
-          <tr><td>HELL</td><td>스폰 +60%, 시작 카드풀 제한</td><td class="num">×2.5</td></tr>
+          <tr><td>NORMAL</td><td>기준</td><td class="num">×1.0</td><td>시작부터 해금</td></tr>
+          <tr><td>HARD</td><td>스폰 +30%, 적 HP +30%</td><td class="num">×1.5</td><td>Normal 클리어</td></tr>
+          <tr><td>HELL</td><td>스폰 +60%, 적 HP +60%</td><td class="num">×2.5</td><td>Hard 클리어</td></tr>
+          <tr><td>INFINITE</td><td>Hell 배율에서 시작, 아래 공식으로 계속 증가</td><td class="num">Hell과 동일 공식으로 계속 증가</td><td>Hell 클리어</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <p style="font-size: 13px; color: var(--text-muted);">
+      HELL의 "시작 카드풀 제한"(구버전 기획)은 카드 시스템이 아직 없어 이번
+      진행 구조에서는 제외 — 카드 시스템이 붙으면 그때 다시 검토.
+    </p>
+
+    <h3>Infinite 배율 증가 공식</h3>
+
+    <pre><code>difficultyMultiplier(t) = hellMultiplier + floor((t - 480) / 120) × 0.10   // t초, 480초(Wave 5) 이후부터 2분마다 +10%p, 상한 없음
+shardMultiplier(t)      = 2.5 + floor((t - 480) / 120) × 0.10              // 스폰/적HP 배율과 동일한 주기로 같이 상승
+
+예시 (t = 경과 초):
+  t = 480  (Hell 시작)      → 배율 ×1.60(스폰/HP), Shards ×2.5
+  t = 600  (10분, +2분)     → 배율 ×1.70, Shards ×2.6
+  t = 840  (14분, +6분)     → 배율 ×1.90, Shards ×2.8
+  t = 1200 (20분, +12분)    → 배율 ×2.20, Shards ×3.1</code></pre>
+
+    <div class="callout callout-info">
+      <div class="callout-title">Infinite는 "클리어"가 없다</div>
+      <p style="margin-bottom: 0;">
+        Hell까지는 순차 언락용 클리어 조건(480초 생존)이 있지만, Infinite는
+        죽을 때까지 계속하는 모드라 별도 클리어/종료 조건이 없다. Shards는
+        런이 끝날 때(타워 사망) <code>05_meta.html</code>의 정산 공식대로
+        한 번에 계산되며, 이때 <code>shardMultiplier(t)</code>(t = 사망 시점 경과초)를
+        곱해 최종 획득량을 정한다.
+      </p>
     </div>
 
     <h2>밸런스 튜닝 워크플로우</h2>

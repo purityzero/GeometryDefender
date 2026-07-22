@@ -35,3 +35,13 @@ UIType(Normal/Popup) 컬럼 추가 — UIManager가 UICanvas/PopupCanvas 분기�
 ### 수정
 - `eUIType { Normal, Popup }` enum 신설, UIRecord에 `UIType` 필드 추가
 - UITable.csv에 UIType 컬럼 추가 — UICardDraft/UIPause = Popup, 나머지 = Normal (임의 분류이므로 기획 확인 필요)
+
+---
+
+## 2026-07-22-0
+
+### 개요
+[[UIDifficultySelect]] 신규 등록.
+
+### 수정
+- UITable.csv: `6,UIDifficultySelect,Popup,Prefabs/UI/UIDifficultySelect` 행 추가.

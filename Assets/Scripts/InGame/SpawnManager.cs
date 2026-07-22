@@ -3,7 +3,6 @@ using UnityEngine;
 public class SpawnManager : MonoBehaviour, IUpdatable
 {
     [SerializeField] private MonsterManager m_MonsterManager;
-    [SerializeField] private float m_SpawnInterval = 1f;
 
     private EnemyTable m_EnemyTable;
     private WaveTable m_WaveTable;
@@ -59,10 +58,16 @@ public class SpawnManager : MonoBehaviour, IUpdatable
     private void UpdatePhaseSpawn()
     {
         m_SpawnTimer += Time.deltaTime;
-        if (m_SpawnTimer < m_SpawnInterval)
+
+        // Assets/Design/08_balance.html "적 스폰 곡선": spawnRate(t) = baseRate × (1 + t/60)^exponent, 난이도 배율은 추가로 곱해짐
+        float difficultyMultiplier = (DifficultyManager.Current != null) ? DifficultyManager.Current.GetDifficultyMultiplier() : 1f;
+        float spawnRate = GameConfigTable.SPAWN_BASE_RATE * Mathf.Pow(1f + m_ElapsedTime / 60f, GameConfigTable.SPAWN_RATE_EXPONENT) * difficultyMultiplier;
+        float spawnInterval = 1f / spawnRate;
+
+        if (m_SpawnTimer < spawnInterval)
             return;
 
-        m_SpawnTimer -= m_SpawnInterval;
+        m_SpawnTimer -= spawnInterval;
 
         WaveRecord phase = m_WaveTable.GetActivePhase((int)m_ElapsedTime);
         if (phase == null)

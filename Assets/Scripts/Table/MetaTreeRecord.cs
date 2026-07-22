@@ -74,4 +74,22 @@ public class MetaTreeTable : Table<MetaTreeRecord>
 
         return _unlockedIds.Contains(record.PrereqId);
     }
+
+    // 해금된 노드들 중 지정한 효과 타입의 EffectValue를 전부 합산 — 영구 업그레이드 스탯 적용에 사용
+    public int GetTotalEffectValue(eMetaEffectType _effectType, List<int> _unlockedIds)
+    {
+        int total = 0;
+
+        for (int i = 0; i < _unlockedIds.Count; ++i)
+        {
+            MetaTreeRecord record = GetRecordById(_unlockedIds[i]);
+            if (record == null)
+                continue;
+
+            if (record.EffectType == _effectType)
+                total += record.EffectValue;
+        }
+
+        return total;
+    }
 }

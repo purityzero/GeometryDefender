@@ -10,7 +10,9 @@ public class TableManager : MonoSingleton<TableManager>
 
     private FlowCommand m_FlowCommand = new FlowCommand();
 
-    private bool m_isInitialized;
+    // 핫 리로드 시 m_TableDictionary(Dictionary)는 리셋되지만 이 bool은 값이 보존되어
+    // "초기화된 것처럼 보이는데 테이블은 비어있는" 상태가 됨 — SpawnManager/MonsterManager와 동일 이유로 보존 대상에서 제외
+    [System.NonSerialized] private bool m_isInitialized;
 
     public void init()
     {
@@ -23,11 +25,13 @@ public class TableManager : MonoSingleton<TableManager>
 
         List<EnemyRecord> enemyRecords = LoadCsvTable<EnemyRecord>("Table/EnemyTable");
         List<TowerRecord> towerRecords = LoadCsvTable<TowerRecord>("Table/TowerTable");
+        List<ProjectileRecord> projectileRecords = LoadCsvTable<ProjectileRecord>("Table/ProjectileTable");
         List<WaveRecord> waveRecords = LoadCsvTable<WaveRecord>("Table/WaveTable");
         List<WaveSpawnRecord> waveSpawnRecords = LoadCsvTable<WaveSpawnRecord>("Table/WaveSpawnTable");
         List<GameConfigRecord> gameConfigRecords = LoadCsvTable<GameConfigRecord>("Table/GameConfigTable");
         List<TowerSlotRecord> towerSlotRecords = LoadCsvTable<TowerSlotRecord>("Table/TowerSlotTable");
         List<MetaTreeRecord> metaTreeRecords = LoadCsvTable<MetaTreeRecord>("Table/MetaTreeTable");
+        List<DifficultyRecord> difficultyRecords = LoadCsvTable<DifficultyRecord>("Table/DifficultyTable");
         List<UIRecord> uiRecords = LoadCsvTable<UIRecord>("Table/UITable");
         List<ToggleListRecord> toggleListRecords = LoadCsvTable<ToggleListRecord>("Table/ToggleListTable");
         List<ToggleMenuRecord> toggleMenuRecords = LoadCsvTable<ToggleMenuRecord>("Table/ToggleMenuTable");
@@ -35,11 +39,13 @@ public class TableManager : MonoSingleton<TableManager>
 
         EnemyTable enemyTable = new EnemyTable(enemyRecords);
         TowerTable towerTable = new TowerTable(towerRecords);
+        ProjectileTable projectileTable = new ProjectileTable(projectileRecords);
         WaveTable waveTable = new WaveTable(waveRecords);
         WaveSpawnTable waveSpawnTable = new WaveSpawnTable(waveSpawnRecords);
         GameConfigTable gameConfigTable = new GameConfigTable(gameConfigRecords);
         TowerSlotTable towerSlotTable = new TowerSlotTable(towerSlotRecords);
         MetaTreeTable metaTreeTable = new MetaTreeTable(metaTreeRecords);
+        DifficultyTable difficultyTable = new DifficultyTable(difficultyRecords);
         UITable uiTable = new UITable(uiRecords);
         ToggleListTable toggleListTable = new ToggleListTable(toggleListRecords);
         ToggleMenuTable toggleMenuTable = new ToggleMenuTable(toggleMenuRecords);
@@ -47,11 +53,13 @@ public class TableManager : MonoSingleton<TableManager>
 
         m_TableDictionary.Add(typeof(EnemyTable), enemyTable);
         m_TableDictionary.Add(typeof(TowerTable), towerTable);
+        m_TableDictionary.Add(typeof(ProjectileTable), projectileTable);
         m_TableDictionary.Add(typeof(WaveTable), waveTable);
         m_TableDictionary.Add(typeof(WaveSpawnTable), waveSpawnTable);
         m_TableDictionary.Add(typeof(GameConfigTable), gameConfigTable);
         m_TableDictionary.Add(typeof(TowerSlotTable), towerSlotTable);
         m_TableDictionary.Add(typeof(MetaTreeTable), metaTreeTable);
+        m_TableDictionary.Add(typeof(DifficultyTable), difficultyTable);
         m_TableDictionary.Add(typeof(UITable), uiTable);
         m_TableDictionary.Add(typeof(ToggleListTable), toggleListTable);
         m_TableDictionary.Add(typeof(ToggleMenuTable), toggleMenuTable);

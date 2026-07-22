@@ -33,6 +33,7 @@ public class PlayerData
 {
     public int Version = 1;
     public List<int> UnlockedMetaNodes = new List<int>();
+    public List<eDifficultyLevel> UnlockedDifficulties = new List<eDifficultyLevel> { eDifficultyLevel.Normal };
     public int BestScore;
     public List<RunRecord> RecentRuns = new List<RunRecord>();
     public string LastPlayedAt;
@@ -136,6 +137,21 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         }
     }
 
+    public bool AddCurrency(eCurrencyType _currencyType, long _amount)
+    {
+        switch (_currencyType)
+        {
+            case eCurrencyType.Shard:
+                m_AssetData.Shards += (int)_amount;
+                m_ShardsObservable.Value = m_AssetData.Shards;
+                Save();
+                return true;
+            default:
+                Logger.Error($"[PlayerManager] AddCurrency Failed! unknown type - {_currencyType}");
+                return false;
+        }
+    }
+
     public void AddRunRecord(RunRecord _runRecord)
     {
         _runRecord.PlayedAt = DateTime.Now.ToString("o");
@@ -157,6 +173,20 @@ public class PlayerManager : MonoSingleton<PlayerManager>
 
         m_PlayerData.UnlockedMetaNodes.Add(_nodeId);
         Save();
+    }
+
+    public void UnlockDifficulty(eDifficultyLevel _difficulty)
+    {
+        if (m_PlayerData.UnlockedDifficulties.Contains(_difficulty) == true)
+            return;
+
+        m_PlayerData.UnlockedDifficulties.Add(_difficulty);
+        Save();
+    }
+
+    public bool IsDifficultyUnlocked(eDifficultyLevel _difficulty)
+    {
+        return m_PlayerData.UnlockedDifficulties.Contains(_difficulty);
     }
 
     private void OnApplicationPause(bool _isPaused)

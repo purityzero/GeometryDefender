@@ -8,8 +8,9 @@
 - 필드: DisplayName(string), Value(float) — 키-값 형태 게임 설정 (예: StartGold=100).
 - `GameConfigTable : Table<GameConfigRecord>`
   - `static TAP_SCALE`(0.95) / `static TAP_DURATION`(0.05) — 생성자에서 CSV의 TapScale/TapDuration 행 값으로 채워짐 (초기값은 CSV 누락 폴백). TweenUtil.TapPress/TapRelease 호출 시 인자로 전달해 사용.
+  - `static SPAWN_BASE_RATE`(1.0) / `SPAWN_RATE_EXPONENT`(1.3) / `HP_MULTIPLIER_GROWTH`(0.4) / `DAMAGE_MULTIPLIER_GROWTH`(0.25) — 2026-07-22 추가, `Assets/Design/08_balance.html` "적 스폰 곡선"/"적 스탯 시간 보정" 공식 상수. [[SpawnManager]]/[[MonsterManager]]에서 사용.
   - `GetValue(_displayName, _defaultValue)` — DisplayName으로 조회, 없으면 LogError + 기본값.
-- 데이터: Assets/Resources/Table/GameConfigTable.csv (헤더: Id,DisplayName,Value / 1~11행: StartGold, StartLife, TotalWaves, SpawnX/Y/Z, BaseX/Y/Z, TapScale, TapDuration)
+- 데이터: Assets/Resources/Table/GameConfigTable.csv (헤더: Id,DisplayName,Value / 1~12행: StartGold, StartLife, TotalWaves, SpawnX/Y/Z, BaseX/Y/Z, TapScale, TapDuration, TowerMaxHp / 13~16행: SpawnBaseRate, SpawnRateExponent, HpMultiplierGrowth, DamageMultiplierGrowth)
 
 ## 작업 내역
 
@@ -41,3 +42,21 @@
 
 ### 미검증
 컴파일 확인(Unity MCP `refresh_unity`, 에러 0건)만 완료. `GetValue("TowerMaxHp")` 실제 조회는 client-issues.md 2026-07-21-1의 선행 버그로 인해 End-to-End 확인 못함(상세는 [[TowerHealth]] 2026-07-21-4).
+
+---
+
+## 2026-07-22-0
+
+### 개요
+`.claude/design/difficulty-progression.md`에서 발견한 "08_balance.html의 스폰/HP 시간 곡선이 코드에 없음" 문제를 해결하며 상수 저장소로 재사용.
+
+### 파일
+- Assets/Scripts/Table/GameConfigRecord.cs
+- Assets/Resources/Table/GameConfigTable.csv
+
+### 수정
+- `static SPAWN_BASE_RATE`(1.0f)/`SPAWN_RATE_EXPONENT`(1.3f)/`HP_MULTIPLIER_GROWTH`(0.4f)/`DAMAGE_MULTIPLIER_GROWTH`(0.25f) 추가, 생성자에서 CSV(`SpawnBaseRate`/`SpawnRateExponent`/`HpMultiplierGrowth`/`DamageMultiplierGrowth`) 로드 — TAP_SCALE/TAP_DURATION과 동일 패턴.
+- CSV에 13~16행 추가.
+
+### 검증
+Play Mode에서 4개 값 모두 CSV 그대로 로드되는 것 확인(`SPAWN_BASE_RATE=1, SPAWN_RATE_EXPONENT=1.3, HP_MULTIPLIER_GROWTH=0.4, DAMAGE_MULTIPLIER_GROWTH=0.25`). 컴파일 에러 0건.

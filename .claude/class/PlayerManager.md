@@ -16,7 +16,7 @@
 - 로드: 제네릭 `LoadData<T>(saveKey)` 헬퍼 — 키 없음/파싱 실패 시 new T() 반환(파싱 실패는 에러 로그)
 - 저장: Save() 한 번에 세 키 모두 기록 (호출부가 혼합 데이터를 건드리는 경우가 많아 키별 개별 저장 메서드는 두지 않음)
 - 저장 트리거(설계 준수): 런 종료(AddRunRecord), 메타 노드 해금(UnlockMetaNode), 앱 백그라운드 전환(OnApplicationPause)
-- API: Load / Save / GetCurrencyAmount(eCurrencyType) / GetCurrencyObservable(eCurrencyType) / SpendCurrency(eCurrencyType, long) / AddRunRecord / UnlockMetaNode
+- API: Load / Save / GetCurrencyAmount(eCurrencyType) / GetCurrencyObservable(eCurrencyType) / SpendCurrency(eCurrencyType, long) / AddRunRecord / UnlockMetaNode / UnlockDifficulty(eDifficultyLevel) / IsDifficultyUnlocked(eDifficultyLevel) (2026-07-22 추가, [[DifficultyManager]] 참고)
 - AddRunRecord가 BestScore 갱신 + 최근 10개 초과분 제거까지 담당
 
 ## 주의
@@ -185,3 +185,71 @@ public void Load()
 
 ### 미검증
 에디터 미실행 상태 편집. 컴파일/저장·로드 왕복(세 키 각각) 확인 필요.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+[[DifficultyManager]] 구현("Normal→Hard→Hell→Infinite" 순차 언락) — `UnlockMetaNode`와 대칭되는 난이도 언락 API 추가.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정 (함수 단위)
+**`PlayerData`**
+- 추가: `public List<eDifficultyLevel> UnlockedDifficulties = new List<eDifficultyLevel> { eDifficultyLevel.Normal };` (`UnlockedMetaNodes`와 동일 패턴, 기본값은 Normal만 해금)
+
+**신규 `UnlockDifficulty(eDifficultyLevel)`/`IsDifficultyUnlocked(eDifficultyLevel)`**
+```csharp
+public void UnlockDifficulty(eDifficultyLevel _difficulty)
+{
+    if (m_PlayerData.UnlockedDifficulties.Contains(_difficulty) == true)
+        return;
+
+    m_PlayerData.UnlockedDifficulties.Add(_difficulty);
+    Save();
+}
+
+public bool IsDifficultyUnlocked(eDifficultyLevel _difficulty)
+{
+    return m_PlayerData.UnlockedDifficulties.Contains(_difficulty);
+}
+```
+`UnlockMetaNode`와 완전히 동일한 구조(중복 방지 가드 + Save).
+
+### 검증
+[[DifficultyManager]] 2026-07-22-0 참고 — Play Mode에서 Normal 클리어 시 `IsDifficultyUnlocked(Hard)`가 실제로 true로 전환되는 것 확인.
+
+---
+
+## 2026-07-22-1
+
+### 개요
+`.claude/design/shard-acquisition.md` 구현 — `SpendCurrency`는 있는데 반대 방향(적립)이 없었음.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정 (함수 단위)
+**신규 `AddCurrency(eCurrencyType, long)`**
+```csharp
+public bool AddCurrency(eCurrencyType _currencyType, long _amount)
+{
+    switch (_currencyType)
+    {
+        case eCurrencyType.Shard:
+            m_AssetData.Shards += (int)_amount;
+            m_ShardsObservable.Value = m_AssetData.Shards;
+            Save();
+            return true;
+        default:
+            Logger.Error($"[PlayerManager] AddCurrency Failed! unknown type - {_currencyType}");
+            return false;
+    }
+}
+```
+`SpendCurrency`와 완전히 대칭되는 구조(부족량 체크만 없음 — 적립은 상한이 없어 실패 조건 자체가 없음).
+
+### 검증
+[[UIRunOver]] 2026-07-22-3 참고 — Play Mode에서 `AddCurrency` 호출 후 `PlayerPrefs`의 `AssetData` 키에 실제로 반영되는 것(`{"Shards":44}`) 확인.

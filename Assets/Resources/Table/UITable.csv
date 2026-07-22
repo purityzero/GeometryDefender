@@ -4,3 +4,4 @@ Id,UIName,UIType,PrefabPath
 3,UICardDraft,Popup,Prefabs/UI/UICardDraft
 4,UIRunOver,Popup,Prefabs/UI/UIRunOver
 5,UIPause,Popup,Prefabs/UI/UIPause
+6,UIDifficultySelect,Popup,Prefabs/UI/UIDifficultySelect

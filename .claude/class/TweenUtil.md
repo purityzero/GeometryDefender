@@ -13,6 +13,7 @@ DOTween 공용 헬퍼 정적 클래스. 모든 메서드가 `Tween`을 반환해
 - Rotate: `RotateLocal`(RotateMode 지정 가능, 기본 Fast — 상대 회전은 LocalAxisAdd 사용)
 - Move: `Move`(월드) / `MoveAnchored`(RectTransform)
 - Color: SpriteRenderer / Image / **Material**(2026-07-22 추가) — `SpriteRenderer.color`(표준 틴트)가 아니라 커스텀 셰이더의 `_Color` 프로퍼티를 직접 읽는 머테리얼(예: 몬스터/타워가 쓰는 글로우 셰이더)을 색상 트윈할 때 사용
+- Float: **Material**(2026-07-22 추가) — 커스텀 셰이더의 임의 float 프로퍼티(`_GlowAmount` 등)를 프로퍼티명 문자열로 지정해 트윈
 
 ## 작업 내역
 
@@ -36,3 +37,8 @@ DOTween 공용 헬퍼 정적 클래스. 모든 메서드가 `Tween`을 반환해
 - 개요: 사용자 요청("HP 달때마다 Player색깔 변하는거... 머테리얼도 색이 서서히 변해야함") — [[TowerColorEffect]]가 몬스터/타워 공용 글로우 셰이더의 `_Color`를 트윈하기 위해 신규 오버로드 필요.
 - 수정: `public static Tween Color(Material _target, Color _targetColor, float _duration) => _target.DOColor(_targetColor, _duration);` 추가.
 - 검증: 컴파일 에러 0건, [[TowerColorEffect]] 2026-07-22-0에서 실제 사용 검증.
+
+### 2026-07-22-3
+- 개요: [[TowerColorEffect]]의 "HP 티어별 글로우 강도 변화 + 30% 이하 펄스 점멸" 구현에 필요한 범용 float 프로퍼티 트윈 오버로드 추가.
+- 수정: `public static Tween Float(Material _target, string _propertyName, float _targetValue, float _duration) => _target.DOFloat(_targetValue, _propertyName, _duration);` 추가. DOTween `Material.DOFloat(endValue, propertyName, duration)` shortcut 그대로 래핑.
+- 검증: 미검증(Unity MCP 미연결 세션, 컴파일 미확인) — [[TowerColorEffect]] 2026-07-22-3 참고.

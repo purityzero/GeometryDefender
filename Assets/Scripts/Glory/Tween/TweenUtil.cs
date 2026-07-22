@@ -84,4 +84,10 @@ public static class TweenUtil
     {
         return _target.DOColor(_targetColor, _duration);
     }
+
+    // ---- Float (커스텀 셰이더 프로퍼티) ----
+    public static Tween Float(Material _target, string _propertyName, float _targetValue, float _duration)
+    {
+        return _target.DOFloat(_targetValue, _propertyName, _duration);
+    }
 }

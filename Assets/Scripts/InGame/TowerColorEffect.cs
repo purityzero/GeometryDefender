@@ -1,8 +1,19 @@
+using DG.Tweening;
 using UnityEngine;
 
 public class TowerColorEffect : MonoBehaviour, IUpdatable
 {
+    private enum eHpTier
+    {
+        High,
+        Mid,
+        Low
+    }
+
+    private const string GLOW_AMOUNT_PROPERTY = "_GlowAmount";
     private const float COLOR_TWEEN_DURATION = 0.5f;
+    private const float GLOW_TWEEN_DURATION = 0.5f;
+    private const float LOW_PULSE_DURATION = 0.4f;
     private const float MID_HP_RATIO = 0.7f;
     private const float LOW_HP_RATIO = 0.3f;
 
@@ -13,7 +24,15 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
     [SerializeField] private Color m_MidHpColor = new Color(0f, 0.7372549f, 0.83137256f);
     [SerializeField] private Color m_LowHpColor = new Color(1f, 0.2f, 0.33333334f);
 
+    // 02_combat.html 글로우 강도 CSS 참고치(8+20 / 4+10 / 6+14) 비율 근사치 — Low는 정적값 대신 펄스 점멸
+    [SerializeField] private float m_HighGlowAmount = 1f;
+    [SerializeField] private float m_MidGlowAmount = 0.5f;
+    [SerializeField] private float m_LowPulseMinGlowAmount = 0.15f;
+    [SerializeField] private float m_LowPulseMaxGlowAmount = 0.7f;
+
     private ObservableVariable<int> m_RegisteredObservable;
+    private eHpTier? m_CurrentTier;
+    private Tween m_GlowTween;
 
     private void Start()
     {
@@ -30,6 +49,8 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
 
         if (m_RegisteredObservable != null)
             m_RegisteredObservable.UnregisterObserver(OnHpChanged);
+
+        m_GlowTween?.Kill();
     }
 
     public void UpdateLogic()
@@ -50,19 +71,55 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
             return;
 
         float hpRatio = (float)_newValue / TowerHealth.Current.maxHp;
-        Color targetColor = GetColorForRatio(hpRatio);
+        eHpTier targetTier = GetTierForRatio(hpRatio);
 
-        TweenUtil.Color(m_SpriteRenderer.material, targetColor, COLOR_TWEEN_DURATION);
+        if (m_CurrentTier != null && m_CurrentTier.Value == targetTier)
+            return;
+
+        m_CurrentTier = targetTier;
+
+        Material material = m_SpriteRenderer.material;
+
+        TweenUtil.Color(material, GetColorForTier(targetTier), COLOR_TWEEN_DURATION);
+        ApplyGlowForTier(material, targetTier);
     }
 
-    private Color GetColorForRatio(float _hpRatio)
+    private eHpTier GetTierForRatio(float _hpRatio)
     {
         if (_hpRatio <= LOW_HP_RATIO)
-            return m_LowHpColor;
+            return eHpTier.Low;
 
         if (_hpRatio <= MID_HP_RATIO)
+            return eHpTier.Mid;
+
+        return eHpTier.High;
+    }
+
+    private Color GetColorForTier(eHpTier _tier)
+    {
+        if (_tier == eHpTier.Low)
+            return m_LowHpColor;
+
+        if (_tier == eHpTier.Mid)
             return m_MidHpColor;
 
         return m_HighHpColor;
+    }
+
+    // 30% 이하(Low)는 정적 글로우 대신 min~max 사이를 무한 반복하는 펄스 점멸로 표현(02_combat.html "적색 펄스가 점멸")
+    private void ApplyGlowForTier(Material _material, eHpTier _tier)
+    {
+        m_GlowTween?.Kill();
+
+        if (_tier == eHpTier.Low)
+        {
+            _material.SetFloat(GLOW_AMOUNT_PROPERTY, m_LowPulseMinGlowAmount);
+            m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, m_LowPulseMaxGlowAmount, LOW_PULSE_DURATION)
+                .SetLoops(-1, LoopType.Yoyo);
+            return;
+        }
+
+        float targetGlowAmount = (_tier == eHpTier.Mid) ? m_MidGlowAmount : m_HighGlowAmount;
+        m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, targetGlowAmount, GLOW_TWEEN_DURATION);
     }
 }

@@ -25,4 +25,10 @@ public class WaveTable : Table<WaveRecord>
         }
         return activeRecord;
     }
+
+    // 난이도 클리어 판정(DifficultyManager)에 사용 — 마지막으로 정의된 웨이브 시작 시각
+    public int GetFinalPhaseStartTime()
+    {
+        return list[list.Count - 1].StartTime;
+    }
 }
