@@ -299,3 +299,23 @@ private void OnTowerDie()
 
 ### 검증
 [[MetaTreeRecord]] 2026-07-22-0 참고 — Play Mode에서 HP I(+10)/HP II(+20) 해금 후 `TowerHealth.maxHp=130`(기본 100 포함) 실측 확인.
+
+---
+
+## 2026-07-22-4
+
+### 개요
+사용자 요청("모든 기본 텍스트 LiberationSans SDF 글꼴로 바꿔줘") — 스크립트 변경 없음, 씬 값만 수정. 프로젝트 전체 TMP 텍스트 폰트 감사 중, 이름 없는 디버그용 TMP 텍스트 3개("frame" 하위의 "Text (TMP)" — FPS 카운터로 추정되는 서드파티 디버그 오버레이, InGameScene.cs/InGameScene.md가 관리하는 로직과는 무관)가 유일하게 `DungGeunMo Bitmap` 폰트를 쓰고 있어 프로젝트 기본 폰트로 통일. [[UIToastMessage]] 2026-07-22-0과 동일 사유·동일 교체.
+
+### 파일
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (오브젝트 단위)
+**"frame" 하위 Text (TMP) × 3** (fileID 1239586910/1660748141/1988254264)
+- `m_fontAsset`: `DungGeunMo Bitmap`(guid `7e00a561b2f97e04bbe6e3b6876e22e5`) → `LiberationSans SDF`(guid `8f586378b4e144a9851e7b34d9b748ee`)
+- `m_sharedMaterial`: `{fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee}`로 통일
+
+### 검증
+컴파일 에러 0건. 이 3개 텍스트가 실제로 어떤 값을 표시하는지(FPS 등)는 확인하지 않음 — 폰트 참조 자체가 존재하지 않던 글리프 없이 다른 곳과 동일 폰트로 정상 로드되는지만 확인(콘솔에 폰트 관련 에러 없음).
+
+**주의(추후 정정됨)**: `LiberationSans SDF`에 한글 글리프가 없어 실제로는 깨져 보였을 것 — 근본 수정(폰트 Fallback 체인에 DungGeunMo 등록)은 [[UIText]] 2026-07-22-0 참고. 이 항목 자체(폰트 참조를 LiberationSans SDF로 통일)는 그대로 유효하며 되돌릴 필요 없음 — Fallback 등록으로 한글도 같이 해결됨.

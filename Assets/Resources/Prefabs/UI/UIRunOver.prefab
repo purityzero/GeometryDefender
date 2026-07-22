@@ -149,6 +149,7 @@ GameObject:
   - component: {fileID: 9004000000000001021}
   - component: {fileID: 9004000000000001022}
   - component: {fileID: 9004000000000001023}
+  - component: {fileID: 2223028820709029483}
   m_Layer: 5
   m_Name: Text_Title
   m_TagString: Untagged
@@ -275,6 +276,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &2223028820709029483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  m_Text: {fileID: 9004000000000001023}
+  m_Key: RunOverTitle
 --- !u!1 &9004000000000001030
 GameObject:
   m_ObjectHideFlags: 0
@@ -286,6 +301,7 @@ GameObject:
   - component: {fileID: 9004000000000001031}
   - component: {fileID: 9004000000000001032}
   - component: {fileID: 9004000000000001033}
+  - component: {fileID: 5302940257047042465}
   m_Layer: 5
   m_Name: Text_ScoreLabel
   m_TagString: Untagged
@@ -412,6 +428,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &5302940257047042465
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001030}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  m_Text: {fileID: 9004000000000001033}
+  m_Key: RunOverScoreLabel
 --- !u!1 &9004000000000001040
 GameObject:
   m_ObjectHideFlags: 0
@@ -480,7 +510,7 @@ MonoBehaviour:
   m_text: 0
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials:
   - {fileID: 0}
   m_fontMaterial: {fileID: 0}
@@ -619,7 +649,7 @@ MonoBehaviour:
   m_text: 'Best: 0'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials:
   - {fileID: 0}
   m_fontMaterial: {fileID: 0}
@@ -738,6 +768,7 @@ GameObject:
   - component: {fileID: 9004000000000001071}
   - component: {fileID: 9004000000000001072}
   - component: {fileID: 9004000000000001073}
+  - component: {fileID: 28904668890593895}
   m_Layer: 5
   m_Name: Text_StatsLabel
   m_TagString: Untagged
@@ -870,6 +901,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &28904668890593895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001070}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  m_Text: {fileID: 9004000000000001073}
+  m_Key: RunOverStatsLabels
 --- !u!1 &9004000000000001080
 GameObject:
   m_ObjectHideFlags: 0
@@ -1102,6 +1147,7 @@ GameObject:
   - component: {fileID: 9004000000000001101}
   - component: {fileID: 9004000000000001102}
   - component: {fileID: 9004000000000001103}
+  - component: {fileID: 1638219396120268141}
   m_Layer: 5
   m_Name: Text_ShardsLabel
   m_TagString: Untagged
@@ -1228,6 +1274,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &1638219396120268141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  m_Text: {fileID: 9004000000000001103}
+  m_Key: RunOverShardsLabel
 --- !u!1 &9004000000000001110
 GameObject:
   m_ObjectHideFlags: 0
@@ -1646,6 +1706,7 @@ GameObject:
   - component: {fileID: 9004000000000001141}
   - component: {fileID: 9004000000000001142}
   - component: {fileID: 9004000000000001143}
+  - component: {fileID: 2209243159875453395}
   m_Layer: 5
   m_Name: Text_MetaTree
   m_TagString: Untagged
@@ -1772,6 +1833,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &2209243159875453395
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LocalizedText
+  m_Text: {fileID: 9004000000000001143}
+  m_Key: RunOverMetaTreeButton
 --- !u!1 &9004000000000001150
 GameObject:
   m_ObjectHideFlags: 0
@@ -1916,6 +1991,7 @@ GameObject:
   - component: {fileID: 9004000000000001161}
   - component: {fileID: 9004000000000001162}
   - component: {fileID: 9004000000000001163}
+  - component: {fileID: 7505093513286112620}
   m_Layer: 5
   m_Name: Text_Restart
   m_TagString: Untagged
@@ -2042,6 +2118,20 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &7505093513286112620
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIText
+  m_Text: {fileID: 9004000000000001163}
+  m_Key: RunOverRestartButton
 --- !u!1 &9004000000000001170
 GameObject:
   m_ObjectHideFlags: 0
@@ -2186,6 +2276,7 @@ GameObject:
   - component: {fileID: 9004000000000001181}
   - component: {fileID: 9004000000000001182}
   - component: {fileID: 9004000000000001183}
+  - component: {fileID: 7714320670941664029}
   m_Layer: 5
   m_Name: Text_MainMenu
   m_TagString: Untagged
@@ -2312,3 +2403,17 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &7714320670941664029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004000000000001180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIText
+  m_Text: {fileID: 9004000000000001183}
+  m_Key: RunOverMainMenuButton

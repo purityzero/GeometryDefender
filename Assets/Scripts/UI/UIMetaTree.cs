@@ -33,6 +33,9 @@ public class UIMetaTree : UIPopup
             if (tabToggle == null)
                 continue;
 
+            string label = GetBranchLabel((eMetaBranch)i);
+            tabToggle.textOn.SetText(label);
+            tabToggle.textOff.SetText(label);
             tabToggle.textOn.color = GetBranchColor((eMetaBranch)i);
         }
     }
@@ -55,7 +58,11 @@ public class UIMetaTree : UIPopup
     private string GetBranchLabel(eMetaBranch _branch)
     {
         ToggleMenuRecord record = GetBranchRecord(_branch);
-        return (record != null) ? record.OnText : _branch.ToString();
+        if (record == null)
+            return _branch.ToString();
+
+        StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+        return stringTable.GetString(record.OnText);
     }
 
     private Color GetBranchColor(eMetaBranch _branch)
@@ -111,18 +118,25 @@ public class UIMetaTree : UIPopup
 
     private void SpawnNode(MetaTreeTable _metaTreeTable, MetaTreeRecord _record)
     {
+        StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+
         MetaTreeNodeItem nodeItem = ResUtil.Create(m_NodeTemplate, m_Content);
         m_SpawnedItems.Add(nodeItem.gameObject);
 
-        nodeItem.SetData(_record.DisplayName, _record.Cost, GetBranchColor(m_CurrentBranch));
+        nodeItem.SetData(stringTable.GetString(_record.DisplayName), _record.Cost, GetBranchColor(m_CurrentBranch));
 
-        bool isUnlockable = _metaTreeTable.IsUnlockable(_record.Id, PlayerManager.instance.playerData.UnlockedMetaNodes);
+        List<int> unlockedIds = PlayerManager.instance.playerData.UnlockedMetaNodes;
+        bool isUnlocked = _metaTreeTable.IsUnlocked(_record.Id, unlockedIds);
+        bool isUnlockable = _metaTreeTable.IsUnlockable(_record.Id, unlockedIds);
         int nodeId = _record.Id;
 
-        bool showUnlockImage = isUnlockable == false;
-        nodeItem.SetData(showUnlockImage, (button) => OnClickNode(nodeId));
+        bool showLockImage = (isUnlocked == false) && (isUnlockable == false);
+        nodeItem.SetData(showLockImage, (button) => OnClickNode(nodeId));
 
-        if (showUnlockImage == true)
+        nodeItem.SetCompleted(isUnlocked, stringTable.GetString("MetaTreeCompleted"));
+
+        bool isClickable = (isUnlockable == true) && (isUnlocked == false);
+        if (isClickable == false)
             nodeItem.SetLock(true);
     }
 

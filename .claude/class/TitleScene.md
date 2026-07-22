@@ -54,3 +54,32 @@ OnClickMetatreeButton 단순화 — UIManager.Get<T>() 신설 오버로드 사�
 
 ### 미검증
 컴파일/에디터 미실행 상태 편집. 실제 Play Mode로 버튼 클릭 흐름 확인 필요.
+
+---
+
+## 2026-07-22-1
+
+### 개요
+사용자 요청("UISetting 만들어서 언어 변경할 수 있게 만들어줘") — 이전엔 빈 구현이던 `OnClickSettingsButton()`을 실제로 연결. `Btn_Settings`(TitleScene.unity)는 이미 이 메서드에 Persistent Call로 연결돼 있었음(2026-07-15 이전부터 존재 — 씬을 직접 만지지 않고도 스크립트만 채우면 되는 상태였음).
+
+### 파일
+- Assets/Scripts/Title/TitleScene.cs
+
+### 수정
+```csharp
+// 전
+public void OnClickSettingsButton()
+{
+    
+}
+
+// 후
+public void OnClickSettingsButton()
+{
+    UIManager.instance.Get<UISetting>();
+}
+```
+`OnClickPlayButton()`/`OnClickMetatreeButton()`과 동일 패턴.
+
+### 검증 (2026-07-22, Play Mode)
+`Btn_Settings.onClick.Invoke()` 실제 호출 → [[UISetting]] 팝업이 정상적으로 열리는 것 확인. 콘솔 에러 0건.

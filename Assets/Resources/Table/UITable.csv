@@ -5,3 +5,4 @@ Id,UIName,UIType,PrefabPath
 4,UIRunOver,Popup,Prefabs/UI/UIRunOver
 5,UIPause,Popup,Prefabs/UI/UIPause
 6,UIDifficultySelect,Popup,Prefabs/UI/UIDifficultySelect
+7,UISetting,Popup,Prefabs/UI/UISetting

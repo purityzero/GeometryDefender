@@ -46,8 +46,10 @@ public class UIRunOver : UIPopup
 
         PlayerManager.instance.AddCurrency(eCurrencyType.Shard, shardsEarned);
 
+        StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+
         m_ScoreText.text = runRecord.Score.ToString();
-        m_BestText.text = $"Best: {PlayerManager.instance.playerData.BestScore}";
+        m_BestText.text = stringTable.GetString("RunOverBest", PlayerManager.instance.playerData.BestScore);
 
         int totalSeconds = (int)runRecord.SurvivalSeconds;
         int minutes = totalSeconds / 60;
@@ -55,7 +57,7 @@ public class UIRunOver : UIPopup
         m_StatsValueText.text = $"{minutes:00}:{seconds:00}\n{runRecord.KillCount}\n{runRecord.BossKills}\n{runRecord.CardsObtained}";
 
         m_ShardsEarnedText.text = $"+{shardsEarned}";
-        m_ShardsTotalText.text = $"Total: {PlayerManager.instance.GetCurrencyAmount(eCurrencyType.Shard)}";
+        m_ShardsTotalText.text = stringTable.GetString("RunOverTotal", PlayerManager.instance.GetCurrencyAmount(eCurrencyType.Shard));
     }
 
     public void OnClickMetaTree()

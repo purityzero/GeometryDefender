@@ -2,3 +2,50 @@ Id,Key,Kr,En,Cn,Jp
 1,ToastNotUnlockable,선행 조건을 먼저 해금하세요.,Unlock the prerequisite first.,请先解锁前置条件。,先に前提条件を解放してください。
 2,ToastNotEnoughShard,Shard가 부족합니다.,Not enough Shards.,Shard不足。,Shardが不足しています。
 3,ToastDifficultyLocked,아직 해금되지 않은 난이도입니다.,This difficulty is not unlocked yet.,该难度尚未解锁。,この難易度はまだ解放されていません。
+4,MetaTreeCompleted,완료,Completed,已完成,完了
+5,MetaTreeNode101,시작 체력 I,Starting HP I,初始生命值 I,初期HP I
+6,MetaTreeNode102,시작 체력 II,Starting HP II,初始生命值 II,初期HP II
+7,MetaTreeNode103,시작 공격력 I,Starting DMG I,初始伤害 I,初期攻撃力 I
+8,MetaTreeNode104,시작 공격력 II,Starting DMG II,初始伤害 II,初期攻撃力 II
+9,MetaTreeNode105,시작 사거리,Starting Range,初始射程,初期射程
+10,MetaTreeNode201,관통 해금,Unlock Pierce,解锁穿透,貫通解放
+11,MetaTreeNode202,스플래시 해금,Unlock Splash,解锁溅射,スプラッシュ解放
+12,MetaTreeNode203,글래스 캐논 해금,Unlock GlassCannon,解锁玻璃大炮,グラスキャノン解放
+13,MetaTreeNode204,오비탈 해금,Unlock Orbital,解锁轨道环,オービタル解放
+14,MetaTreeNode301,경험치 자석,XP Magnet,经验磁铁,経験値マグネット
+15,MetaTreeNode302,경험치 증가,XP Boost,经验加成,経験値ブースト
+16,MetaTreeNode303,샤드 보너스,Shard Bonus,碎片加成,シャードボーナス
+17,MetaTreeNode401,리롤 토큰,Reroll Token,重掷代币,リロールトークン
+18,MetaTreeNode402,리롤 II,Reroll II,重掷 II,リロール II
+19,MetaTreeNode403,스킵 토큰,Skip Token,跳过代币,スキップトークン
+20,MetaTreeBranchStartingPower,시작 능력치,STARTING POWER,初始属性,初期ステータス
+21,MetaTreeBranchCardPool,카드 풀,CARD POOL,卡牌池,カードプール
+22,MetaTreeBranchEconomy,경제,ECONOMY,经济,エコノミー
+23,MetaTreeBranchUtility,유틸리티,UTILITY,实用,ユーティリティ
+24,UIBack,< 뒤로,< BACK,< 返回,< 戻る
+25,RunOverTitle,- 런 종료 -,- RUN OVER -,- 本局结束 -,- ラン終了 -
+26,RunOverScoreLabel,점수,SCORE,分数,スコア
+27,RunOverStatsLabels,생존 시간\n\n처치 수\n\n보스 처치\n\n카드 획득,Survival\n\nKills\n\nBoss Kills\n\nCards,生存时间\n\n击杀数\n\nBoss击杀\n\n获得卡牌,生存時間\n\n撃破数\n\nボス撃破\n\nカード獲得
+28,RunOverShardsLabel,획득 샤드,SHARDS EARNED,获得的碎片,獲得シャード
+29,RunOverMetaTreeButton,메타 트리,META TREE,天赋树,メタツリー
+30,RunOverRestartButton,다시 시작,RESTART,重新开始,リスタート
+31,RunOverMainMenuButton,메인 메뉴,MAIN MENU,主菜单,メインメニュー
+32,RunOverBest,최고: {0},Best: {0},最高: {0},ベスト: {0}
+33,RunOverTotal,총합: {0},Total: {0},总计: {0},合計: {0}
+34,DifficultySelectTitle,난이도 선택,SELECT DIFFICULTY,选择难度,難易度選択
+35,DifficultyNormal,노멀,NORMAL,普通,ノーマル
+36,DifficultyHard,하드,HARD,困难,ハード
+37,DifficultyHell,헬,HELL,地狱,ヘル
+38,DifficultyInfinite,인피니트,INFINITE,无限,インフィニット
+39,TitleSettingsButton,설정,Settings,设置,設定
+40,SettingsTitle,설정,SETTINGS,设置,設定
+41,SettingsLanguageLabel,언어,Language,语言,言語
+42,SettingsSoundLabel,사운드,Sound,音效,サウンド
+43,SettingsHapticLabel,진동,Haptic,震动,バイブレーション
+44,SettingsLeftHandLabel,왼손 모드,Left-hand Mode,左手模式,左手モード
+45,SettingsFpsLabel,FPS,FPS,FPS,FPS
+46,SettingsOn,ON,ON,开,ON
+47,SettingsOff,OFF,OFF,关,OFF
+48,FpsAdaptive,자동,ADAPTIVE,自动,自動
+49,Fps30,30,30,30,30
+50,Fps60,60,60,60,60

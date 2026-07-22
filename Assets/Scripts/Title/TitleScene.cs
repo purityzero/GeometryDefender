@@ -17,7 +17,7 @@ public class TitleScene : BaseScene
 
     public void OnClickSettingsButton()
     {
-        
+        UIManager.instance.Get<UISetting>();
     }
 
     public void OnClickHowToPlayButton()

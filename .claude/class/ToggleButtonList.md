@@ -170,3 +170,16 @@ UIToggleButton toggleButton = ResUtil.Create(m_ToggleButtonPrefab, m_ButtonParen
 
 ### 미검증
 에디터 미실행 상태 편집. 컴파일/탭 생성 확인 필요.
+
+---
+
+## 2026-07-22-1
+
+### 개요
+[[UISetting]]의 언어 선택(4개)/FPS 선택(3개)에도 이 컴포넌트를 재사용(사용자 지적: "ToggleListTable을 왜 적극적으로 사용하지 않냐" — 처음엔 개별 `UIToggleButton` 필드로 손수 배치했다가 리팩터링). `ToggleListId="SettingsLanguage"`/`"SettingsFps"` 2건 추가 — 코드 변경 없음, `ToggleListTable`/`ToggleMenuTable`에 데이터 행만 추가하고 프리팹에서 [[UIMetaTree]]의 `Panel_Tabs`/`Item_Tab`과 동일 구조(HorizontalLayoutGroup + 템플릿 1개)로 구성.
+
+### 파일
+- Assets/Resources/Table/ToggleListTable.csv, ToggleMenuTable.csv (데이터만 추가)
+
+### 검증
+[[UISetting]] 2026-07-22-1 참고 — Play Mode에서 언어/FPS 라디오 그룹이 정확히 동작(선택 상태 복원 포함) 확인.

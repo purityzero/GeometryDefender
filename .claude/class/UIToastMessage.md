@@ -187,3 +187,23 @@ m_TextPlayer.Play(_message);
 
 ### 미검증
 컴파일, 프리팹 참조 연결, 타자기 2배속 실동작 확인 필요.
+
+---
+
+## 2026-07-22-0
+
+### 개요
+사용자 요청("모든 기본 텍스트 LiberationSans SDF 글꼴로 바꿔줘") — 프로젝트 전체 TMP 텍스트 중 이 프리팹의 `Text_Message`만 유일하게 `DungGeunMo Bitmap` 폰트 에셋을 쓰고 있던 것을(전체 49곳 중 4곳만 예외, 나머지는 전부 `LiberationSans SDF`) 프로젝트 기본 폰트로 통일.
+
+### 파일
+- Assets/Resources/Prefabs/UI/UIToastMessage.prefab
+
+### 수정 (오브젝트 단위)
+**Text_Message**
+- `m_fontAsset`: `DungGeunMo Bitmap`(guid `7e00a561b2f97e04bbe6e3b6876e22e5`) → `LiberationSans SDF`(guid `8f586378b4e144a9851e7b34d9b748ee`)
+- `m_sharedMaterial`: 대응 폰트의 기본 머테리얼로 교체 — 프로젝트 내 `LiberationSans SDF` 사용처 49곳 중 49곳이 쓰는 `{fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee}` 패턴 그대로 적용.
+
+### 검증 (2026-07-22, Play Mode)
+`UIManager.instance.ShowToast("선행 조건을 먼저 해금하세요.")` 실제 호출 → 토스트에 한글 문구가 깨지지 않고 정상 렌더링되는 것 확인(`text.font.name == "LiberationSans SDF"`). 콘솔 에러 0건.
+
+**주의(추후 정정됨)**: 이 검증은 `text.font.name`/`text.text` 프로퍼티만 확인했을 뿐 실제 렌더링 픽셀(스크린샷)은 확인하지 않았음 — 실제로는 `LiberationSans SDF`에 한글 글리프가 없어 화면엔 깨져 보였다. 근본 수정은 [[UIText]] 2026-07-22-0(폰트 자체에 Fallback 등록) 참고.

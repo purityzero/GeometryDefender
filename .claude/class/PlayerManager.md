@@ -253,3 +253,94 @@ public bool AddCurrency(eCurrencyType _currencyType, long _amount)
 
 ### 검증
 [[UIRunOver]] 2026-07-22-3 참고 — Play Mode에서 `AddCurrency` 호출 후 `PlayerPrefs`의 `AssetData` 키에 실제로 반영되는 것(`{"Shards":44}`) 확인.
+
+---
+
+## 2026-07-22-2
+
+### 개요
+사용자 요청("[[UISetting]] 만들어서 언어 변경할 수 있게 해줘" → "언어변경될때는 UIText가 PlayerManager 옵져버에 등록해서 변경되게") — `OptionData`에 `Language` 필드 추가 + 언어 변경을 관찰 가능하게 만들어 [[UIText]]가 자동으로 갱신되도록 함. FPS 옵션도 실제 `Application.targetFrameRate`에 적용.
+
+### 파일
+- Assets/Scripts/PlayerManager.cs
+
+### 수정 (함수 단위)
+
+**`OptionData`**
+- 추가: `public eLanguage Language;`
+
+**필드 추가**
+```csharp
+private ObservableVariable<eLanguage> m_LanguageObservable = new ObservableVariable<eLanguage>(eLanguage.Korean);
+public ObservableVariable<eLanguage> languageObservable => m_LanguageObservable;
+```
+
+**`Load()` — 최초 실행 시 시스템 언어 자동감지**
+```csharp
+// 전
+public void Load()
+{
+    m_PlayerData = LoadData<PlayerData>(SAVE_KEY);
+    m_OptionData = LoadData<OptionData>(OPTION_SAVE_KEY);
+    m_AssetData = LoadData<AssetData>(ASSET_SAVE_KEY);
+    m_ShardsObservable.Value = m_AssetData.Shards;
+}
+
+// 후
+public void Load()
+{
+    bool isFirstLaunch = PlayerPrefs.HasKey(OPTION_SAVE_KEY) == false;
+
+    m_PlayerData = LoadData<PlayerData>(SAVE_KEY);
+    m_OptionData = LoadData<OptionData>(OPTION_SAVE_KEY);
+    m_AssetData = LoadData<AssetData>(ASSET_SAVE_KEY);
+
+    if (isFirstLaunch == true)
+        m_OptionData.Language = StringTable.GetDefaultLanguage();
+
+    m_ShardsObservable.Value = m_AssetData.Shards;
+    StringTable.CurrentLanguage = m_OptionData.Language;
+    m_LanguageObservable.Value = m_OptionData.Language;
+    ApplyFpsOption();
+}
+```
+**주의(실제로 겪은 버그)**: `OptionData.Language` 필드 초기화식에 직접 `StringTable.GetDefaultLanguage()`(내부에서 `Application.systemLanguage` 호출)를 넣었더니 `UnityException: get_systemLanguage is not allowed to be called from a MonoBehaviour constructor (or instance field initializer)` 발생 — `m_OptionData = new OptionData();`가 PlayerManager 자신의 필드 초기화식으로 실행되면서 MonoBehaviour 생성자 컨텍스트에 걸림. Unity API 호출이 필요한 기본값은 필드 초기화식이 아니라 반드시 `Load()`(Awake에서 호출됨) 안에서, 그것도 "최초 1회"임을 명시적으로 판별한 뒤에만 적용할 것.
+
+**신규 `SetLanguage(eLanguage)`**
+```csharp
+public void SetLanguage(eLanguage _language)
+{
+    m_OptionData.Language = _language;
+    StringTable.CurrentLanguage = _language;
+    m_LanguageObservable.Value = _language;
+    Save();
+}
+```
+
+**신규 `SetSoundOn(bool)` / `SetHapticOn(bool)` / `SetLeftHandMode(bool)`**
+필드 대입 + Save()만 하는 단순 세터 — 실제로 연동할 사운드/진동/좌우 반전 시스템이 아직 없어 TODO 주석만 남김([[UISetting]] 참고).
+
+**신규 `SetFpsOption(eFpsOption)` / `ApplyFpsOption()`**
+```csharp
+public void SetFpsOption(eFpsOption _fpsOption)
+{
+    m_OptionData.FpsOption = _fpsOption;
+    ApplyFpsOption();
+    Save();
+}
+
+private void ApplyFpsOption()
+{
+    switch (m_OptionData.FpsOption)
+    {
+        case eFpsOption.Fps30: Application.targetFrameRate = 30; break;
+        case eFpsOption.Fps60: Application.targetFrameRate = 60; break;
+        case eFpsOption.Adaptive:
+        default: Application.targetFrameRate = -1; break;
+    }
+}
+```
+Sound/Haptic/LeftHand와 달리 FPS는 실제 시스템(`Application.targetFrameRate`)이 이미 존재해서 바로 적용 — TODO 없이 완전히 동작.
+
+### 검증 (2026-07-22, Play Mode)
+[[UISetting]] 화면에서 언어 4개/FPS 3개/사운드·진동·왼손 토글 실제 클릭 → `PlayerManager.instance.Load()`(재시작 시뮬레이션)로 재로드해도 `Language=English`, `isSoundOn=False`, `FpsOption=Fps30`, `Application.targetFrameRate=30`까지 전부 그대로 복원되는 것 확인. 콘솔 에러 0건.

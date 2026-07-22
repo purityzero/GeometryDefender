@@ -20,6 +20,7 @@ public class OptionData
     public bool isHapticOn = true;
     public bool isLeftHandMode = false;
     public eFpsOption FpsOption = eFpsOption.Fps60;
+    public eLanguage Language;
 }
 
 [Serializable]
@@ -50,9 +51,11 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     private OptionData m_OptionData = new OptionData();
     private AssetData m_AssetData = new AssetData();
     private ObservableVariable<int> m_ShardsObservable = new ObservableVariable<int>(0);
+    private ObservableVariable<eLanguage> m_LanguageObservable = new ObservableVariable<eLanguage>(eLanguage.Korean);
 
     public PlayerData playerData => m_PlayerData;
     public OptionData optionData => m_OptionData;
+    public ObservableVariable<eLanguage> languageObservable => m_LanguageObservable;
 
     protected override void Awake()
     {
@@ -62,11 +65,20 @@ public class PlayerManager : MonoSingleton<PlayerManager>
 
     public void Load()
     {
+        bool isFirstLaunch = PlayerPrefs.HasKey(OPTION_SAVE_KEY) == false;
+
         m_PlayerData = LoadData<PlayerData>(SAVE_KEY);
         m_OptionData = LoadData<OptionData>(OPTION_SAVE_KEY);
         m_AssetData = LoadData<AssetData>(ASSET_SAVE_KEY);
 
+        if (isFirstLaunch == true)
+            m_OptionData.Language = StringTable.GetDefaultLanguage();
+
         m_ShardsObservable.Value = m_AssetData.Shards;
+
+        StringTable.CurrentLanguage = m_OptionData.Language;
+        m_LanguageObservable.Value = m_OptionData.Language;
+        ApplyFpsOption();
     }
 
     private T LoadData<T>(string _saveKey) where T : new()
@@ -187,6 +199,62 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     public bool IsDifficultyUnlocked(eDifficultyLevel _difficulty)
     {
         return m_PlayerData.UnlockedDifficulties.Contains(_difficulty);
+    }
+
+    public void SetLanguage(eLanguage _language)
+    {
+        m_OptionData.Language = _language;
+        StringTable.CurrentLanguage = _language;
+        m_LanguageObservable.Value = _language;
+        Save();
+    }
+
+    public void SetSoundOn(bool _isSoundOn)
+    {
+        m_OptionData.isSoundOn = _isSoundOn;
+        Save();
+
+        // TODO: 사운드/BGM 시스템이 생기면 여기서 실제 뮤트 처리
+    }
+
+    public void SetHapticOn(bool _isHapticOn)
+    {
+        m_OptionData.isHapticOn = _isHapticOn;
+        Save();
+
+        // TODO: 진동 트리거 시스템이 생기면 여기서 실제 On/Off 반영
+    }
+
+    public void SetLeftHandMode(bool _isLeftHandMode)
+    {
+        m_OptionData.isLeftHandMode = _isLeftHandMode;
+        Save();
+
+        // TODO: 인게임 일시정지 버튼이 생기면 여기서 좌/우 위치 반영
+    }
+
+    public void SetFpsOption(eFpsOption _fpsOption)
+    {
+        m_OptionData.FpsOption = _fpsOption;
+        ApplyFpsOption();
+        Save();
+    }
+
+    private void ApplyFpsOption()
+    {
+        switch (m_OptionData.FpsOption)
+        {
+            case eFpsOption.Fps30:
+                Application.targetFrameRate = 30;
+                break;
+            case eFpsOption.Fps60:
+                Application.targetFrameRate = 60;
+                break;
+            case eFpsOption.Adaptive:
+            default:
+                Application.targetFrameRate = -1;
+                break;
+        }
     }
 
     private void OnApplicationPause(bool _isPaused)

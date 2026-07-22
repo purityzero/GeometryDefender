@@ -1,2 +1,4 @@
 Id,ToggleListId,PrefabPath
 1,MetaTreeBranch,
+2,SettingsLanguage,
+3,SettingsFps,

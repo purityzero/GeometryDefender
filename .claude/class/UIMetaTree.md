@@ -9,7 +9,7 @@ UIMetaTree.prefab 루트에 부착되는 화면 컴포넌트. 메타 트리(영�
 - 줄기 탭: `ToggleButtonList`(라디오모드, m_isKeepOneSelected) — `SetData("MetaTreeBranch", ...)`로 [ToggleListTable/ToggleMenuTable](./ToggleButtonList.md) CSV에서 4개 탭 데이터(라벨+색상)를 읽어 생성. 라벨/색은 더 이상 코드에 하드코딩하지 않음(2026-07-18-6, BRANCH_LABELS/BRANCH_COLORS 제거) — Show() 시마다 SetData 호출(내부적으로 최초 1회만 인스턴스화, 매번 인덱스0 재선택 + 노드 목록 갱신 트리거).
 - 브랜치 라벨/색상 조회: `GetBranchRecord`/`GetBranchLabel`/`GetBranchColor` — `ToggleMenuTable.FindAllByToggleListId("MetaTreeBranch")` 결과를 `(int)eMetaBranch`로 인덱싱(CSV 행 순서가 enum 순서와 일치해야 함 — 암묵적 의존). 색상은 `OnColor`(hex 문자열) 컬럼을 [ColorUtil.GetColorHtml](./ColorUtil.md)로 파싱(2026-07-18-7에 인라인 파싱 로직을 공용 클래스로 분리).
 - 노드 아이템: [MetaTreeNodeItem](./MetaTreeNodeItem.md)(`UIToggleButton` 상속)을 붙인 Item_Node를 줄기별로 Instantiate. **토글 On/Off는 "지금 클릭 가능한가"(`IsUnlockable`) 기준** — 클릭 불가(이미 해금됐거나 선행조건 미충족)면 Image_Unlocked 표시 + SetLock(true, 비활성+dim), 클릭 가능하면 Group_Cost(비용) 표시 + 인터랙션 가능(2026-07-18-4 수정, 최초엔 `isUnlocked` 기준이라 선행조건 미충족 노드가 비용을 계속 보여주는 버그가 있었음).
-- 노드 상태 2분류(SpawnNode, IsUnlockable 기준): 클릭 가능(비용 표시) / 클릭 불가(이미 해금됨 + 선행조건 미충족을 구분하지 않고 동일하게 Image_Unlocked 표시 + SetLock 비활성+dim).
+- 노드 상태 3분류(SpawnNode, 2026-07-22-1부터): **완료**(이미 해금됨, `IsUnlocked` — `MetaTreeNodeItem.SetCompleted(true, ...)`로 완료 문구만 표시, 잠금/비용 강제 숨김) / **구매 가능**(`IsUnlockable`, Group_Cost 표시) / **잠김**(선행조건 미충족, Image_Unlocked 표시 + SetLock 비활성+dim). 이전엔 "완료"와 "잠김"을 구분하지 않고 둘 다 Image_Unlocked로 표시했음(2026-07-18-4의 의도된 단순화였으나 이번에 확장).
 - 클릭 흐름(OnClickNode): MetaTreeTable.IsUnlockable 체크 → PlayerManager.SpendCurrency(Shard, Cost) → 성공 시 PlayerManager.UnlockMetaNode → RefreshNodeList로 전체 재구성(부분 갱신 대신 스냅샷 재생성 — 노드 수가 적어 성능 문제 없음, 실패 시 롤백도 같은 재구성으로 처리).
 - 직렬화 필드: m_BranchTabs(ToggleButtonList), m_Content(RectTransform), m_BranchHeaderTemplate(GameObject), m_NodeTemplate(**MetaTreeNodeItem**, 2026-07-18-5에 UIToggleButton에서 변경) — m_AssetBoxShard는 2026-07-19-0에 제거(UIAssetBox가 옵저버로 자동 갱신)
 - 프리팹 경로는 UITable(Resources/Table/UITable.csv)에서 조회 가능
@@ -541,3 +541,104 @@ GameObject header = ResUtil.Create(m_BranchHeaderTemplate, m_Content);
 
 ### 검증
 [[UIPopup]] 2026-07-22-0 참고 — `UIRunOver` 위에서 열어도 더 위(`siblingIndex` 큼)에 그려지는 것, 뒤로가기로 닫히는 것, 씬 전환 시 `CloseAllPopups()`로 정리되는 것 전부 Play Mode 실측.
+
+---
+
+## 2026-07-22-1
+
+### 개요
+사용자 요청("UI Metatree ItemNode에 업그레이드 완료 만들어줘, StringTable도 넣어야하는거 알지?") — SpawnNode를 2-상태(클릭 가능/잠김)에서 3-상태(완료/구매 가능/잠김)로 확장. 완료 문구는 [[StringRecord]]의 신규 `MetaTreeCompleted` 키로 조회(하드코딩 금지).
+
+### 파일
+- Assets/Scripts/UI/UIMetaTree.cs
+- [[MetaTreeNodeItem]] (SetCompleted 신규 메서드)
+- Assets/Resources/Table/StringTable.csv (MetaTreeCompleted 키 추가)
+
+### 수정 전/후
+```csharp
+// Before (SpawnNode)
+bool isUnlockable = _metaTreeTable.IsUnlockable(_record.Id, unlockedIds);
+int nodeId = _record.Id;
+
+bool showLockImage = isUnlockable == false;
+nodeItem.SetData(showLockImage, (button) => OnClickNode(nodeId));
+
+if (showLockImage == true)
+    nodeItem.SetLock(true);
+
+// After (SpawnNode)
+List<int> unlockedIds = PlayerManager.instance.playerData.UnlockedMetaNodes;
+bool isUnlocked = _metaTreeTable.IsUnlocked(_record.Id, unlockedIds);
+bool isUnlockable = _metaTreeTable.IsUnlockable(_record.Id, unlockedIds);
+int nodeId = _record.Id;
+
+bool showLockImage = (isUnlocked == false) && (isUnlockable == false);
+nodeItem.SetData(showLockImage, (button) => OnClickNode(nodeId));
+
+StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+nodeItem.SetCompleted(isUnlocked, stringTable.GetString("MetaTreeCompleted"));
+
+bool isClickable = (isUnlockable == true) && (isUnlocked == false);
+if (isClickable == false)
+    nodeItem.SetLock(true);
+```
+- `MetaTreeRecord`에 `IsUnlocked(int, List<int>)` 신규 추가(`_unlockedIds.Contains(_id)`) — 기존 `IsUnlockable`과 나란히 둠.
+
+### 검증 (2026-07-22, Play Mode)
+Title→Btn_MetaTree 실제 흐름. STARTING POWER 탭 이미 해금 노드 4개 = 완료 문구만 표시(lock/cost 둘 다 숨김), 미구매 "Starting DMG II" = 구매 가능(cost 표시). CARD POOL 탭 선행조건 미충족 3개 = 기존 잠금 아이콘 유지, "Unlock Pierce" = 구매 가능. 3-상태 전부 실측, 콘솔 에러 0건.
+
+---
+
+## 2026-07-22-2
+
+### 개요
+사용자 요청("MetaTree등 UI에 들어가는 단어들 다 stringtable에 들어갈거 확인해줘" → "다 체크해야함") — StringTable 감사에서 빠진 게 확인된 부분 전부 반영. 노드 이름(`MetaTreeRecord.DisplayName`)과 브랜치 탭 라벨(`ToggleMenuRecord.OnText`/`OffText`)이 CSV에 원문 리터럴로 박혀 있어 언어별 대응이 안 되고 있었음 — 두 필드를 **StringTable Key를 담는 용도로 재사용**(재사용 우선 원칙, 필드/스키마 자체는 안 늘림)해서 해결. "< BACK" 버튼은 [[UIText]] 신규 컴포넌트로 별도 처리.
+
+### 파일
+- Assets/Scripts/UI/UIMetaTree.cs
+- Assets/Resources/Table/MetaTreeTable.csv (`DisplayName` 값 15개 전부 → StringTable key, 예: `Starting HP I` → `MetaTreeNode101`)
+- Assets/Resources/Table/ToggleMenuTable.csv (`OnText`/`OffText` 값 4개 전부 → StringTable key, 예: `STARTING POWER` → `MetaTreeBranchStartingPower`)
+- Assets/Resources/Table/StringTable.csv (신규 키 19개: MetaTreeNode101~403, MetaTreeBranchStartingPower/CardPool/Economy/Utility)
+- Assets/Resources/Prefabs/UI/UIMetaTree.prefab (`Panel_Top/Btn_Back/Text_Back`에 [[UIText]] 부착, Key=`UIBack`)
+
+### 수정 전/후
+```csharp
+// Before (GetBranchLabel)
+private string GetBranchLabel(eMetaBranch _branch)
+{
+    ToggleMenuRecord record = GetBranchRecord(_branch);
+    return (record != null) ? record.OnText : _branch.ToString();
+}
+
+// After — OnText를 리터럴이 아니라 StringTable Key로 취급
+private string GetBranchLabel(eMetaBranch _branch)
+{
+    ToggleMenuRecord record = GetBranchRecord(_branch);
+    if (record == null)
+        return _branch.ToString();
+
+    StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+    return stringTable.GetString(record.OnText);
+}
+
+// SetupBranchTabs — 기존엔 색상만 코드에서 덮어썼는데(OnText/OffText는 ToggleButtonList가 생성 시점에 이미 리터럴로 넣어줌), 이제 OnText/OffText 칸에 Key가 들어있으므로 텍스트도 반드시 여기서 재적용해야 함
+UIToggleButton tabToggle = m_BranchTabs.GetToggle<UIToggleButton>(i);
+string label = GetBranchLabel((eMetaBranch)i);   // 추가
+tabToggle.textOn.SetText(label);                  // 추가
+tabToggle.textOff.SetText(label);                 // 추가
+tabToggle.textOn.color = GetBranchColor((eMetaBranch)i);
+
+// SpawnNode
+// Before
+nodeItem.SetData(_record.DisplayName, _record.Cost, GetBranchColor(m_CurrentBranch));
+// After
+nodeItem.SetData(stringTable.GetString(_record.DisplayName), _record.Cost, GetBranchColor(m_CurrentBranch));
+```
+
+### 검증 (2026-07-22, Play Mode)
+Title→Btn_Play→Normal→InGame→Btn_MetaTree 실제 흐름, 리플렉션 없이 `GetComponentsInChildren<TextMeshProUGUI>(true)`로 화면에 그려진 텍스트를 직접 읽음:
+- 탭 4개 On/Off 텍스트 전부 `시작 능력치`/`카드 풀`/`경제`/`유틸리티`로 정상 렌더링(이전엔 영문 리터럴 고정).
+- 브랜치 헤더(`Text_BranchHeader`)도 동일하게 `시작 능력치`로 렌더링.
+- 노드 이름 5개(`시작 체력 I`/`시작 체력 II`/`시작 공격력 I`/`시작 공격력 II`/`시작 사거리`) 전부 정상 렌더링.
+- `Text_Back`("< 뒤로") 정상 렌더링.
+- 콘솔 에러 0건.

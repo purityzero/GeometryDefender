@@ -1,5 +1,12 @@
 Id,ToggleListId,OnText,OffText,OnImagePath,OffImagePath,OnColor
-1,MetaTreeBranch,STARTING POWER,STARTING POWER,,,00E5FF
-2,MetaTreeBranch,CARD POOL,CARD POOL,,,FF00AA
-3,MetaTreeBranch,ECONOMY,ECONOMY,,,FFD600
-4,MetaTreeBranch,UTILITY,UTILITY,,,ADFF2F
+1,MetaTreeBranch,MetaTreeBranchStartingPower,MetaTreeBranchStartingPower,,,00E5FF
+2,MetaTreeBranch,MetaTreeBranchCardPool,MetaTreeBranchCardPool,,,FF00AA
+3,MetaTreeBranch,MetaTreeBranchEconomy,MetaTreeBranchEconomy,,,FFD600
+4,MetaTreeBranch,MetaTreeBranchUtility,MetaTreeBranchUtility,,,ADFF2F
+5,SettingsLanguage,한국어,한국어,,,00E5FF
+6,SettingsLanguage,English,English,,,00E5FF
+7,SettingsLanguage,中文,中文,,,00E5FF
+8,SettingsLanguage,日本語,日本語,,,00E5FF
+9,SettingsFps,FpsAdaptive,FpsAdaptive,,,00E5FF
+10,SettingsFps,Fps30,Fps30,,,00E5FF
+11,SettingsFps,Fps60,Fps60,,,00E5FF

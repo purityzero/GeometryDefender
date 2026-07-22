@@ -60,7 +60,7 @@ public class StringTable : Table<StringRecord>
         }
     }
 
-    private static eLanguage GetDefaultLanguage()
+    public static eLanguage GetDefaultLanguage()
     {
         switch (Application.systemLanguage)
         {
