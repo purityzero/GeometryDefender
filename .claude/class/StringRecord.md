@@ -133,3 +133,29 @@ public static eLanguage GetDefaultLanguage()
 
 ### 검증 (2026-07-22, Play Mode)
 Title→Btn_Play(UIDifficultySelect)→Normal→InGame→Btn_MetaTree(UIMetaTree)→`UIManager.instance.Get<UIRunOver>()` 흐름 전부 실측, 34개 키 전부 한국어로 정상 렌더링(포맷 인자 포함 `최고: 251`/`총합: 387`, 여러 줄 라벨 포함) — 상세 표는 [[UIText]] 참고. 콘솔 에러 0건.
+
+---
+
+## 2026-07-22-3
+
+### 개요
+[[UISetting]] 화면 신규 구현(사용자 요청 — 언어 변경 + 사운드/진동/왼손모드/FPS 옵션 화면) 및 [[TitleScene]] "설정" 버튼용 문구 추가 — Id 39~50.
+
+### 파일
+- Assets/Resources/Table/StringTable.csv (Id 39~50 추가: `TitleSettingsButton`, `SettingsTitle`, `SettingsLanguageLabel`, `SettingsSoundLabel`, `SettingsHapticLabel`, `SettingsLeftHandLabel`, `SettingsFpsLabel`, `SettingsOn`, `SettingsOff`, `FpsAdaptive`, `Fps30`, `Fps60`)
+
+### 검증
+[[UISetting]] 참고 — Play Mode에서 언어 전환 시 전부 정상 렌더링 확인.
+
+---
+
+## 2026-07-23-0
+
+### 개요
+[[TitleScene]] 2026-07-23-0(버튼 StringTable 적용) — PLAY/How to Play 버튼용 키 신규 추가. META TREE/Settings 버튼은 기존 `RunOverMetaTreeButton`/`TitleSettingsButton` 키를 재사용(신규 키 안 만듦 — CLAUDE.md "동일 문구 공용 키 재사용" 원칙).
+
+### 파일
+- Assets/Resources/Table/StringTable.csv (Id 51 `TitlePlayButton`, Id 52 `TitleHowToPlayButton` 추가)
+
+### 검증 (2026-07-23, Play Mode)
+[[TitleScene]] 2026-07-23-0 참고 — 4개 버튼 텍스트 전부 정상 렌더링 + 언어 전환 실시간 반영 확인.

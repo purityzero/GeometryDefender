@@ -125,3 +125,16 @@ AssetDatabase.CreateAsset(asset, "Assets/font/PixelMplus Bitmap.asset");
 
 ### 스크린샷 캡처 도구의 알려진 플레이키니스 (2026-07-22)
 `manage_camera` screenshot이 **가끔 팝업을 띄운 직후의 첫 캡처에서 이전 화면(스테일 프레임)을 반환**하는 현상을 이 작업에서 여러 차례 재현(같은 상태에서 재시도하면 정상적으로 최신 프레임이 나옴). `GameObject.Find`/`activeInHierarchy`/`GetComponentsInChildren<TextMeshProUGUI>().text` 같은 코드 기반 상태 확인은 이 현상에 영향받지 않고 항상 정확했음 — **화면 캡처가 실패처럼 보여도 먼저 코드로 실제 오브젝트 상태(active 여부, 텍스트 내용)를 확인**하고, 그래도 의심스러우면 재시도할 것. 스크린샷 실패 자체를 "기능이 안 된다"는 근거로 곧바로 판단하지 말 것.
+
+---
+
+## 2026-07-23-0
+
+### 개요
+[[TitleScene]] 2026-07-23-0 — 처음으로 **씬 오브젝트(프리팹이 아니라 TitleScene.unity에 직접 배치된 오브젝트)**에 `UIText`를 부착. 이 경로에서 처음으로 부트스트랩 순서 버그가 표면화됨(상세는 [[TableManager]] 2026-07-23-0) — 프리팹 팝업(UIMetaTree 등)은 버튼 클릭 후 한참 지나 Instantiate되므로 `TableManager.init()`이 이미 끝나있어 문제가 안 됐지만, 씬 로드와 동시에 `OnEnable()`이 도는 씬 오브젝트는 `GameManager.Awake()`보다 먼저 실행될 수 있어 `Refresh()`의 `TableManager.instance.GetTable<StringTable>()`이 null을 반환 → NRE.
+
+### 파일
+- Assets/Scenes/TitleScene.unity (`Text_MetaTree`/`Btn_Play` 자식/`Btn_Settings` 자식/`Btn_HowToPlay` 자식 4곳에 `UIText` 신규 부착)
+
+### 검증 (2026-07-23, Play Mode)
+[[TableManager]] 수정 후 콘솔 에러 0건, 4곳 전부 `TextMeshProUGUI.text` 직접 읽기로 정상 렌더링 + `PlayerManager.SetLanguage()` 실시간 반영 확인.

@@ -49,3 +49,5 @@ Id,Key,Kr,En,Cn,Jp
 48,FpsAdaptive,자동,ADAPTIVE,自动,自動
 49,Fps30,30,30,30,30
 50,Fps60,60,60,60,60
+51,TitlePlayButton,플레이,PLAY,开始,プレイ
+52,TitleHowToPlayButton,게임 방법,How to Play,游戏说明,遊び方

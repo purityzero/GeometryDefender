@@ -157,6 +157,9 @@ public class TableManager : MonoSingleton<TableManager>
 
     public T GetTable<T>() where T : class, ITable
     {
+        if (m_isInitialized == false)
+            init();
+
         System.Type _type = typeof(T);
 
         ITable _find = null;
