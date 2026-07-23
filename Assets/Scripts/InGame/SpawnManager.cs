@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class SpawnManager : MonoBehaviour, IUpdatable
+public class SpawnManager : UpdatableBehaviour
 {
     [SerializeField] private MonsterManager m_MonsterManager;
 
@@ -34,17 +34,14 @@ public class SpawnManager : MonoBehaviour, IUpdatable
         m_isInitialized = true;
     }
 
-    private void Start()
+    // QA용 — CombatDebugWindow의 Wave 스킵 기능이 TimerManager.AddElapsedTime()과 함께 호출(2026-07-24).
+    // Wave/스폰 배율 판정은 이 m_ElapsedTime 기준이라(TimerManager.elapsedTime과는 별개 필드), 둘 다 같이 옮겨야 UI 표시 시간과 실제 웨이브가 어긋나지 않는다.
+    public void AddElapsedTime(float _seconds)
     {
-        BaseScene.Current.Register(this);
+        m_ElapsedTime += _seconds;
     }
 
-    private void OnDestroy()
-    {
-        BaseScene.Current?.Unregister(this);
-    }
-
-    public void UpdateLogic()
+    public override void UpdateLogic()
     {
         if (m_isInitialized == false)
             return;
@@ -60,7 +57,7 @@ public class SpawnManager : MonoBehaviour, IUpdatable
         m_SpawnTimer += Time.deltaTime;
 
         // Assets/Design/08_balance.html "적 스폰 곡선": spawnRate(t) = baseRate × (1 + t/60)^exponent, 난이도 배율은 추가로 곱해짐
-        float difficultyMultiplier = (DifficultyManager.Current != null) ? DifficultyManager.Current.GetDifficultyMultiplier() : 1f;
+        float difficultyMultiplier = (InGameScene.Current.difficultyManager != null) ? InGameScene.Current.difficultyManager.GetDifficultyMultiplier() : 1f;
         float spawnRate = GameConfigTable.SPAWN_BASE_RATE * Mathf.Pow(1f + m_ElapsedTime / 60f, GameConfigTable.SPAWN_RATE_EXPONENT) * difficultyMultiplier;
         float spawnInterval = 1f / spawnRate;
 

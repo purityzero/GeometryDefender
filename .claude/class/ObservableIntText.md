@@ -1,10 +1,12 @@
-# ObservableIntText&lt;TSource&gt;
+# ObservableIntText&lt;TSource&gt; (삭제됨, 2026-07-23)
+
+**클래스 파일 삭제됨** — Assets/Scripts/Glory/UI/ObservableIntText.cs(+.meta) 더 이상 존재하지 않음. 아래 내용은 과거 기록(왜 만들었고 왜 지웠는지)이며, 이 이름의 클래스를 다시 만들거나 재사용하려 하지 말 것. 상세 경위는 맨 아래 2026-07-23-1 참고, 대체 방식은 [[UIInGameHUD]] 참고.
 
 ## 연관 클래스
 - SceneSingleton&lt;T&gt; (제네릭 제약, `TSource : SceneSingleton<TSource>`)
 - ObservableVariable&lt;T&gt; (Partterns/Observer) — 실제 구독 대상
 - BaseScene, IUpdatable — `Current`가 아직 없을 때까지의 재시도용
-- KillCountText, TowerHealthText (파생 클래스)
+- (2026-07-23부터 실사용 소비자 없음 — 아래 "현재 상태" 및 작업 내역 참고)
 
 ## 개요
 "씬 스코프 싱글톤(`SceneSingleton<T>`)이 들고 있는 `ObservableVariable<int>` 값을 텍스트로 표시"하는 반복 패턴을 공용화한 제네릭 베이스(Glory 라이브러리, 프로젝트 비의존). 리팩토링 전에는 [[KillCountText]]/[[TowerHealthText]]가 거의 동일한 코드(BaseScene 등록 + 매 프레임 폴링해서 텍스트 대입)를 복붙하고 있었다 — 사용자 지적으로 이 베이스로 추출.
@@ -59,6 +61,30 @@ public abstract class ObservableIntText<TSource> : MonoBehaviour, IUpdatable whe
 [[TimerText]](경과 시간)는 매 프레임 값이 바뀌는 값이라 Observable로 바꿔도 콜백이 매 프레임 호출되는 건 똑같다(오히려 델리게이트 호출 오버헤드만 늘 수 있음) — "이벤트성으로 드물게 바뀌는 값"에만 이 패턴이 유효하다. TimerText는 기존 IUpdatable 폴링 방식 그대로 유지.
 
 ## 작업 내역
+
+### 2026-07-23-1
+
+#### 개요
+사용자 요청: "ObservableIntText 이런거 만드는건 지워줄래?" — 실사용 소비자가 이미 없어진 상태([[UIInGameHUD]] 2026-07-23-0에서 흡수)에서, 이런 제네릭 베이스 추출 자체를 원치 않는다는 의사 확인. 클래스를 완전히 삭제.
+
+#### 파일
+- 삭제: Assets/Scripts/Glory/UI/ObservableIntText.cs(+.meta)
+- 수정: .claude/rules/glory.md — "UI 값 표시 — 옵저버 기반 텍스트" 절에서 이 클래스 재사용을 안내하던 내용을 제거하고, "여러 소스를 다루는 화면은 그 화면의 컨트롤러 클래스에 직접 구현" 방침으로 교체
+
+#### 교훈
+공용 베이스로 추출하는 리팩토링은(이전 세션에서 사용자가 "공용화 시키면 되지 않나" 제안으로 도입) 이후 요구사항이 "서로 다른 여러 소스를 한 컴포넌트가 같이 다뤄야 함"으로 바뀌면 오히려 안 맞을 수 있음 — 소비자가 1~2곳뿐이고 각자 다른 소스 타입을 다루는 경우, 제네릭 베이스보다 화면별 직접 구현이 더 단순할 수 있다는 사례로 남겨둠.
+
+---
+
+### 2026-07-23-0
+
+#### 개요
+사용자 요청("KillCount, Timer, HP 다 UIInGameHUD에서 관리")으로 이 베이스의 유일한 두 소비자([[KillCountText]], [[TowerHealthText]])가 삭제되고 로직이 [[UIInGameHUD]] 하나로 흡수됨 — 상세는 [[UIInGameHUD]] 2026-07-23-0 참고. `ObservableIntText<TSource>`는 "TSource 하나"만 다루도록 설계돼 있어 이번처럼 서로 다른 두 소스를 한 클래스에서 동시에 다뤄야 하는 요구사항엔 맞지 않아 재사용하지 않았음.
+
+#### 현재 상태
+실사용 소비자 없음(2026-07-23 기준). 프로젝트 비의존적인 범용 Glory 패턴이라 삭제하지 않고 남겨둠 — 이후 "씬 스코프 싱글톤의 ObservableVariable<int> 하나를 텍스트로 표시"하는 단일 소스 케이스가 다시 생기면 재사용할 것.
+
+---
 
 ### 2026-07-22-0
 

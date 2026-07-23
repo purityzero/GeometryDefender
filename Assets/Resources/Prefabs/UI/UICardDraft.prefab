@@ -128,6 +128,7 @@ GameObject:
   - component: {fileID: 9003000000000001021}
   - component: {fileID: 9003000000000001022}
   - component: {fileID: 9003000000000001023}
+  - component: {fileID: 9003000000000002001}
   m_Layer: 5
   m_Name: Text_Title
   m_TagString: Untagged
@@ -1454,3 +1455,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3c9e5b7d1f46a8fb2ead6f8a4b9c373, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::UICardDraft
+  m_CardContainer: {fileID: 9003000000000001031}
+  m_CardTemplate: {fileID: 9003000000000001040}
+  m_RerollButton: {fileID: 9003000000000001084}
+  m_RerollText: {fileID: 9003000000000001093}
+  m_SkipButton: {fileID: 9003000000000001104}
+  m_SkipText: {fileID: 9003000000000001113}
+  m_BuildInfoText: {fileID: 9003000000000001123}
+--- !u!114 &9003000000000002001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9003000000000001020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a37630bea274644a85de3916ce19d91, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::UIText
+  m_Text: {fileID: 9003000000000001023}
+  m_Key: CardDraftTitle

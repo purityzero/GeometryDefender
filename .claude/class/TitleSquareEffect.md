@@ -2,18 +2,56 @@
 
 ## 연관 클래스
 - SceneManager (Glory) — 씬 전환 중이면 이동 정지
-- BaseScene, IUpdatable (Update 대신 구동, 2026-07-21)
+- BaseScene, IUpdatable, [[UpdatableBehaviour]] (부모, 2026-07-23부터 — Update 대신 구동 + 등록/해제 자동 처리)
 
 ## 현재 상태
 - 경로: Assets/Scripts/Title/TitleSquareEffect.cs
+- `public class TitleSquareEffect : UpdatableBehaviour`(2026-07-23부터, 이전엔 `MonoBehaviour, IUpdatable` 직접 구현) — 등록/해제는 [[UpdatableBehaviour]]가 `OnEnable()`/`OnDisable()`에서 자동 처리.
 - 타이틀 화면 배경 사각형 연출: 랜덤 시작 위치/방향/속도(1~5)/회전속도(±30~120)로 떠다니며 카메라(직교) 경계에서 반사(bounce).
-- `Start()`에서 Camera.main 없으면 이후 로직(Register 포함)을 건너뜀(2026-07-21 이전엔 `enabled = false`로 비활성화했으나, Update가 더 이상 Unity 자동 호출이 아니라 `enabled` 플래그가 의미 없어져 제거 — 대신 Register 자체를 안 함).
-- SpriteRenderer bounds로 오브젝트 반크기 계산 후 `SetRandomPosition()`으로 화면 내 랜덤 배치, 마지막에 `BaseScene.Current.Register(this)`로 등록.
-- `UpdateLogic()`(2026-07-21 이전엔 `Update()`)에서 `SceneManager.instance.IsSceneTransitioning == true`면 정지 → Move / Rotate / CheckBounce 순서로 처리. BaseScene이 대신 호출([[BaseScene]] 참고).
+- `Start()`에서 Camera.main 없으면 이후 초기화(방향/속도/위치 계산)를 건너뜀 — **단, 2026-07-23부터 등록 자체는 OnEnable(Start보다 먼저, 무조건 실행)에서 이미 끝난 뒤라 카메라가 없어도 `UpdateLogic()`은 계속 호출된다.** `m_Direction`/`m_RotationSpeed`가 기본값(0)으로 남아 Move/Rotate가 사실상 무해한 공회전만 하고 CheckBounce는 카메라 null 가드가 있어 안전 — 카메라 없는 상황 자체가 비정상 케이스라 실질적 영향은 없음(이전엔 등록 자체를 스킵해서 UpdateLogic이 아예 안 불렸음, 이제는 불리지만 무해).
+- SpriteRenderer bounds로 오브젝트 반크기 계산 후 `SetRandomPosition()`으로 화면 내 랜덤 배치.
+- `UpdateLogic()`에서 `SceneManager.instance.IsSceneTransitioning == true`면 정지 → Move / Rotate / CheckBounce 순서로 처리. BaseScene이 대신 호출([[BaseScene]] 참고).
 - 이동 가능 영역 계산은 `GetMoveArea()`(Rect 반환, 카메라 크기 - 오브젝트 반크기)로 통일 — SetRandomPosition / CheckBounce 공용.
 - 부착 대상: TitleScene의 `Game` 하위 Square ~ Square (6) 7개(단, TitleScene 오브젝트 자체의 자식은 아니고 별도 "Squares" 컨테이너 하위 — [[BaseScene]] 2026-07-21-0 설계 판단 참고).
+- `[SerializeField] private SpriteRenderer m_SpriteRenderer;`(2026-07-23) — 프리팹/씬에서 미리 연결 가능, 비어있으면 `Start()`에서 `GetComponent<SpriteRenderer>()`로 폴백. 씬에 이미 배치된 7개 인스턴스는 아직 미와이어링 상태(폴백으로 기존과 동일하게 동작) — 필요시 인스펙터에서 자기 자신의 SpriteRenderer를 드래그해 채워도 됨.
 
 ## 작업 내역
+
+### 2026-07-23-1
+
+#### 개요
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0, [[UpdatableBehaviour]] 참고.
+
+#### 파일
+- Assets/Scripts/Title/TitleSquareEffect.cs
+
+#### 수정 (함수 단위)
+**클래스 선언**: `MonoBehaviour, IUpdatable` → `UpdatableBehaviour`.
+**Start()**: 맨 끝의 `BaseScene.Current.Register(this);` 호출 제거(위 "현재 상태"의 카메라 null 케이스 동작 변화 참고), 로그 메시지를 "업데이트를 건너뜁니다" → "초기화를 건너뜁니다"로 정정(더 이상 정확히 업데이트를 건너뛰지 않으므로).
+**OnDestroy()**(Unregister만 하던 것): 삭제.
+**UpdateLogic()**: `public void` → `public override void`.
+
+#### 미검증
+[[SceneSingleton]] 2026-07-23-0 참고. 카메라 없는 극단 케이스(정상 플레이에선 발생 안 함)에서 실제로 문제없는지는 별도 확인 안 함(코드 분석상 무해 판단).
+
+---
+
+### 2026-07-23-0
+
+#### 개요
+사용자 요청(신규 코드 규칙): "Awake/Start에서 GetComponent 대신, Unity 내장 컴포넌트는 왠만하면 멤버 변수로 선언해 Prefab에 연동". 기존 코드 전수 검사 중 이 클래스가 해당돼 수정.
+
+#### 파일
+- Assets/Scripts/Title/TitleSquareEffect.cs
+
+#### 수정 (함수 단위)
+**클래스 선언**: `[SerializeField] private SpriteRenderer m_SpriteRenderer;` 필드 추가.
+**Start()**: 전: `SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();`(지역 변수) → 후: `if (m_SpriteRenderer == null) m_SpriteRenderer = GetComponent<SpriteRenderer>();`로 필드에 캐싱(폴백), 이하 로직은 `m_SpriteRenderer` 사용(동작 동일).
+
+#### 검증
+필드가 비어있을 때 기존과 동일하게 `GetComponent`로 폴백하므로 TitleScene의 기존 7개 인스턴스는 동작 변화 없음(미검증 — Play Mode 재확인 필요).
+
+---
 
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)

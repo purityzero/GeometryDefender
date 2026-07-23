@@ -207,8 +207,20 @@ public class UIManager : MonoSingleton<UIManager>
 
 }
 
-public abstract class UIBase : MonoBehaviour
+public abstract class UIBase : MonoBehaviour, IUpdatable
 {
+	protected virtual void OnEnable()
+	{
+		BaseScene.Current.Register(this);
+	}
+
+	protected virtual void OnDisable()
+	{
+		BaseScene.Current?.Unregister(this);
+	}
+
+	public virtual void UpdateLogic() { }
+
 	public virtual void Show()
 	{
 		gameObject.SetActive(true);

@@ -11,7 +11,7 @@
 ## 현재 상태
 - 경로: Assets/Scripts/InGame/TimerManager.cs
 - `public float elapsedTime { get; private set; }` — `Init()`에서 0으로 리셋, 이후 `UpdateLogic()`에서 매 프레임 `Time.deltaTime`만큼 누적.
-- `MonsterManager`/`SpawnManager`와 동일하게 `IUpdatable`을 구현하고 `Start()`에서 `BaseScene.Current.Register(this)`로 등록 — 자체 `Update()` 없음([[BaseScene]] 참고).
+- 자체 `Update()` 없음, `BaseScene`이 대신 `UpdateLogic()`을 호출([[BaseScene]] 참고). 2026-07-23부터 `IUpdatable` 선언 및 등록/해제 코드는 [[SceneSingleton]] 베이스가 대신 처리 — 이 클래스는 `UpdateLogic()`만 override(아래 2026-07-23-0 참고).
 - `Time.timeScale` 자체를 이 클래스가 설정하지는 않는다(2026-07-21-2에서 [[TimeScaleWindow]]로 단일화) — 다만 `Time.timeScale`은 Unity 전역 값이라 DOTween 일반 트윈, ECS World 시간(`SystemAPI.Time`), `Time.deltaTime` 기반 로직(SpawnManager의 자체 `m_ElapsedTime`, 이 클래스의 `elapsedTime` 포함) 전부에 자동으로 영향을 준다 — TimeScaleWindow로 배속을 올리면 이 매니저의 elapsedTime도 같이 빨라진다.
   - `OnDestroy()`에서 `#if UNITY_EDITOR Time.timeScale = 1f; #endif`로 복구 — InGameScene을 벗어날 때(TitleScene으로 전환 등) 배속이 다른 씬까지 새어나가지 않도록 방어. TimeScaleWindow로 배속을 바꿨든 다른 경로로 바뀌었든 항상 적용됨.
 - 씬 배치: InGameScene.unity의 `InGameScene/TimerManager` 오브젝트(fileID 812340001, 컴포넌트 812340003), `InGameScene.m_TimerManager`가 이를 참조.
@@ -110,3 +110,28 @@
 
 ### 검증
 [[SceneSingleton]] 2026-07-21-0 참고 — `elapsedTime`이 Play Mode 중 정상적으로 누적되는 것까지 실측 확인(등록/구동 체인이 리팩토링 후에도 정상).
+
+---
+
+## 2026-07-23-0
+
+### 개요
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0 참고.
+
+### 파일
+- Assets/Scripts/InGame/TimerManager.cs
+
+### 수정 (함수 단위)
+**클래스 선언**: `SceneSingleton<TimerManager>, IUpdatable` → `SceneSingleton<TimerManager>`(IUpdatable 제거).
+**Start()**(Register만 하던 것): 삭제.
+**UpdateLogic()**: `public void` → `public override void`.
+**OnDestroy()**: 수동 `BaseScene.Current?.Unregister(this);` 호출 제거(`base.OnDestroy()`가 대신 처리), `Time.timeScale` 복구 로직은 그대로 유지.
+
+### 미검증
+[[SceneSingleton]] 2026-07-23-0 참고.
+
+### 2026-07-23-1 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리)
+사용자 지적("Manager가 너무 많지 않아?") — `SceneSingleton<TimerManager>` → `UpdatableBehaviour`. 개별 `.Current` 폐지, `InGameScene.Current.timerManager`로 접근. `OnDestroy()`의 `base.OnDestroy()`(Current 리셋용이었음) 제거, `#if UNITY_EDITOR` 타임스케일 복구 로직은 그대로 유지. 상세 설계/검증은 [[InGameScene]] 2026-07-23-1 참고.
+
+### 2026-07-24-0 — AddElapsedTime(float) 추가(QA용 Wave 스킵)
+사용자 요청("배속 말고 플레이 타임 조절, Wave 건너뛸수있게") — [[CombatDebugWindow]]가 시간을 순간 이동시킬 수 있도록 `public void AddElapsedTime(float _seconds) { elapsedTime += _seconds; }` 추가. `SpawnManager.AddElapsedTime()`과 항상 세트로 호출해야 함(웨이브 판정용 경과 시간이 이 클래스와 별개 필드라 — 아래 "현재 상태"의 기존 주의사항 참고). 검증: 컴파일 에러 0건, [[CombatDebugWindow]] 2026-07-24-1에서 실제 Wave 5까지 스킵 확인.

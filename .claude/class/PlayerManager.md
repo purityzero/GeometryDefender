@@ -344,3 +344,13 @@ Sound/Haptic/LeftHand와 달리 FPS는 실제 시스템(`Application.targetFrame
 
 ### 검증 (2026-07-22, Play Mode)
 [[UISetting]] 화면에서 언어 4개/FPS 3개/사운드·진동·왼손 토글 실제 클릭 → `PlayerManager.instance.Load()`(재시작 시뮬레이션)로 재로드해도 `Language=English`, `isSoundOn=False`, `FpsOption=Fps30`, `Application.targetFrameRate=30`까지 전부 그대로 복원되는 것 확인. 콘솔 에러 0건.
+
+### 2026-07-23-0 — 데미지 텍스트 표시 옵션
+사용자 요청("Option으로 적군 아군 데미지 받은거 표시하는거 On/Off 할수 있게 해줘") — 개별 토글 2개로 구성(사용자 확인, [[UISetting]] 2026-07-23-0 참고).
+- **OptionData**: `isEnemyDamageTextOn`(bool, 기본 true), `isAllyDamageTextOn`(bool, 기본 true) 추가.
+- **PlayerManager**: `SetEnemyDamageTextOn(bool)`/`SetAllyDamageTextOn(bool)` 추가 — Sound/Haptic/LeftHand와 동일 패턴(값 설정 + `Save()`).
+- 검증: 컴파일 에러 0건. Play Mode 실측 — Settings 화면에서 "적군 데미지 표시" 토글 실제 클릭 → `optionData.isEnemyDamageTextOn`이 즉시 갱신되고 [[DamageTextManager]]가 이를 읽어 스폰 여부를 제어하는 것 확인.
+
+### 2026-07-24-0 — const 일부 GameConfigTable로 이관
+[[GameConfigRecord]] 2026-07-24-0 참고. `MAX_RECENT_RUN_COUNT` 제거 → `GameConfigTable.MAX_RECENT_RUN_COUNT` 참조. `SAVE_KEY`/`OPTION_SAVE_KEY`/`ASSET_SAVE_KEY`(PlayerPrefs 문자열 키)는 튜닝값이 아니라 그대로 유지.
+검증: 컴파일 에러 0건. Play Mode 재검증 미완료.

@@ -60,10 +60,10 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 - **폴링(매 프레임 값 확인) 대신 이걸 쓸지 판단 기준**: 값이 드문드문(이벤트성으로) 바뀌면 Observable이 이득(변경될 때만 콜백). 매 프레임 바뀌는 값(경과 시간 등)은 Observable로 바꿔도 콜백이 매 프레임 호출되는 건 똑같아 이득이 없다(오히려 델리게이트 호출 오버헤드만 늘 수 있음) — 이런 값은 `IUpdatable` 폴링 그대로 두는 게 낫다(2026-07-22, TimerText는 폴링 유지·KillCountText/TowerHealthText는 Observable로 전환하며 확정).
 - "씬 스코프 싱글톤(`SceneSingleton<T>`)의 `ObservableVariable<int>` 값을 텍스트로 표시"하는 반복 패턴은 `ObservableIntText<TSource>`(UI/) 재사용 — 새로 직접 구현하지 말 것.
 
-## UI 값 표시 — 옵저버 기반 텍스트 (UI/ObservableIntText)
-- `ObservableIntText<TSource>`: `TSource : SceneSingleton<TSource>`가 들고 있는 `ObservableVariable<int>`를 구독해 TMP 텍스트를 갱신하는 제네릭 베이스. 파생 클래스는 `GetSource()`(`TSource.Current` 반환) / `GetObservable(TSource)`(볼 필드 지정) / `Format(int)`(텍스트 포맷) 3개만 구현.
-- **제네릭 타입 매개변수로는 그 타입의 static 멤버(`TSource.Current`)에 직접 접근 불가**(C# 컴파일 에러 CS0704) — 그래서 `GetSource()`를 구체 타입을 아는 파생 클래스가 구현하도록 설계돼 있다. 비슷한 "제네릭 제약 타입의 static 멤버" 패턴을 새로 만들 때 동일한 제약에 부딪힐 수 있음, 미리 알아둘 것.
-- 내부적으로 `TSource.Current`가 준비될 때까지만 `IUpdatable`로 폴링하다가, 구독에 성공하면 그 뒤론 이벤트로만 갱신(폴링 목록에서 스스로 빠지진 않지만 이후 비용은 필드 null 체크 1회뿐).
+## UI 값 표시 — 옵저버 기반 텍스트
+- (과거 `ObservableIntText<TSource>` 제네릭 베이스로 공용화를 시도했으나, 2026-07-23 사용자 요청으로 삭제됨 — 이런 식의 제네릭 베이스 추출은 하지 말 것. `ObservableVariable<int>`를 구독해 텍스트를 갱신하는 로직이 필요하면 그 화면을 담당하는 컴포넌트 안에 직접 구현한다.)
+- 여러 소스(예: HP+Kill+Timer처럼 서로 다른 SceneSingleton)를 한 화면 컴포넌트가 같이 표시해야 하면, 공용 제네릭 베이스로 억지로 묶지 말고 그 화면의 컨트롤러 클래스(예: UIInGameHUD) 하나에 필요한 필드/구독 로직을 직접 작성한다 — [[UIInGameHUD]] 참고.
+- **제네릭 타입 매개변수로는 그 타입의 static 멤버(`TSource.Current`)에 직접 접근 불가**(C# 컴파일 에러 CS0704) — `TSource.Current`가 필요하면 구체 타입을 아는 코드에서 직접 접근할 것.
 
 ## 직렬화 필드 리네임 시 주의 (전 영역 공통)
 MonoBehaviour의 `[SerializeField]` 필드 이름을 바꾸면, 씬/프리팹에 이미 저장된 참조는 새 이름과 매칭이 안 돼 **에러 없이 조용히 null로 떨어진다**(런타임에야 NRE로 터짐 — 컴파일 타임엔 안 잡힘). 특히 여러 클래스에 흩어져 있던 필드를 공용 베이스 클래스로 옮기면서 이름까지 통일할 때 자주 발생(2026-07-22, KillCountText/TowerHealthText를 ObservableIntText로 합치면서 실제로 겪음). 필드를 리네임/이동할 땐 `[FormerlySerializedAs("옛이름")]`(`UnityEngine.Serialization`)을 붙여 기존 씬 데이터를 그대로 살릴 것 — 여러 옛 이름이 하나의 새 필드로 합쳐지는 경우 이 attribute를 여러 번 스택해도 된다. 코드만 보고 "리팩토링 끝났다"고 판단하지 말고, 실제로 씬을 열어(또는 MCP로 컴포넌트 속성 조회) 참조가 여전히 연결돼 있는지 확인할 것.
@@ -74,9 +74,15 @@ MonoBehaviour의 `[SerializeField]` 필드 이름을 바꾸면, 씬/프리팹에
 
 ## 씬 진입점 베이스 + 중앙 Update (Scene/BaseScene, Scene/IUpdatable)
 - 씬 진입점 컴포넌트(TitleScene, InGameScene 등)는 `MonoBehaviour` 대신 `BaseScene`을 상속한다. `Start()`를 직접 갖지 말고 `protected override void OnSetup()`에 씬 진입 초기화를 넣는다(BaseScene.Start()가 대신 호출).
-- 씬에 배치된 매니저(예: MonsterManager, SpawnManager)의 매 프레임 로직은 자기 자신의 MonoBehaviour `Update()` 대신 `IUpdatable.UpdateLogic()`으로 구현하고, `Start()`에서 `BaseScene.Current.Register(this)`로 등록한다(등록은 Awake가 아니라 Start에서 — BaseScene.Awake가 Current를 먼저 세팅해두므로 순서가 항상 안전함). `OnDestroy()`에서 `BaseScene.Current?.Unregister(this)` 호출.
-- **예외**: `MonoSingleton<T>` 기반 전역 매니저(SceneManager 등 씬을 넘어 유지되는 것)는 이 패턴을 타지 않고 계속 자기 자신의 Update()로 스스로 구동한다(2026-07-21 사용자 확정) — IUpdatable을 구현하지 않으면 되므로 별도 분기 코드 불필요.
-- 새 씬 진입점이나 씬 로컬 매니저를 추가할 때 이 패턴부터 재사용할 것 — 상세는 .claude/class/BaseScene.md, .claude/class/IUpdatable.md.
+- **씬 진입점 클래스에는 반드시 `[DefaultExecutionOrder(-1000)]`(또는 그에 준하는 매우 이른 값)를 붙인다** (2026-07-24 확정, 아래 참고). `BaseScene`(추상)에 붙여도 상속되지 않으므로 `InGameScene`/`TitleScene` 등 실제 씬에 부착되는 구체 클래스 각각에 직접 붙여야 한다. 이걸 빠뜨리면 아래 등록 체계가 씬 로드 순서에 따라 간헐적으로 NRE를 낸다.
+- 씬에 배치된 매니저/컴포넌트의 매 프레임 로직은 자기 자신의 MonoBehaviour `Update()` 대신 `IUpdatable.UpdateLogic()`으로 구현한다. **`IUpdatable`을 직접 선언하거나 등록/해제 코드를 손으로 쓰지 않는다** — 아래 3개 공용 베이스 중 성격에 맞는 것을 상속하면 `OnEnable()`/`OnDisable()`에서 `BaseScene.Current.Register`/`Unregister`가 자동으로 호출된다. 파생 클래스는 `public override void UpdateLogic() { ... }`만 작성하면 된다.
+  - 씬 스코프 싱글톤(`static Current` 필요) → `SceneSingleton<T>` 상속(TimerManager/MonsterManager/DifficultyManager/ProjectileManager 등).
+  - 화면 UI(`UIManager.Get<T>()`로 접근) → `UIBase`/`UIPopup` 상속(UIInGameHUD 등).
+  - 그 외 일반 MonoBehaviour → `UpdatableBehaviour` 상속(TitleSquareEffect/TowerController/SpawnManager/TowerColorEffect 등).
+- **등록 지점이 왜 OnEnable/OnDisable인가, 그리고 왜 `[DefaultExecutionOrder]`가 필수인가**: `OnEnable`/`OnDisable`은 `SetActive` 토글(예: `UIBase.Show()`/`Close()`)마다 다시 호출되므로, 비활성화된 동안 자동으로 갱신 목록에서 빠지고 재활성화 시 자동 재등록된다는 이점이 있어 채택했다(`Start()`/`OnDestroy()`는 각 1회뿐이라 이게 안 됨). **주의 — "모든 오브젝트의 Awake가 끝난 뒤에야 OnEnable이 불린다"는 보장은 Unity에 없다(이건 Start에만 있는 보장, 2026-07-24 실사용 NRE로 확인)** — 즉 BaseScene 자신의 Awake(Current 설정)보다 다른 스크립트의 OnEnable(Register 호출)이 먼저 도는 경우가 실제로 생긴다. 그래서 `BaseScene` 파생 클래스에 `[DefaultExecutionOrder(-1000)]`를 강제로 붙여, 이 둘이 항상 다른 모든 스크립트보다 먼저 Awake/OnEnable을 마치도록 순서 자체를 고정한다 — 이 attribute 없이 "Awake가 먼저 실행되니 안전하다"고 가정하지 말 것.
+- 파생 클래스가 `Awake()`/`OnEnable()`/`OnDisable()`/`OnDestroy()`를 추가로 쓰면 반드시 `base.XXX()`를 호출해야 등록/해제/Current 관리가 유지된다 — `override` 없이 이름만 같은 메서드를 선언(hiding)하면 베이스 로직이 조용히 안 불린다(과거 DifficultyManager에서 실제로 겪은 버그, `Current`가 파괴 후에도 null로 안 풀렸음).
+- **예외**: `MonoSingleton<T>` 기반 전역 매니저(SceneManager 등 씬을 넘어 유지되는 것)는 이 패턴을 타지 않고 계속 자기 자신의 Update()로 스스로 구동한다(2026-07-21 사용자 확정) — 위 3개 베이스 중 어느 것도 상속하지 않으면 되므로 별도 분기 코드 불필요.
+- 새 씬 진입점이나 씬 로컬 매니저를 추가할 때 이 패턴부터 재사용할 것(특히 `[DefaultExecutionOrder]` 빠뜨리지 말 것) — 상세는 .claude/class/BaseScene.md, .claude/class/IUpdatable.md, .claude/class/SceneSingleton.md, .claude/class/UpdatableBehaviour.md, .claude/class/UIManager.md.
 
 ## 테이블 (Table/)
 - 흐름: `TableManager.instance.init()` (GameManager.Awake에서 호출) → `GetTable<T>()`.

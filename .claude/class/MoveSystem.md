@@ -11,6 +11,9 @@
 
 ## 작업 내역
 
+### 2026-07-24-0
+[[card-draft]] Time Slow(#504) 카드 구현. ECS `ISystem`이 MonoBehaviour(`CardManager`)를 직접 참조할 수 없어, 정적 `CardEffectState.TimeSlowMultiplier`(1f 기본)를 매개로 사용 — `OnUpdate()` 시작부에서 값을 읽어 `moveDistance = MoveSpeed × timeSlowMultiplier × deltaTime`에 곱연산. 카드 보유 중 상시 적용(지속시간 없음, [[card-draft]] 확정 사항 참고). 미검증.
+
 ### 2026-07-21-2
 
 #### 개요

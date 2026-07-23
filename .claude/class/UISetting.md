@@ -137,3 +137,15 @@ private void SetupLanguageToggles(eLanguage _currentLanguage) { /* 4개 순회�
 
 #### 검증 (2026-07-22, Play Mode)
 언어 4개(한국어 선택 상태로 시작 → English 클릭 시 정상 전환 + [[UIText]] 라벨 전부 자동 갱신), FPS 3개(Fps60 선택 상태 유지 확인) 전부 `ToggleButtonList` 경유로 정상 생성/클릭/라디오 동작 확인. `ApplyFpsLabels()`가 StringTable Key를 실제 언어 문구로 정확히 치환하는 것도 확인("FpsAdaptive" 키 → "자동" 렌더링). 콘솔 에러 0건.
+
+### 2026-07-23-0 — 데미지 텍스트 표시 토글 2개 추가
+사용자 요청("데미지 폰트도 넣어줘 ... Option으로 적군 아군 데미지 받은거 표시하는거 On/Off"). 사용자에게 "개별 토글 2개 vs 통합 토글 1개"를 확인해 개별 2개로 확정.
+
+**필드**: `m_EnemyDamageTextToggle`/`m_AllyDamageTextToggle`(UIToggleButton) 추가.
+**Show()**: `m_SoundToggle.SetData(...)` 등과 동일 패턴으로 `m_EnemyDamageTextToggle.SetData(optionData.isEnemyDamageTextOn, OnClickEnemyDamageTextToggle)` / Ally 동일 추가.
+**신규**: `OnClickEnemyDamageTextToggle`/`OnClickAllyDamageTextToggle` — `PlayerManager.instance.Set{Enemy,Ally}DamageTextOn(_toggle.isOn)` 호출.
+
+**프리팹 작업**(Unity MCP `manage_prefabs`/`manage_gameobject`/`manage_components`로 진행, 상세는 [UISetting (prefab)](../prefab/UISetting.md) 참고): `Item_Sound`/`Text_SoundLabel` 구조를 duplicate해 `Item_EnemyDamageText`/`Text_EnemyDamageTextLabel`, `Item_AllyDamageText`/`Text_AllyDamageTextLabel` 생성, FPS 행(y=-650) 아래로 -40 간격 패턴 유지하며 배치(y=-690/-730/-770/-810). 라벨 `UIText.m_Key`를 신규 StringTable 키(`SettingsEnemyDamageTextLabel`/`SettingsAllyDamageTextLabel`)로 교체, `Item_*`의 `Text_On`/`Text_Off`는 기존 범용 키(`SettingsOn`/`SettingsOff`) 그대로 재사용(Sound/Haptic/LeftHand와 동일 — 새 키 불필요).
+
+### 검증
+컴파일 에러 0건. Play Mode 실측 — Settings 화면 진입 스크린샷으로 신규 두 행이 정상 위치/텍스트("적군 데미지 표시"/"아군 데미지 표시")로 렌더링되는 것 확인. "적군 데미지 표시" 토글 실제 클릭(`ExecuteEvents.pointerClickHandler`) → 화면상 OFF로 즉시 전환 + `PlayerManager.instance.optionData.isEnemyDamageTextOn=False` 확인, 다시 클릭해 ON 복원. 콘솔 에러 0건.

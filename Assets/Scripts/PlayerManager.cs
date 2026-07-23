@@ -21,6 +21,8 @@ public class OptionData
     public bool isLeftHandMode = false;
     public eFpsOption FpsOption = eFpsOption.Fps60;
     public eLanguage Language;
+    public bool isEnemyDamageTextOn = true;
+    public bool isAllyDamageTextOn = true;
 }
 
 [Serializable]
@@ -45,7 +47,6 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     private const string SAVE_KEY = "PlayerData";
     private const string OPTION_SAVE_KEY = "OptionData";
     private const string ASSET_SAVE_KEY = "AssetData";
-    private const int MAX_RECENT_RUN_COUNT = 10;
 
     private PlayerData m_PlayerData = new PlayerData();
     private OptionData m_OptionData = new OptionData();
@@ -169,8 +170,8 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         _runRecord.PlayedAt = DateTime.Now.ToString("o");
 
         m_PlayerData.RecentRuns.Insert(0, _runRecord);
-        if (m_PlayerData.RecentRuns.Count > MAX_RECENT_RUN_COUNT)
-            m_PlayerData.RecentRuns.RemoveRange(MAX_RECENT_RUN_COUNT, m_PlayerData.RecentRuns.Count - MAX_RECENT_RUN_COUNT);
+        if (m_PlayerData.RecentRuns.Count > GameConfigTable.MAX_RECENT_RUN_COUNT)
+            m_PlayerData.RecentRuns.RemoveRange(GameConfigTable.MAX_RECENT_RUN_COUNT, m_PlayerData.RecentRuns.Count - GameConfigTable.MAX_RECENT_RUN_COUNT);
 
         if (_runRecord.Score > m_PlayerData.BestScore)
             m_PlayerData.BestScore = _runRecord.Score;
@@ -231,6 +232,18 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         Save();
 
         // TODO: 인게임 일시정지 버튼이 생기면 여기서 좌/우 위치 반영
+    }
+
+    public void SetEnemyDamageTextOn(bool _isEnemyDamageTextOn)
+    {
+        m_OptionData.isEnemyDamageTextOn = _isEnemyDamageTextOn;
+        Save();
+    }
+
+    public void SetAllyDamageTextOn(bool _isAllyDamageTextOn)
+    {
+        m_OptionData.isAllyDamageTextOn = _isAllyDamageTextOn;
+        Save();
     }
 
     public void SetFpsOption(eFpsOption _fpsOption)

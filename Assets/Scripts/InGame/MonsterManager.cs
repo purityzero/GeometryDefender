@@ -6,7 +6,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
+public class MonsterManager : UpdatableBehaviour
 {
     [SerializeField] private Transform m_PoolParent;
 
@@ -65,8 +65,8 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         Vector2 wayPoint = WayPoint.instance.GetRandomWayPoint();
 
         // Assets/Design/08_balance.html "적 스탯 시간 보정": 스폰 시점 경과 시간이 길수록 HP/DamageToBase가 커짐, 난이도 배율은 추가로 곱해짐
-        float elapsedMinutes = (TimerManager.Current != null) ? TimerManager.Current.elapsedTime / 60f : 0f;
-        float difficultyMultiplier = (DifficultyManager.Current != null) ? DifficultyManager.Current.GetDifficultyMultiplier() : 1f;
+        float elapsedMinutes = (InGameScene.Current.timerManager != null) ? InGameScene.Current.timerManager.elapsedTime / 60f : 0f;
+        float difficultyMultiplier = (InGameScene.Current.difficultyManager != null) ? InGameScene.Current.difficultyManager.GetDifficultyMultiplier() : 1f;
         float hpMultiplier = (1f + elapsedMinutes * GameConfigTable.HP_MULTIPLIER_GROWTH) * difficultyMultiplier;
         float damageMultiplier = (1f + elapsedMinutes * GameConfigTable.DAMAGE_MULTIPLIER_GROWTH) * difficultyMultiplier;
 
@@ -88,6 +88,11 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
             GoldReward = _record.GoldReward,
             DamageToBase = scaledDamageToBase,
             IsBoss = (_record.Variant == eEnemyVariant.Boss),
+            XpReward = _record.XpReward,
+        });
+        m_EntityManager.AddComponentData(entity, new EnemySpeciesData
+        {
+            Species = _record.Species,
         });
         m_EntityManager.AddComponentData(entity, new MonsterTag());
         m_EntityManager.AddComponentData(entity, new CombatRadius
@@ -128,6 +133,36 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         return aliveCount;
     }
 
+    // Shield Burst(#404) 카드 — 즉시(1프레임 내) 반경 내 전체 데미지. ECS 시스템이 아니라 MonoBehaviour에서 호출되는 일회성 트리거라 EntityQuery를 그때그때 생성/해제.
+    public void DamageEntitiesInRadius(Vector2 _center, float _radius, int _damage)
+    {
+        if (m_isInitialized == false)
+            return;
+
+        float3 center = new float3(_center.x, _center.y, 0f);
+
+        EntityQuery aliveQuery = m_EntityManager.CreateEntityQuery(
+            ComponentType.ReadOnly<MonsterTag>(),
+            ComponentType.ReadOnly<LocalTransform>(),
+            ComponentType.Exclude<DeadTag>(),
+            ComponentType.Exclude<ReachedEndTag>());
+
+        NativeArray<Entity> entities = aliveQuery.ToEntityArray(Allocator.Temp);
+        NativeArray<LocalTransform> transforms = aliveQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
+        for (int i = 0; i < entities.Length; ++i)
+        {
+            if (math.distancesq(center, transforms[i].Position) > _radius * _radius)
+                continue;
+
+            m_EntityManager.GetBuffer<DamageRequest>(entities[i]).Add(new DamageRequest { Amount = _damage });
+        }
+
+        entities.Dispose();
+        transforms.Dispose();
+        aliveQuery.Dispose();
+    }
+
     public void TakeDamage(Entity _entity, int _amount)
     {
         if (m_EntityManager.Exists(_entity) == false)
@@ -142,12 +177,7 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         m_EntityManager.GetBuffer<DamageRequest>(_entity).Add(new DamageRequest { Amount = _amount });
     }
 
-    private void Start()
-    {
-        BaseScene.Current.Register(this);
-    }
-
-    public void UpdateLogic()
+    public override void UpdateLogic()
     {
         if (m_isInitialized == false)
             return;
@@ -223,16 +253,15 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
             return;
 
         VisualObject visualObject = m_EntityManager.GetComponentObject<VisualObject>(_entity);
+        if (visualObject.transform == null)
+            return;
+
         ActorMonster actorMonster = visualObject.transform.GetComponent<ActorMonster>();
         m_MonsterFactory.Recycle(actorMonster);
     }
 
-    protected override void OnDestroy()
+    private void OnDestroy()
     {
-        base.OnDestroy();
-
-        BaseScene.Current?.Unregister(this);
-
         if (m_isInitialized == false)
             return;
 
@@ -240,6 +269,12 @@ public class MonsterManager : SceneSingleton<MonsterManager>, IUpdatable
         // — 이미 무효화된 EntityQuery를 Dispose하면 NRE가 나므로 World 생존 여부를 먼저 확인
         if (World.DefaultGameObjectInjectionWorld != null && World.DefaultGameObjectInjectionWorld.IsCreated == true)
         {
+            // ECS World는 씬 언로드와 별개라 여기서 정리하지 않으면, 아직 죽지도 도달하지도 않은 몬스터 엔티티가
+            // 다음 플레이 세션까지 그대로 남아 이미 파괴된 시각 오브젝트를 참조하게 된다(2026-07-23 확인)
+            EntityQuery allMonsterQuery = m_EntityManager.CreateEntityQuery(ComponentType.ReadOnly<MonsterTag>());
+            m_EntityManager.DestroyEntity(allMonsterQuery);
+            allMonsterQuery.Dispose();
+
             m_DeadQuery.Dispose();
             m_ReachedEndQuery.Dispose();
         }

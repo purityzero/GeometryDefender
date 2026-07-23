@@ -1,7 +1,9 @@
 using UnityEngine;
 
-public class TitleSquareEffect : MonoBehaviour, IUpdatable
+public class TitleSquareEffect : UpdatableBehaviour
 {
+    [SerializeField] private SpriteRenderer m_SpriteRenderer;
+
     private float Speed = 5f;
 
     private Vector2 m_Direction;
@@ -14,17 +16,20 @@ public class TitleSquareEffect : MonoBehaviour, IUpdatable
         m_MainCamera = Camera.main;
         if (m_MainCamera == null)
         {
-            Logger.Log($"[TitleSquareEffect] Camera.main을 찾을 수 없어 업데이트를 건너뜁니다.");
+            // 등록 자체는 OnEnable(UpdatableBehaviour)에서 이미 끝난 뒤라 UpdateLogic()은 계속 불림 — 여기서 리턴해도 m_Direction/m_RotationSpeed가 기본값(0)이라 Move/Rotate가 사실상 무해한 공회전만 함(CheckBounce는 카메라 null 가드 있음)
+            Logger.Log($"[TitleSquareEffect] Camera.main을 찾을 수 없어 초기화를 건너뜁니다.");
             return;
         }
 
         m_Direction = Random.insideUnitCircle.normalized;
 
-        SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
+        if (m_SpriteRenderer == null)
+            m_SpriteRenderer = GetComponent<SpriteRenderer>();
+
+        if (m_SpriteRenderer != null)
         {
             // 오브젝트가 계속 회전하므로 축 정렬 경계(extents)를 그대로 쓰면 45도 부근에서 대각선만큼 실제 경계보다 작게 잡혀 화면 밖으로 삐져나감 — 회전각과 무관하게 항상 안전한 대각선 반지름으로 고정
-            float diagonalHalfExtent = spriteRenderer.bounds.extents.magnitude;
+            float diagonalHalfExtent = m_SpriteRenderer.bounds.extents.magnitude;
             m_HalfObjectSize = new Vector2(diagonalHalfExtent, diagonalHalfExtent);
         }
 
@@ -32,13 +37,6 @@ public class TitleSquareEffect : MonoBehaviour, IUpdatable
         m_RotationSpeed = Random.Range(30f, 120f) * (Random.value > 0.5f ? 1f : -1f);
 
         SetRandomPosition();
-
-        BaseScene.Current.Register(this);
-    }
-
-    private void OnDestroy()
-    {
-        BaseScene.Current?.Unregister(this);
     }
 
     private void SetRandomPosition()
@@ -64,7 +62,7 @@ public class TitleSquareEffect : MonoBehaviour, IUpdatable
         return Rect.MinMaxRect(minX, minY, maxX, maxY);
     }
 
-    public void UpdateLogic()
+    public override void UpdateLogic()
     {
         if(SceneManager.instance.IsSceneTransitioning == true)
             return;

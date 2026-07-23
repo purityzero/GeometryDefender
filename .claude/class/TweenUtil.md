@@ -42,3 +42,19 @@ DOTween 공용 헬퍼 정적 클래스. 모든 메서드가 `Tween`을 반환해
 - 개요: [[TowerColorEffect]]의 "HP 티어별 글로우 강도 변화 + 30% 이하 펄스 점멸" 구현에 필요한 범용 float 프로퍼티 트윈 오버로드 추가.
 - 수정: `public static Tween Float(Material _target, string _propertyName, float _targetValue, float _duration) => _target.DOFloat(_targetValue, _propertyName, _duration);` 추가. DOTween `Material.DOFloat(endValue, propertyName, duration)` shortcut 그대로 래핑.
 - 검증: 미검증(Unity MCP 미연결 세션, 컴파일 미확인) — [[TowerColorEffect]] 2026-07-22-3 참고.
+
+### 2026-07-23-0
+- 개요: [[DamageText]] 신규 구현("데미지 폰트도 넣어줘") — 월드 스페이스(3D) `TMPro.TextMeshPro`를 페이드아웃시켜야 하는데, 기존 `Fade(TextMeshProUGUI)` 오버로드는 UGUI 전용이라 3D TMP에는 못 씀.
+- 수정: `public static Tween Fade(TMPro.TextMeshPro _target, float _targetAlpha, float _duration)` 추가 — UGUI 버전과 동일하게 `DOTween.To(() => _target.alpha, ...)` 패턴.
+- 검증: 컴파일 에러 0건, [[DamageText]] 2026-07-23-0에서 실제 페이드아웃 동작 확인.
+
+### 2026-07-23-1
+- 개요: [[DamageTextManager]]의 치명타 카메라 셰이크/진동 지연 호출 구현("사격시스템 구현해줘") 도중 추가.
+- 수정 1: `public static Tween ShakePosition(Transform _target, float _duration, float _strength, int _vibrato = 10)` 추가 — `Transform.DOShakePosition` 래핑, vibrato 매개변수는 사용자 피드백("카메라 쉐이크 조금더 빠르고")으로 나중에 추가(기본 10 유지, 호출부에서 30으로 override).
+- 수정 2: `public static Tween DelayedCall(float _delay, TweenCallback _callback)` 추가 — `DOVirtual.DelayedCall` 래핑. 처음엔 [[DamageTextManager]]에서 `DG.Tweening.DOVirtual.DelayedCall`을 직접 호출했다가, 사용자 지적("우리 Tween 만들어둔거 있는데 왜 쌩으로 쓰냐")으로 이 헬퍼를 신설해 경유하도록 수정 — **DOTween 호출은 예외 없이 전부 TweenUtil에 모을 것**(코루틴/트윈 대상 없는 순수 지연 콜백도 포함).
+- 검증: 컴파일 에러 0건, [[DamageTextManager]] 2026-07-23-2에서 실제 사용 확인.
+
+### 2026-07-24-1
+- 개요: [[ChainLightning]] 신규 구현("연쇄는 LineRenderer로 Glow하게") — LineRenderer는 alpha 단일 프로퍼티가 없어 기존 Fade 오버로드들로 못 씀.
+- 수정: `public static Tween Fade(LineRenderer _target, float _targetAlpha, float _duration)` 추가 — `startColor`/`endColor`의 알파를 함께 트윈(DOTween.To 패턴, TMP Fade와 동일 이유로 전용 모듈 없어 커스텀 게터/세터).
+- 검증: 컴파일 에러 0건, [[ChainLightning]] 2026-07-24-0에서 실제 페이드아웃 동작 확인.

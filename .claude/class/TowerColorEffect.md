@@ -176,3 +176,28 @@ private Color GetColorForRatio(float _hpRatio)
 
 ### 파일
 - (수정 없음 — 검증만 수행)
+
+---
+
+## 2026-07-23-0
+
+### 개요
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0, [[UpdatableBehaviour]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/TowerColorEffect.cs
+
+### 수정 (함수 단위)
+**클래스 선언**: `MonoBehaviour, IUpdatable` → `UpdatableBehaviour`.
+**Start()**: `BaseScene.Current.Register(this);` 호출 제거, `m_SpriteRenderer.color = Color.white;`(틴트 초기화) 로직은 그대로 유지.
+**OnDestroy()**: 수동 `BaseScene.Current?.Unregister(this);` 호출 제거, observable 구독 해제 + `m_GlowTween?.Kill();` 로직은 그대로 유지.
+**UpdateLogic()**: `public void` → `public override void`.
+
+### 미검증
+[[SceneSingleton]] 2026-07-23-0 참고. HP 티어 전환에 따른 색/글로우 갱신이 계속 정상 동작하는지 재확인 필요.
+
+---
+
+## 2026-07-24-0 — const 전부 GameConfigTable로 이관
+[[GameConfigRecord]] 2026-07-24-0 참고. `COLOR_TWEEN_DURATION`/`GLOW_TWEEN_DURATION`/`LOW_PULSE_DURATION`/`MID_HP_RATIO`/`LOW_HP_RATIO` 제거 → `GameConfigTable.TOWER_COLOR_TWEEN_DURATION`/`TOWER_GLOW_TWEEN_DURATION`/`TOWER_LOW_PULSE_DURATION`/`TOWER_MID_HP_RATIO`/`TOWER_LOW_HP_RATIO` 참조. `GLOW_AMOUNT_PROPERTY`(셰이더 프로퍼티명 문자열)는 그대로 유지.
+검증: 컴파일 에러 0건. Play Mode 재검증 미완료.

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class TimerManager : SceneSingleton<TimerManager>, IUpdatable
+public class TimerManager : UpdatableBehaviour
 {
     public float elapsedTime { get; private set; }
 
@@ -9,23 +9,20 @@ public class TimerManager : SceneSingleton<TimerManager>, IUpdatable
         elapsedTime = 0f;
     }
 
-    private void Start()
+    // QA용 — CombatDebugWindow의 Wave 스킵 기능이 SpawnManager.AddElapsedTime()과 함께 호출(2026-07-24)
+    public void AddElapsedTime(float _seconds)
     {
-        BaseScene.Current.Register(this);
+        elapsedTime += _seconds;
     }
 
-    protected override void OnDestroy()
+    private void OnDestroy()
     {
-        base.OnDestroy();
-
-        BaseScene.Current?.Unregister(this);
-
 #if UNITY_EDITOR
         Time.timeScale = 1f;
 #endif
     }
 
-    public void UpdateLogic()
+    public override void UpdateLogic()
     {
         elapsedTime += Time.deltaTime;
     }

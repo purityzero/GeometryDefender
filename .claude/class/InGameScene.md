@@ -11,6 +11,26 @@
 
 ---
 
+## 2026-07-24-0 — XpManager/CardManager 배선
+
+### 개요
+[[xp-leveling]]/[[card-draft]] 스펙 구현 — 신규 씬 로컬 매니저 2개를 부트스트랩에 편입.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+- Assets/Scenes/InGameScene.unity
+
+### 수정 (함수 단위)
+**필드**: `[SerializeField] private XpManager m_XpManager;`, `[SerializeField] private CardManager m_CardManager;` 추가.
+**`OnSetup()`**: `m_TowerController.Init();` 다음 줄에 `m_XpManager.Init(); m_CardManager.Init();` 추가 — 둘 다 `MonsterManager.Init()` 이후 실행되어야 함(XpManager가 `MonsterManager.Current.OnMonsterDie` 구독, CardManager가 `TowerController.Current`/`TowerHealth.Current` 참조).
+
+씬에는 `XpManager`/`CardManager` GameObject를 InGameScene 루트 트랜스폼의 자식으로 신규 배치, InGameScene의 `m_XpManager`/`m_CardManager` 필드에 연결.
+
+### 미검증
+Unity MCP 미연결, YAML 직접 편집 — 컴파일/Play 확인 안 됨.
+
+---
+
 ## 2026-07-15-0
 
 ### 개요
@@ -319,3 +339,98 @@ private void OnTowerDie()
 컴파일 에러 0건. 이 3개 텍스트가 실제로 어떤 값을 표시하는지(FPS 등)는 확인하지 않음 — 폰트 참조 자체가 존재하지 않던 글리프 없이 다른 곳과 동일 폰트로 정상 로드되는지만 확인(콘솔에 폰트 관련 에러 없음).
 
 **주의(추후 정정됨)**: `LiberationSans SDF`에 한글 글리프가 없어 실제로는 깨져 보였을 것 — 근본 수정(폰트 Fallback 체인에 DungGeunMo 등록)은 [[UIText]] 2026-07-22-0 참고. 이 항목 자체(폰트 참조를 LiberationSans SDF로 통일)는 그대로 유효하며 되돌릴 필요 없음 — Fallback 등록으로 한글도 같이 해결됨.
+
+---
+
+## 2026-07-24-0 — BaseScene.Current NRE 실사용 리포트로 확정 수정
+
+### 개요
+사용자가 실제 Play 중 콘솔에서 재현한 예외 리포트: `NullReferenceException ... UpdatableBehaviour.OnEnable () (at Assets/Scripts/Glory/Scene/UpdatableBehaviour.cs:8)`. [[SceneSingleton]]/[[UpdatableBehaviour]] 2026-07-23-0에서 등록 지점을 `Start()`→`OnEnable()`로 옮기며 근거로 들었던 "Unity는 모든 오브젝트의 Awake가 끝난 뒤에야 OnEnable을 부른다"는 가정이 **틀렸음이 실사용으로 확인됨** — 그 보장은 `Start()`에만 있고 `OnEnable()`에는 없어서, 씬 로드 순서에 따라 다른 스크립트의 `OnEnable()`(`BaseScene.Current.Register(this)` 호출)이 `InGameScene`/`TitleScene`(`BaseScene` 파생) 자신의 `Awake()`보다 먼저 실행되면 `BaseScene.Current`가 아직 null이라 NRE.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+- Assets/Scripts/Title/TitleScene.cs
+
+### 수정 (함수 단위)
+**클래스 선언**: 둘 다 `[DefaultExecutionOrder(-1000)]` 추가 — Unity Script Execution Order 설정으로 `InGameScene`/`TitleScene`의 `Awake()`(→ `SceneSingleton<BaseScene>.Awake()`가 `Current` 설정)가 씬 내 다른 모든 스크립트의 `Awake`/`OnEnable`보다 먼저 실행되도록 강제. `DefaultExecutionOrder`는 추상 베이스(`BaseScene`)에 붙여도 상속되지 않고 실제 씬에 부착되는 구체 클래스에 직접 붙여야 적용된다(Unity 제약) — 그래서 `BaseScene`이 아니라 두 파생 클래스 각각에 붙임.
+- TitleScene.cs: 2026-07-21-0에서 "MonoBehaviour 직접 상속 안 하니 미사용"이라며 제거했던 `using UnityEngine;`을 이 attribute 때문에 다시 추가.
+
+### 검증
+미검증(에디터 미실행 상태 편집) — 실제 재현 시나리오(NRE가 나던 씬 흐름)에서 콘솔 에러 0건으로 재확인 필요. `[DefaultExecutionOrder]`는 Awake/OnEnable/Update 등 표준 콜백 전체의 실행 순서에 영향을 준다는 것이 Unity 공식 문서 기준 — 이번 수정으로 [[SceneSingleton]]/[[UpdatableBehaviour]]/[[UIManager]](UIBase) 3개 베이스 전부에서 동일 유형의 NRE가 구조적으로 재발하지 않아야 함(전부 이 두 씬 진입점보다 나중에 Awake/OnEnable이 돌게 되므로).
+
+### 2026-07-23-0 — DamageTextManager 배선
+사용자 요청("데미지 폰트도 넣어줘") — `[SerializeField] DamageTextManager m_DamageTextManager` 필드 추가, `OnSetup()` 최상단(다른 매니저 Init들과 나란히)에 `m_DamageTextManager.Init()` 호출 추가. 씬에는 `InGameScene` 루트 아래 `DamageTextManager` 오브젝트(다른 매니저와 동일 위치 패턴) + `Game/DamageTextGroup`(풀 부모, MonsterGroup/ProjectileGroup과 동일 패턴)을 Unity MCP로 생성/배선. 검증: 컴파일 에러 0건, Play Mode 실측(TitleScene→Play→InGameScene 실제 흐름에서 데미지 텍스트 정상 스폰) 확인 — [[DamageTextManager]] 참고. **참고**: 이번 검증 중 기존에 미해결로 남아있던 `World.DefaultGameObjectInjectionWorld` null 블로커(client-issues.md 2026-07-23-0)가 재현되지 않고 정상 플레이가 끝까지 진행됨 — 우연일 수 있어 "해결됨"으로 단정하지 않지만 다음 세션에서 그 블로커 재검증 시 참고할 것.
+
+## 2026-07-23-1 — 매니저 접근 중앙화 (싱글톤 난립 정리) + 씬 전환 레이스 버그 발견/수정
+
+### 개요
+사용자 지적("Manager가 너무 많지 않아?" — InGameScene에만 SceneSingleton 매니저가 9~10개) → "InGameScene에서 Manager들 다 받아가서 쓸 수 있도록 만들어줘 BaseScene이 싱글톤이잖아" → "요즘 추세는 싱글톤을 많이 쓰지 않는 추세잖아? 프로젝트가 커질 수도 있는데, 미리미리 해두자". 개별 매니저가 각자 `SceneSingleton<T>`를 상속해 자기만의 `.Current`를 갖던 방식(9개: MonsterManager/ProjectileManager/TowerController/TowerHealth/TimerManager/DifficultyManager/XpManager/CardManager/DamageTextManager)을 폐지 — `InGameScene` 하나만 싱글톤 역할을 하고 나머지는 전부 [[UpdatableBehaviour]](등록/해제만, Current 없음)로 통일. `TowerHealth`는 `TowerController`에 병합(같은 오브젝트를 다루는 하나의 개념 — [[TowerController]] 2026-07-23-2 참고).
+
+### 파일
+`InGameScene.cs` + `TowerController.cs`(병합) + `MonsterManager.cs`/`ProjectileManager.cs`/`TimerManager.cs`/`DifficultyManager.cs`/`XpManager.cs`/`CardManager.cs`/`DamageTextManager.cs`(베이스 클래스 전환) + 13개 파일 98개 호출부(`XxxManager.Current` → `InGameScene.Current.xxxManager`, sed 일괄 치환 후 컴파일 에러 기준으로 개별 수정).
+
+### 수정 (함수 단위)
+**신규 프로퍼티**: `MonsterManager monsterManager`/`SpawnManager spawnManager`/`TimerManager timerManager`/`ProjectileManager projectileManager`/`TowerController towerController`/`DifficultyManager difficultyManager`/`XpManager xpManager`/`CardManager cardManager`/`DamageTextManager damageTextManager` — 전부 기존 `[SerializeField]` 필드를 그대로 노출하는 읽기 전용 프로퍼티.
+**`OnSetup()`**: `m_TowerHealth.Init(towerMaxHp)` + `m_TowerController.Init()` 2줄 → `m_TowerController.Init(towerMaxHp)` 1줄로 통합(병합 결과 반영).
+
+### ⚠️ 설계 실수 → 같은 세션에서 발견/수정: `InGameScene.Current`를 `BaseScene.Current as InGameScene`로 구현했다가 실제 버그 재현
+최초 구현:
+```csharp
+public new static InGameScene Current => BaseScene.Current as InGameScene;
+```
+**증상**: Play Mode 실측 중 "런 종료 → 메인 메뉴" 클릭 시 `UIInGameHUD.cs:38`에서 `NullReferenceException`(`InGameScene.Current.timerManager`) 재현.
+
+**원인**: `BaseScene.Current`는 `TitleScene`과 `InGameScene`이 **공유하는 단일 static 슬롯**(`SceneSingleton<BaseScene>`). `SceneManager.NextScene()`의 전환 시퀀스(페이드아웃 → **TitleScene additive 로드(Awake 실행, `Current`를 TitleScene으로 즉시 덮어씀)** → InGameScene 언로드)상, TitleScene이 로드되는 순간 아직 안 죽은 InGameScene 쪽 오브젝트(UIInGameHUD 등, 자기 자신의 Update 루프로 독립적으로 계속 돌고 있음)가 `InGameScene.Current`를 읽으면 이미 null(TitleScene을 InGameScene으로 캐스팅 실패) — **매 씬 전환마다 발생하는 표준 경로이지 예외 상황이 아니었음.**
+
+**수정**: `BaseScene.Current`에 얹혀가지 않고, `InGameScene` 자신의 `Awake()`/`OnDestroy()`에만 묶인 독립 static으로 변경:
+```csharp
+public new static InGameScene Current { get; private set; }
+
+protected override void Awake() { base.Awake(); Current = this; }
+protected override void OnDestroy() { base.OnDestroy(); if (Current == this) Current = null; }
+```
+이러면 `InGameScene.Current`는 InGameScene 자신이 실제로 파괴될 때까지(씬 언로드 시점) 유효 — 다른 씬의 Awake로 조기에 덮어써지지 않는다. 개별 매니저가 각자 `SceneSingleton<T>`를 썼던 예전 방식이 원래 이 안전성을 갖고 있었던 것과 동등한 수준으로 복구.
+
+**추가 방어**: [[UIInGameHUD]]는 InGameScene 하위가 아니라 UIManager가 별도로 들고 있는 UI라 위 구조적 수정 이후에도 완전히 안전하다고 단정 못해, `InGameScene.Current == null || InGameScene.Current.xxx == null` 형태의 이중 null 체크를 유지함(방어선 2단계).
+
+### 검증
+컴파일 에러 0건(9개 클래스 베이스 전환 + 98개 호출부 치환 후 1차 컴파일부터 에러 0). Play Mode 실측: 전투(발사/피격/힐/데미지 텍스트)~런 종료~메인 메뉴 복귀~재플레이 전체 사이클을 반복해 콘솔 에러 0건 확인 — 특히 버그가 났던 "런 종료 → 메인 메뉴" 전환을 수정 전/후 나란히 재현해 수정 전 NRE 재현 → 수정 후 미재현까지 직접 대조 확인.
+
+### 일반화 가능한 교훈
+`SceneSingleton<T>`처럼 **여러 씬 타입이 같은 부모 클래스를 상속해 static Current를 공유하는 구조**에서, 파생 클래스 하나가 "내 타입으로 캐스팅해서 편의 접근자를 만들자"고 부모의 Current를 재사용하면, 다른 형제 씬 타입이 그 공유 슬롯을 먼저 차지하는 순간 조용히 깨진다 — 특히 크로스페이드처럼 "새 씬을 언로드 전에 미리 로드"하는 전환 방식에서는 이 겹침 구간이 항상 존재한다. 이런 경우 그 씬 타입 전용의 독립된 static을 직접 관리해야 한다(부모 static을 참조/캐스팅하지 말 것).
+
+### 관련 클래스
+- [[TowerController]] 2026-07-23-2 — TowerHealth 병합
+- [[MonsterManager]]/[[ProjectileManager]]/[[TimerManager]]/[[DifficultyManager]]/[[XpManager]]/[[CardManager]]/[[DamageTextManager]] — SceneSingleton → UpdatableBehaviour 전환
+- [[UIInGameHUD]] — 실제 버그 재현 지점, 이중 null 체크 추가
+
+## 2026-07-24-1 — 게임오버 후 정지가 풀리던 버그: Time.timeScale 의존 제거
+
+### 개요
+사용자 버그 리포트("죽었을때, RunOver나오면서 뒤에 적들은 멈춰야하는데 전혀 멈추질 않음"). 최초 조사: `MoveSystem`/`SystemAPI.Time.DeltaTime` 자체는 정상(직접 Play Mode에서 ECS 몬스터 위치를 실시간 샘플링해 `Time.timeScale=0`일 때 완전히 고정되는 것 확인) — 원인은 이동 로직이 아니라 **`Time.timeScale`을 여러 팝업이 독립적으로 되돌리는 구조**였다: `UICardDraft`/`UIPause`가 `Close()`에서 무조건 `Time.timeScale = 1f`를 실행해서, 레벨업으로 카드 드래프트가 열려있던 중(또는 그 직후) 타워가 죽어 `OnTowerDie()`가 `Time.timeScale=0f`+`UIRunOver` 표시까지 마쳐도, 곧이어 카드 선택/스킵으로 그 팝업이 닫히면 `Time.timeScale`이 다시 1로 돌아가 RunOver가 떠 있는 채로 게임이 계속 진행됐다.
+
+**1차 수정(중간 단계, 이후 폐기)**: `TowerController.isDead` 프로퍼티를 추가해 각 팝업의 `Close()`에서 "게임오버면 timeScale을 되돌리지 않는다" 가드를 넣는 방식으로 처음 수정 — 재현 테스트로 동작 확인까지 했으나, 사용자가 "TimeScale 건드는건 좀 위험해, TimeScale은 QA때만 건드는걸로 하자, Timer/Spawn/Enemy는 update를 [멈추게] 하면 되잖아"라고 지시해 **`Time.timeScale`을 아예 프로덕션 일시정지 수단으로 안 쓰는 방향으로 재설계**. `isDead` 프로퍼티는 이 과정에서 제거됨(더 이상 쓰이지 않음).
+
+### 최종 설계
+`Time.timeScale`은 항상 1로 유지(QA 전용 배속 도구만 예외). 대신 이 클래스가 "정지" 개념을 직접 소유:
+- `m_isPaused`(팝업이 여닫는 일시정지) / `m_isGameOver`(타워 사망, 영구) — 독립된 두 상태, 하나라도 true면 정지.
+- `ApplyFreezeState()`: 두 상태를 OR한 `shouldFreeze`를 계산해 (1) `BaseScene.isPaused`(= `this.isPaused`, [[BaseScene]] 2026-07-24-0 참고)에 반영해 `IUpdatable.UpdateLogic()` 전체(Timer/Spawn/Tower/DamageText/Card)를 멈추고, (2) ECS `SimulationSystemGroup.Enabled`를 꺼서 `MoveSystem`/`ProjectileMoveSystem`/`OrbitalSystem`/`HealthSystem`/`ProjectileCollisionSystem`을 전부 멈춘다(ECS는 `IUpdatable` 경로를 안 타므로 별도 처리 필수).
+- `public void SetPaused(bool)`: `m_isPaused` 갱신 후 `ApplyFreezeState()` — `UICardDraft`/`UIPause`의 `Show()`/`Close()`가 이걸 호출(각 파일 2026-07-24-0 참고, `Time.timeScale` 직접 조작은 완전히 제거됨).
+- `OnTowerDie()`: `m_isGameOver = true` 후 `ApplyFreezeState()` — 이후 어떤 팝업이 `SetPaused(false)`를 호출해도 `m_isGameOver`가 여전히 true라 `shouldFreeze`는 계속 true로 유지(팝업이 개별적으로 "게임오버인지" 알 필요가 없어짐 — 1차 수정의 `isDead` 가드보다 근본적).
+- `OnDestroy()`: ECS World는 씬 언로드와 별개 생명주기라([[MonsterManager]]/[[ProjectileManager]] 2026-07-23-2와 동일 근거), 정지 상태로 씬을 나가면 다음 InGameScene 세션까지 `SimulationSystemGroup`이 계속 꺼진 채로 남는다 — 씬을 나갈 때 무조건 다시 켜서 원복하는 코드 추가.
+
+### 파일
+- Assets/Scripts/Glory/Scene/BaseScene.cs ([[BaseScene]] 2026-07-24-0)
+- Assets/Scripts/InGame/InGameScene.cs
+- Assets/Scripts/UI/UICardDraft.cs
+- Assets/Scripts/UI/UIPause.cs
+- Assets/Scripts/InGame/TowerController.cs (1차 수정에서 추가했던 `isDead` 프로퍼티, 최종 설계에서 불필요해져 제거)
+
+### 검증 (Unity MCP, Play Mode, TitleScene→Btn_Play→Item_Normal→InGameScene 실제 흐름)
+1. **일반 Pause 회귀 없음**: `UIPause` 오픈 → `TimerManager.elapsedTime`/몬스터 ECS 위치를 3초 간격 두 번 샘플링해 완전히 동일(진짜 정지) 확인, `Time.timeScale`은 시종일관 1 유지. `Close()` 후 다시 정상 진행 재개 확인(정상 케이스 회귀 없음).
+2. **버그 재현 시나리오**: `TowerController.TakeDamage(9999)`로 강제 사망 → `UICardDraft.Show()`→`Close()`(레벨업 드래프트가 열렸다 닫히는 상황 재현) → 3초 대기 후 `elapsedTime`/몬스터 위치/개체 수 전부 사망 직후 값과 완전히 동일 — RunOver가 떠 있는 동안 팝업을 열었다 닫아도 더 이상 게임이 풀리지 않음을 확인.
+3. 콘솔 에러 0건(전체 시퀀스 동안).
+
+### 관련 클래스
+- [[BaseScene]] 2026-07-24-0 — `isPaused` 게이트 신설
+- [[UICardDraft]] 2026-07-24-0, [[UIPause]] 2026-07-24-0 — `Time.timeScale` 대신 `SetPaused()` 호출로 전환

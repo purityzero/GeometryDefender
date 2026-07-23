@@ -117,7 +117,19 @@
       "Bash(grep -n \"m_Name: Btn_Play$\\\\|m_Name: Canvas$\" Assets/Scenes/TitleScene.unity)",
       "Bash(grep -n \"^--- !u!114 &2071785898$\" -A 20 Assets/Scenes/TitleScene.unity)",
       "Bash(grep -n \"m_Name: Hexagon$\" Assets/Scenes/TitleScene.unity)",
-      "Bash(grep -n \"^--- !u!1 &737859779$\\\\|^--- !u!1 &1635555541$\" Assets/Scenes/TitleScene.unity)"
+      "Bash(grep -n \"^--- !u!1 &737859779$\\\\|^--- !u!1 &1635555541$\" Assets/Scenes/TitleScene.unity)",
+      "Bash(grep -n \"&655750134\\\\|m_Name: Canvas$\" InGameScene.unity)",
+      "Bash(perl -e ' *)",
+      "Bash(mv InGameScene.unity.new InGameScene.unity)",
+      "Bash(rm -f InGameScene.unity.bak)",
+      "Bash(head -n 1543 UIInGameHUD.prefab)",
+      "Bash(mv UIInGameHUD.prefab.tmp UIInGameHUD.prefab)",
+      "Bash(xargs -I{} sh -c 'echo ==={}===; cat {}')",
+      "Bash(xargs cat)",
+      "Bash(grep -n \"m_Name: Top$\" InGameScene.unity)",
+      "Bash(xxd Assets/Resources/Table/StringTable.csv)",
+      "Bash(grep -E \"^--$|m_GameObject:|--- !u!1 &|m_Name:\")",
+      "Bash(xargs grep -l \"ParticleSystem\")"
     ],
     "defaultMode": "auto"
   },

@@ -1,5 +1,7 @@
 # TowerHealth
 
+> **2026-07-23부로 [[TowerController]]에 병합되어 이 클래스는 삭제됨.** 같은 오브젝트(ActorPlayer)를 다루는 "타워" 하나의 개념이라 분리 실익이 없다는 사용자 지적으로 병합. 이 문서는 과거 기록 보존용이며, 현재 이 클래스의 필드/메서드(`currentHp`/`maxHp`/`TakeDamage`/`OnDie` 등)는 전부 [[TowerController]]에 그대로 존재한다. 상세는 TowerController.md 2026-07-23 항목 참고.
+
 ## 연관 클래스
 - MonsterManager — `OnMonsterReachEnd` 이벤트 구독 대상 (`OnEnemyReachTower`)
 - InGameScene — `Init()` 호출 + 이벤트 구독 배선
@@ -27,6 +29,22 @@
 - HP 0 도달 시 게임 종료 처리(UIRunOver 연동) — UIRunOver가 현재 빈 스텁이라 이번 범위에 포함하지 않음. `OnDie` 이벤트만 노출해둠(추후 구독해서 연결 가능).
 
 ## 작업 내역
+
+### 2026-07-24-0 — 카드 드래프트 시스템용 확장
+[[card-draft]] 스펙 구현. 연관: `TowerController`(Shield Burst 데미지 산정), `MonsterManager.DamageEntitiesInRadius`(Shield Burst 폭발).
+
+**필드 추가**: `m_BaseMaxHp`(카드 가산 전 원본 최대치), `m_MaxHpPercentBonus`(Glass Cannon 등 % 보정), `m_MaxHp`(파생값, `RecalculateMaxHp()`로 재계산), `m_DamageTakenReductionPercent`, `m_HealPerSecond`+`m_HealAccumulator`(Regeneration), `m_ShieldBurstThresholdPercent`+`m_isShieldBurstArmed`(1회성 무장 플래그), `m_hasRevive`+`m_ReviveHpPercent`(Phoenix).
+
+**신규 public API**: `Heal(int)`, `AddMaxHp(int)`(가산 시 델타만큼 즉시 회복도 같이 적용), `AddMaxHpPercent(float)`(회복 없이 클램프만), `AddDamageTakenReductionPercent(float)`, `AddHealPerSecond(float)`, `SetShieldBurstThreshold(float)`, `SetReviveOnce(float)`.
+
+**신규 private**: `RecalculateMaxHp(bool _healByDelta)`(maxHp 재계산 + 조건부 회복/클램프), `CheckShieldBurst()`(HP 30% 미만 최초 진입 감지 → `TowerController.Current.GetShieldBurstDamage()` + `MonsterManager.Current.DamageEntitiesInRadius()` 호출).
+
+**TakeDamage() 변경**: 데미지에 `m_DamageTakenReductionPercent` 적용 → 사망 조건(`<=0`) 도달 시 Phoenix 발동 가능하면 부활(HP를 `m_ReviveHpPercent`로 리필, `OnDie` 미발행) → 아니면 기존대로 `OnDie` 발행 → `CheckShieldBurst()` 호출.
+
+**`UpdateLogic()` 신규 override**: Regeneration의 초당 회복 틱(`m_HealAccumulator` 누적 후 1초마다 `Heal(Mathf.RoundToInt(m_HealPerSecond))`).
+
+### 미검증
+Unity MCP 미연결, 컴파일/Play 확인 안 됨.
 
 ### 2026-07-22-0
 
@@ -131,3 +149,6 @@ Unity MCP `execute_code`로 격리 테스트 — `TowerHealth` 인스턴스 생�
 - 개요: 사용자 요청("적군에 닿으면 HP가 닳고") — 몬스터가 타워(ActorPlayer)에 도달했을 때 HP가 감소하는 기능 신규 구현.
 - 파일: Assets/Scripts/InGame/TowerHealth.cs(신규), Assets/Scripts/InGame/InGameScene.cs, Assets/Resources/Table/GameConfigTable.csv, Assets/Scenes/InGameScene.unity
 - 검증: Unity MCP `execute_code`로 격리 테스트 — `Init(100)` → `TakeDamage(30)` → 70, `OnEnemyReachTower(DamageToBase=15)` → 55, `TakeDamage(1000)` → 0(클램프) + `OnDie` 발행, 모두 의도대로 동작 확인. 단, 실제 씬 흐름(TitleScene→Btn_Play→InGameScene)을 통한 End-to-End 검증은 기존에 이미 보고된 별개 버그([client-issues.md](../qa/client-issues.md) 2026-07-21-1, `World.DefaultGameObjectInjectionWorld`가 씬 전환 후 null이 되어 `MonsterManager.Init()`이 NRE로 중단)에 막혀 못함 — `InGameScene.OnSetup()`이 `MonsterManager.Init()` 줄에서 예외로 중단되면서 그 아래 TowerHealth 배선 코드 자체가 실행되지 않음. 상세는 client-issues.md 2026-07-21-2 참고.
+
+### 2026-07-23-0 — 데미지 텍스트 연동
+사용자 요청("데미지 폰트도 넣어줘 적군 아군 둘다") — `TakeDamage(int)`에서 실제 감쇄 반영된 `reducedAmount` 계산 직후(Phoenix 부활 분기보다 먼저, 데미지는 항상 표시돼야 하므로) `DamageTextManager.Current?.ShowAllyDamage(transform.position, reducedAmount)` 호출 추가. 검증: 컴파일 에러 0건. 실제 씬 흐름(TitleScene→Btn_Play→InGameScene)으로 End-to-End 검증 완료 — 이번 세션에서 `World.DefaultGameObjectInjectionWorld` null 블로커 없이 정상 재현됨(타워가 실제로 피격당해 HP 감소 + 빨간 데미지 텍스트 표시, 런 종료까지 확인). 상세는 [[DamageTextManager]] 참고.

@@ -1,5 +1,16 @@
 # ProjectileManager
 
+## 2026-07-24-0 — 카드 드래프트 시스템용 확장
+[[card-draft]] 스펙 구현. `Fire()` 시그니처에 `ProjectileEffects _cardEffects = default` 파라미터 추가 — 발사 엔티티에 `ProjectileEffects`(Pierce/SplashRadius/ChainJumps·Radius/IsHoming/HomingTarget) 컴포넌트를 그대로 부착, `ProjectileStats.Pierce = record.Pierce + _cardEffects.Pierce`(테이블 기본값 + 카드 누적).
+
+신규 `SpawnOrbitals(Vector2 _center, int _count, int _damage, float _radius, float _orbitDistance)`(public) — Orbital Ring(#503) 카드용. `_count`개 엔티티를 `OrbitalTag`+`ProjectileStats`+`OrbitalData`(균등 분배된 `AngleOffset`)+`LocalTransform`으로 생성, 시각화는 기존 `SpawnVisual`(Basic `ProjectileRecord`)을 그대로 재사용. 이동/데미지는 `ProjectileMoveSystem`이 아니라 신규 `OrbitalSystem`이 전담(태그로 분리되어 있어 서로 간섭 없음).
+
+`ProjectileCollisionSystem`/`ProjectileMoveSystem` 쿼리에 `RefRW/RefRO<ProjectileEffects>`가 필수 컴포넌트로 추가됨 — `ProjectileTag`를 가진 모든 엔티티는 `Fire()`를 거쳐 생성되므로 항상 `ProjectileEffects`도 함께 붙는다(누락되는 경로 없음, 쿼리 매칭 불일치 없음).
+
+### 미검증
+Unity MCP 미연결, 컴파일/Play 확인 안 됨 — Burst 컴파일 오류 가능성이 가장 높은 지점(신규 ECS 컴포넌트/시스템).
+
+
 연관 클래스: `MonsterManager`(거의 동일한 구조 — Entity 스폰/풀 관리/만료 처리 패턴을 그대로 대칭 복제), `TowerController`(호출 주체), `ActorProjectile`/`Actor`/`FactoryObject`(시각 오브젝트), `MemoryPoolFactory<T,TEnum>`/[[Factory]](타입별 풀링 — 2026-07-22부터 `Create()` 시점에 타입을 스스로 기억해 `Recycle(T)` 한 인자로 반납 가능), `ProjectileRecord`/`ProjectileTable`/`eProjectileType`(데이터), `ProjectileTag`/`ProjectileStats`/`ProjectileMotion`/`ProjectileExpiredTag`(ECS 컴포넌트), `ProjectileMoveSystem`/`ProjectileCollisionSystem`/`ProjectileVisualSyncSystem`(ECS 시스템), `VisualObject`(ECS↔Transform 동기화, Entity→시각 오브젝트 조회의 유일한 소스 — 2026-07-22-3부터 별도 Dictionary 없이 이것만으로 반납 처리)
 
 ## 2026-07-22-4 — Basic 미사일 크기 축소 + MemoryPool 동작 검증
@@ -64,3 +75,41 @@ Assets/Scripts/InGame/ProjectileManager.cs
 
 ## 미검증
 - 투사체가 실제로 "타워→적 방향"으로 정확히 날아가는 궤적을 스크린샷 한 프레임으로 육안 캡처하지는 못함(발사~명중까지가 매우 짧아 스크린샷 타이밍상 못 잡음) — 대신 `killCount` 지속 상승으로 종단 간(end-to-end) 동작을 간접 확인.
+
+## 2026-07-23-0 — IUpdatable 등록 중앙화
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0 참고. 클래스 선언 `SceneSingleton<ProjectileManager>, IUpdatable` → `SceneSingleton<ProjectileManager>`(IUpdatable 제거), `Start()`(Register만 하던 것) 삭제, `UpdateLogic()` → `public override`, `OnDestroy()`의 수동 Unregister 호출 제거(`base.OnDestroy()`가 대신 처리, World 생존 확인 후 `m_ExpiredQuery` Dispose + 팩토리 Clear 로직은 그대로 유지). 미검증(컴파일/Play Mode 확인 필요).
+
+## 2026-07-23-1 — 살아있는 투사체/오비탈 엔티티가 씬 전환 시 누수되던 버그 수정
+
+### 개요
+[[MonsterManager]] 2026-07-23-2와 동일한 버그가 여기도 있었음 — `World.DefaultGameObjectInjectionWorld`는 씬 언로드와 별개 생명주기라, `OnDestroy()`가 `m_ExpiredQuery`(만료된 것만)만 Dispose하고 **아직 만료되지 않은 투사체/오비탈 엔티티는 정리하지 않아** 다음 플레이 세션까지 좀비로 남을 수 있었음.
+
+### 파일
+- Assets/Scripts/InGame/ProjectileManager.cs
+
+### 수정 (함수 단위)
+**OnDestroy()**
+- 전: World 생존 확인 후 `m_ExpiredQuery.Dispose();`만 수행.
+- 후: 같은 블록 안에서 `ProjectileTag`/`OrbitalTag` 각각으로 새 쿼리를 만들어 `m_EntityManager.DestroyEntity(...)`로 살아있는 것까지 포함해 전부 파괴한 뒤 각 쿼리를 Dispose, 그 다음 `m_ExpiredQuery.Dispose()`.
+
+### 검증
+[[MonsterManager]] 2026-07-23-2에 기록된 실제 재현 테스트(런 도중 씬 전환 → 재플레이)에서 `ProjectileTag` 쿼리 카운트를 함께 확인 — 전환 후 0으로 정리됨. 콘솔 에러 0건.
+
+### 관련 클래스
+- [MonsterManager.md](../class/MonsterManager.md) 2026-07-23-2 — 동일 버그 패턴, 같이 발견/수정
+
+### 2026-07-23-2 — 데미지 텍스트용 크리티컬 정보 전달
+사용자 요청("데미지 폰트도 넣어줘") — 상세는 [[ProjectileStats]] 2026-07-23-0 참고. `Fire(...)`에 `bool _isCrit = false` 매개변수 추가, `ProjectileStats.IsCrit`에 그대로 설정. 검증: 컴파일 에러 0건, Play Mode 실측(타워 발사 → 몬스터 피격 시 데미지 텍스트 표시) 확인.
+
+### 2026-07-23-3 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리)
+사용자 지적("Manager가 너무 많지 않아?") — 개별 `.Current` 폐지, `InGameScene.Current.projectileManager`로 접근하도록 통일. `TowerController.cs`가 `InGameScene.Current.projectileManager.Fire(...)`로 호출하도록 변경. 상세 설계/버그/검증은 [[InGameScene]] 2026-07-23-1 참고.
+
+### 2026-07-24-1 — const 전부 GameConfigTable로 이관
+[[GameConfigRecord]] 2026-07-24-0 참고. `POOL_SIZE`/`PREFAB_NATIVE_DIAMETER` 제거 → `GameConfigTable.PROJECTILE_POOL_SIZE`/`PROJECTILE_PREFAB_NATIVE_DIAMETER` 참조. 같은 스윕으로 `ProjectileMoveSystem.HOMING_TURN_RATE`도 `GameConfigTable.PROJECTILE_HOMING_TURN_RATE`로 이관(별도 md 없이 이 문서의 "ECS 시스템 개요" 관례에 따라 여기 기록).
+검증: 컴파일 에러 0건. Play Mode 재검증 미완료.
+
+### 2026-07-23-4 — 투사체 다중 효과 아이콘 전달
+사용자 요청("사격시스템 구현해줘") — 상세는 [[ActorProjectile]] 2026-07-23-0 참고.
+- **Fire(...)**: `SpawnVisual(entity, record)` → `SpawnVisual(entity, record, _cardEffects)`로 카드 효과 구조체를 같이 넘기도록 변경.
+- **SpawnVisual(Entity, ProjectileRecord, ProjectileEffects = default)**: 매개변수 추가(기본값 있어 `SpawnOrbitals()`의 기존 호출은 무수정으로 호환 — 오비탈은 카드 효과 대상이 아니라 항상 아이콘 전부 꺼짐). 끝에 `actorProjectile.SetEffectIcons(Pierce>0, SplashRadius>0f, ChainJumps>0, IsHoming)` 호출 추가.
+- 검증: 컴파일 에러 0건, Play Mode 실측(4효과 동시 부여 시 아이콘 4개 동시 표시) 확인.

@@ -29,6 +29,28 @@ UICardDraft (...1001)                — RectTransform 풀스트레치
 
 ---
 
+## 2026-07-24-0 — 필드 배선 + Text_Title UIText 부착
+
+### 개요
+[[UICardDraft]](class) 전체 구현에 맞춰 실제 데이터 표시가 가능하도록 프리팹 배선. MCP 미연결, YAML 직접 편집.
+
+### 수정 (오브젝트 단위)
+
+**UICardDraft (루트, ...1900)**
+- 후: `m_CardContainer: {fileID: ...1031}`(Group_Cards), `m_CardTemplate: {fileID: ...1041}`(Item_Card), `m_RerollButton: {fileID: ...1084}`, `m_RerollText: {fileID: ...1093}`, `m_SkipButton: {fileID: ...1104}`, `m_SkipText: {fileID: ...1113}`, `m_BuildInfoText: {fileID: ...1123}` 추가.
+
+**Text_Title (...1020)**
+- 전: TMP 텍스트만("LEVEL UP - CHOOSE ONE" 정적 baked 문구, 키 없음)
+- 후: 신규 `UIText` 컴포넌트(fileID `9003000000000002001`, script guid `1a37630bea274644a85de3916ce19d91`) 부착, `m_Component` 목록에 4번째 항목으로 추가. `m_Text: {fileID: ...1023}`(기존 TMP), `m_Key: CardDraftTitle`.
+
+### 검증
+`grep -oE "^--- !u![0-9]+ &[0-9]+"` 로 파일 내 총 54블록, 중복 fileID 없음 확인.
+
+### 미검증
+Unity MCP 미연결, 컴파일/Play 확인 안 됨.
+
+---
+
 ## 2026-07-14-5
 
 ### 개요

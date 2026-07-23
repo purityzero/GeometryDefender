@@ -200,6 +200,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!212 &212735710
 SpriteRenderer:
   serializedVersion: 2
@@ -487,6 +488,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!212 &285994492
 SpriteRenderer:
   serializedVersion: 2
@@ -650,6 +652,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!1 &495367426
 GameObject:
   m_ObjectHideFlags: 0
@@ -904,6 +907,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!212 &607380131
 SpriteRenderer:
   serializedVersion: 2
@@ -2253,6 +2257,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!212 &926139151
 SpriteRenderer:
   serializedVersion: 2
@@ -2747,6 +2752,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!212 &1142473663
 SpriteRenderer:
   serializedVersion: 2
@@ -4317,6 +4323,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9ebe799ef658844bc1dc6ec5002eff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleSquareEffect
+  m_SpriteRenderer: {fileID: 0}
 --- !u!212 &2040103993
 SpriteRenderer:
   serializedVersion: 2

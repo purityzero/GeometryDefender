@@ -10,7 +10,7 @@
 - `m_PopupStack`(`List<UIPopup>`, 마지막 = 최근 연 것 = 최상단) — [[UIPopup]] 파생 클래스가 `Show()`/`Close()`에서 자동으로 등록/해제. `RegisterPopup`/`UnregisterPopup`/`CloseAllPopups()`(스택 스냅샷을 떠서 순회하며 전부 `Close()` + 활성 토스트도 전부 `CloseToast`) 제공.
 - `Update()`에서 `Keyboard.current.escapeKey.wasPressedThisFrame`(새 Input System — 안드로이드 하드웨어 뒤로가기가 여기로 매핑됨) 감지 시 `OnPressBackButton()` → 스택 최상단 팝업의 `OnPressBackBtn()`만 호출.
 - UI 프리팹은 자체 Canvas를 갖는 전제 (UIManager는 일반 GameObject라 Canvas 부모 제공 안 함)
-- UIBase: Show/Close 가상 메서드 (SetActive 토글)
+- UIBase: Show/Close 가상 메서드 (SetActive 토글). 2026-07-23부터 `IUpdatable`도 구현 — `OnEnable()`/`OnDisable()`에서 `BaseScene.Current.Register`/`Unregister` 자동 호출, `UpdateLogic()`은 기본 빈 virtual. `Show()`/`Close()`가 내부적으로 `SetActive(true/false)`를 호출하므로 등록/해제도 자동으로 같이 일어난다(팝업을 닫으면 갱신 목록에서도 자동으로 빠짐) — 파생 화면(UIInGameHUD 등)은 `UpdateLogic()`만 override하면 되고 더 이상 `IUpdatable`을 직접 선언하거나 Register/Unregister를 손으로 호출할 필요 없음. 상세는 [[BaseScene]]/[[SceneSingleton]] 참고.
 - `ShowToast(string _message)`: [UIToastMessage](./UIToastMessage.md) 풀(`MemoryPooling`, 최대 5개, 최초 호출 시 지연 생성+Prewarm)에서 하나 꺼내 표시. 활성 토스트 목록(`m_ActiveToasts`, 최신이 인덱스0)을 유지하며 매번 `RepositionToastStack()`으로 전체 위치 재계산(슬롯 간격 `TOAST_SLOT_HEIGHT`). 풀이 꽉 찬 상태에서 새로 뜨면 가장 오래된 토스트를 강제로 닫고(`CloseToast`) 자리를 만듦. **별도 ToastCanvas/ToastRoot를 만들지 않고 기존 `GetCanvas(true)`(PopupCanvas)를 그대로 풀 부모로 재사용** — 토스트 프리팹 자신의 RectTransform이 이미 중앙 앵커(0.5,0.5)로 만들어져 있어서 별도 위치 보정용 오브젝트가 필요 없음(2026-07-18-1, 처음엔 전용 Canvas/ToastRoot를 코드로 생성했다가 사용자 지적으로 제거).
 
 ---
@@ -211,3 +211,26 @@ private void OnPressBackButton()
 
 ### 검증
 [[UIPopup]] 2026-07-22-0 참고 — Z-order 버그 재현 후 수정 확인, 팝업 스택/뒤로가기/CloseAllPopups 전부 Play Mode 실측.
+
+---
+
+## 2026-07-23-0
+
+### 개요
+사용자 요청: "IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 BaseScene.Current.Register 등록 할 수 있게 해줘" — [[UIInGameHUD]]가 `: UIBase, IUpdatable` + `Start()`/`OnDestroy()` 보일러플레이트를 직접 갖고 있던 것을 계기로, UIBase 자체가 등록을 대신 처리하도록 변경. 상세 배경(OnEnable/OnDisable 채택 이유)은 [[SceneSingleton]] 2026-07-23-0 참고(동일한 설계를 UIBase에도 그대로 적용).
+
+### 파일
+- Assets/Scripts/Glory/UI/UIManager.cs (UIBase 클래스)
+
+### 수정 (함수 단위)
+**UIBase 클래스 선언**
+- 전: `public abstract class UIBase : MonoBehaviour`
+- 후: `public abstract class UIBase : MonoBehaviour, IUpdatable`
+
+**신규**: `protected virtual void OnEnable() { BaseScene.Current.Register(this); }`, `protected virtual void OnDisable() { BaseScene.Current?.Unregister(this); }`, `public virtual void UpdateLogic() { }` 추가. `Show()`/`Close()`는 변경 없음(기존 SetActive 토글 그대로 — 이제 그 토글이 자동으로 OnEnable/OnDisable을 트리거해 등록/해제도 같이 일어남).
+
+### 연관 수정
+[[UIInGameHUD]] — `IUpdatable` 선언 및 `Start()`/`OnDestroy()`의 Register/Unregister 호출 제거, `UpdateLogic()` → `public override`.
+
+### 미검증
+컴파일/에디터 미실행 상태 편집. UIInGameHUD 표시가 계속 정상 갱신되는지, 다른 UIPopup 파생 화면들(현재 UpdateLogic을 안 쓰지만)이 Show/Close를 반복해도 문제없는지 확인 필요.

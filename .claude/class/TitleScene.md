@@ -109,3 +109,20 @@ public void OnClickSettingsButton()
 
 ### 검증 (2026-07-23, Play Mode)
 [[TableManager]] 수정 후 재검증 — 콘솔 에러/경고 0건. 4개 텍스트 전부 `TextMeshProUGUI.text` 직접 읽기로 정상 렌더링 확인("META TREE"/"PLAY"/"Settings"/"How to Play", `StringTable.CurrentLanguage`=English 상태). `PlayerManager.instance.SetLanguage(eLanguage.Korean)` 호출로 4곳 전부 실시간 한국어 전환("메타 트리"/"플레이"/"설정"/"게임 방법") 확인. 스크린샷 대신 TMP 텍스트 직접 읽기로 검증(2026-07-22 확립된 스크린샷 플레이키니스 회피 관례 적용).
+
+---
+
+## 2026-07-24-0
+
+### 개요
+사용자가 실제 재현한 `UpdatableBehaviour.OnEnable()` NRE — 상세 원인/수정은 [[InGameScene]] 2026-07-24-0 참고(TitleScene도 동일 이유로 동일 수정 적용).
+
+### 파일
+- Assets/Scripts/Title/TitleScene.cs
+
+### 수정
+- 클래스 선언에 `[DefaultExecutionOrder(-1000)]` 추가.
+- 2026-07-21-0에서 "미사용이라 제거"했던 `using UnityEngine;`을 이 attribute 때문에 다시 추가 — 위 "현재 상태"의 관련 서술은 이제 낡은 기록이니 참고 시 이 항목을 우선할 것.
+
+### 미검증
+[[InGameScene]] 2026-07-24-0 참고.

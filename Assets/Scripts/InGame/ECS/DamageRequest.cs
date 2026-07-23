@@ -4,4 +4,5 @@ using Unity.Entities;
 public struct DamageRequest : IBufferElementData
 {
     public int Amount;
+    public bool IsCrit;
 }

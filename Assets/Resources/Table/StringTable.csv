@@ -51,3 +51,85 @@ Id,Key,Kr,En,Cn,Jp
 50,Fps60,60,60,60,60
 51,TitlePlayButton,플레이,PLAY,开始,プレイ
 52,TitleHowToPlayButton,게임 방법,How to Play,游戏说明,遊び方
+53,PauseTitle,일시정지,PAUSED,暂停,一時停止
+54,PauseResumeButton,계속하기,RESUME,继续,再開
+55,PauseBuildLabel,현재 빌드,CURRENT BUILD,当前版本,現在のビルド
+56,CardDraftTitle,레벨 업 - 카드를 선택하세요,LEVEL UP - CHOOSE ONE,升级 - 请选择一张,レベルアップ - 選択してください
+57,CardDraftRerollButton,리롤,REROLL,重掷,リロール
+58,CardDraftSkipButton,스킵 (+5),SKIP (+5),跳过 (+5),スキップ (+5)
+59,CardDraftNoCards,-,-,-,-
+60,CardCategoryOffense,공격,OFFENSE,攻击,攻撃
+61,CardCategorySpeed,속도,SPEED,速度,速度
+62,CardCategoryUtility,유틸리티,UTILITY,实用,ユーティリティ
+63,CardCategoryDefense,방어,DEFENSE,防御,防御
+64,CardCategorySpecial,특수,SPECIAL,特殊,特殊
+65,Card101Name,날카로운 날,Sharp Edges,锋利刀刃,鋭い刃
+66,Card101Effect,데미지 +20%,Damage +20%,伤害 +20%,ダメージ +20%
+67,Card102Name,더 날카로운 날,Sharper Edges,更锋利刀刃,より鋭い刃
+68,Card102Effect,데미지 +40%,Damage +40%,伤害 +40%,ダメージ +40%
+69,Card103Name,정밀함,Precision,精准,精密
+70,Card103Effect,치명타 확률 +5%,Crit Chance +5%,暴击率 +5%,クリティカル率 +5%
+71,Card104Name,필살의 조준,Deadly Aim,致命瞄准,必殺の狙い
+72,Card104Effect,치명타 배율 +0.5,Crit Multiplier +0.5,暴击倍率 +0.5,クリティカル倍率 +0.5
+73,Card105Name,관통 I,Pierce I,穿透 I,貫通 I
+74,Card105Effect,투사체가 적 1체를 관통합니다,Projectile pierces 1 enemy,弹药可穿透1个敌人,弾が敵1体を貫通します
+75,Card106Name,관통 II,Pierce II,穿透 II,貫通 II
+76,Card106Effect,관통 +2 (스택 가능),Pierce +2 (stackable),穿透 +2 (可叠加),貫通 +2 (スタック可)
+77,Card107Name,더블 샷,Double Shot,双重射击,ダブルショット
+78,Card107Effect,한 번에 투사체 2개를 발사합니다,Fires 2 projectiles at once,一次发射2枚弹药,一度に弾を2発発射します
+79,Card108Name,트라이앵글 헌터,Triangle Hunter,三角猎手,トライアングルハンター
+80,Card108Effect,Triangle 적에게 데미지 +50%,+50% DMG to Triangle enemies,对三角形敌人伤害 +50%,トライアングル敵にダメージ +50%
+81,Card201Name,퀵 파이어,Quick Fire,快速射击,クイックファイア
+82,Card201Effect,공격 속도 +15%,Attack Speed +15%,攻击速度 +15%,攻撃速度 +15%
+83,Card202Name,래피드 파이어,Rapid Fire,急速射击,ラピッドファイア
+84,Card202Effect,공격 속도 +30%,Attack Speed +30%,攻击速度 +30%,攻撃速度 +30%
+85,Card203Name,벨로시티,Velocity,速度提升,ヴェロシティ
+86,Card203Effect,투사체 속도 +25%,Projectile Speed +25%,弹药速度 +25%,弾速 +25%
+87,Card204Name,하이퍼소닉,Hypersonic,超音速,ハイパーソニック
+88,Card204Effect,투사체 속도 +60% 사거리 +20%,Proj Speed +60% Range +20%,弹速 +60% 射程 +20%,弾速 +60% 射程 +20%
+89,Card205Name,오버드라이브,Overdrive,超载,オーバードライブ
+90,Card205Effect,공격 속도 +100% 데미지 -30%,Attack Speed +100% Damage -30%,攻击速度 +100% 伤害 -30%,攻撃速度 +100% ダメージ -30%
+91,Card301Name,롱 리치,Long Reach,长距离,ロングリーチ
+92,Card301Effect,사거리 +15%,Range +15%,射程 +15%,射程 +15%
+93,Card302Name,파 사이트,Far Sight,远视,ファーサイト
+94,Card302Effect,사거리 +35%,Range +35%,射程 +35%,射程 +35%
+95,Card303Name,스플래시 I,Splash I,溅射 I,スプラッシュ I
+96,Card303Effect,적중 시 반경 1.5 폭발,Explodes in radius 1.5 on hit,命中时在半径1.5内爆炸,命中時に半径1.5で爆発
+97,Card304Name,체인 라이트닝,Chain Lightning,连锁闪电,チェインライトニング
+98,Card304Effect,3체까지 연쇄 (반경 2.0),Chains to 3 enemies (radius 2.0),连锁3个敌人 (半径2.0),3体まで連鎖 (半径2.0)
+99,Card305Name,호밍 미사일,Homing Missile,追踪导弹,ホーミングミサイル
+100,Card305Effect,투사체가 목표를 추적합니다,Projectiles home in on targets,弹药会追踪目标,弾が目標を追尾します
+101,Card306Name,최강 타겟팅,Target Strongest,锁定最强,最強ターゲット
+102,Card306Effect,체력이 가장 높은 적을 우선 공격,Targets highest HP enemy first,优先攻击生命值最高的敌人,HPが最も高い敵を優先攻撃
+103,Card307Name,최속 타겟팅,Target Fastest,锁定最快,最速ターゲット
+104,Card307Effect,가장 빠른 적을 우선 공격,Targets fastest enemy first,优先攻击速度最快的敌人,最も速い敵を優先攻撃
+105,Card401Name,보강,Reinforce,加固,補強
+106,Card401Effect,최대 체력 +20,Max HP +20,最大生命值 +20,最大HP +20
+107,Card402Name,강화,Fortify,强化,強化
+108,Card402Effect,최대 체력 +50 즉시 회복,Max HP +50 instant heal,最大生命值 +50 立即恢复,最大HP +50 即時回復
+109,Card403Name,재생,Regeneration,再生,再生
+110,Card403Effect,초당 체력 +1 회복,Heals +1 HP per second,每秒恢复1点生命值,毎秒HP +1 回復
+111,Card404Name,실드 버스트,Shield Burst,护盾爆发,シールドバースト
+112,Card404Effect,체력 30% 이하 시 반경 3 폭발,Explodes radius 3 below 30% HP,生命值低于30%时半径3内爆炸,HP30%以下で半径3に爆発
+113,Card405Name,뱀파이어,Vampire,吸血鬼,ヴァンパイア
+114,Card405Effect,처치 시 1% 확률로 체력 +1,1% chance to heal 1 HP on kill,击杀时1%概率恢复1点生命值,撃破時1%の確率でHP +1
+115,Card406Name,불사조,Phoenix,不死鸟,フェニックス
+116,Card406Effect,사망 시 1회 체력 50%로 부활,Revives once at 50% HP on death,死亡时1次以50%生命值复活,死亡時に1回HP50%で復活
+117,Card501Name,글래스 캐논,Glass Cannon,玻璃大炮,グラスキャノン
+118,Card501Effect,최대 체력 -50% 데미지 ×2.5,Max HP -50% Damage x2.5,最大生命值 -50% 伤害 ×2.5,最大HP -50% ダメージ ×2.5
+119,Card502Name,버서커,Berserker,狂战士,バーサーカー
+120,Card502Effect,체력이 낮을수록 데미지 증가,Damage increases as HP drops,生命值越低伤害越高,HPが低いほどダメージ上昇
+121,Card503Name,오비탈 링,Orbital Ring,轨道环,オービタルリング
+122,Card503Effect,타워 주위를 회전하는 투사체 4개 생성,4 orbiting projectiles around tower,在塔周围生成4个环绕弹药,タワー周囲に回転する弾4個を生成
+123,Card504Name,타임 슬로우,Time Slow,时间减缓,タイムスロー
+124,Card504Effect,모든 적의 이동 속도 -25%,All enemies move -25% slower,所有敌人移动速度 -25%,全ての敵の移動速度 -25%
+125,SettingsEnemyDamageTextLabel,적군 데미지 표시,Enemy Damage Text,敌方伤害显示,敵ダメージ表示
+126,SettingsAllyDamageTextLabel,아군 데미지 표시,Ally Damage Text,我方伤害显示,味方ダメージ表示
+127,TargetingClosest,가장 가까운 적,Closest Enemy,最近的敌人,最も近い敵
+128,TargetingStrongest,가장 강한 적,Strongest Enemy,最强的敌人,最も強い敵
+129,TargetingWeakest,가장 약한 적,Weakest Enemy,最弱的敌人,最も弱い敵
+130,TargetingFastest,가장 빠른 적,Fastest Enemy,最快的敌人,最も速い敵
+131,TargetingRandom,무작위,Random,随机,ランダム
+132,PauseBuildTargetingLabel,타겟팅,Targeting,索敌,ターゲティング
+133,PauseBuildCardListLabel,획득한 카드,Cards Obtained,已获得卡牌,獲得カード
+134,PauseBuildNoCards,아직 없음,None yet,暂无,まだなし

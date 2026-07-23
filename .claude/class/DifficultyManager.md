@@ -60,3 +60,26 @@ Title→Btn_Play→UIDifficultySelect(Normal 선택, 실제 UI 클릭)→InGame 
 ## 미검증
 - 실제 480초(또는 5배속으로 96초)를 자연 경과시켜 자동으로 클리어되는 것 — 이번에도 리플렉션으로 시간을 강제해 로직만 검증.
 - Hard/Hell 실제 플레이 시 체감 난이도(스폰/HP 배율이 곱해진 상태로 실제로 플레이해본 것은 아님).
+
+## 2026-07-23-0 — IUpdatable 등록 중앙화 + 잠재 버그 수정
+
+### 개요
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0 참고.
+
+### 파일
+- Assets/Scripts/InGame/DifficultyManager.cs
+
+### 수정 (함수 단위)
+**클래스 선언**: `SceneSingleton<DifficultyManager>, IUpdatable` → `SceneSingleton<DifficultyManager>`(IUpdatable 제거).
+**Start()**(Register만 하던 것): 삭제.
+**UpdateLogic()**: `public void` → `public override void`.
+
+**OnDestroy() — 잠재 버그 수정**
+- 전: `private void OnDestroy() { BaseScene.Current?.Unregister(this); }` — `override` 키워드 없이 베이스([[SceneSingleton]])의 `protected virtual void OnDestroy()`를 이름만 가리는 상태였음. Unity가 이 인스턴스에 대해 파생 클래스의 `OnDestroy()`만 호출하고 베이스 쪽은 호출되지 않아, **`SceneSingleton<DifficultyManager>.Current`가 파괴 후에도 계속 이전 인스턴스를 가리키는(null로 안 풀리는) 버그**가 있었음(이번 리팩토링 과정에서 발견, 실제 증상 리포트로 발견된 건 아님).
+- 후: `protected override void OnDestroy() { base.OnDestroy(); }` — Unregister는 이제 `OnDisable()`에서 처리되므로 이 메서드엔 `base.OnDestroy()` 호출(=Current 리셋)만 남음.
+
+### 미검증
+[[SceneSingleton]] 2026-07-23-0 참고. `DifficultyManager.Current`가 씬 전환 후 실제로 null로 리셋되는지는 별도 확인 필요(이전엔 리셋 자체가 안 됐던 버그였으므로).
+
+### 2026-07-23-1 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리, 위 미검증 항목 해소)
+사용자 지적("Manager가 너무 많지 않아?") — `SceneSingleton<DifficultyManager>` → `UpdatableBehaviour`로 전환하며 개별 `.Current`(및 그 리셋 버그 자체)가 사라짐. `InGameScene.Current.difficultyManager`로 접근. `OnDestroy()` override(순전히 Current 리셋용이었음) 전체 삭제 — 더 이상 필요 없음. `TimerManager.Current` 참조도 `InGameScene.Current.timerManager`로 교체. 상세 설계/검증은 [[InGameScene]] 2026-07-23-1 참고.

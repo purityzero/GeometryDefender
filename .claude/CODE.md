@@ -146,6 +146,32 @@ m_TimeText.GetComponent<RectTransform>().localScale = Vector3.one;
 m_TimeText.GetComponent<RectTransform>().DOScale(1.4f, 0.1f);
 ```
 
+### 컴포넌트 참조는 GetComponent 대신 직렬화 필드로
+- Unity 내장 컴포넌트(`RectTransform`, `Image`, `TextMeshProUGUI`, `Button`, `Rigidbody` 등)는 왠만하면 `Awake()`/`Start()`에서 `GetComponent<T>()`로 매번 받아오지 말고, `[SerializeField]` 멤버 변수로 선언해 프리팹/인스펙터에서 미리 연결해 둔다.
+- 예외: 런타임에 동적으로 생성되는 자식이나, 코드로만 붙는 컴포넌트라 인스펙터에서 미리 연결할 대상이 없는 경우엔 `GetComponent<T>()` 사용.
+
+```csharp
+// ✅ 올바른 사용
+public class UIToastMessage : MonoBehaviour
+{
+    [SerializeField] private TextMeshProUGUI m_MessageText;
+    [SerializeField] private Image m_BackgroundImage;
+}
+
+// ❌ 잘못된 사용
+public class UIToastMessage : MonoBehaviour
+{
+    private TextMeshProUGUI m_MessageText;
+    private Image m_BackgroundImage;
+
+    private void Awake()
+    {
+        m_MessageText = GetComponent<TextMeshProUGUI>();
+        m_BackgroundImage = GetComponent<Image>();
+    }
+}
+```
+
 ### for / foreach
 - 본문이 한 줄이라도 반드시 `{}` 사용
 

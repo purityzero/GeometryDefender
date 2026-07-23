@@ -126,3 +126,25 @@ EntityQueryImpl.get_IsEmpty ← MonsterManager.ProcessDeadMonsters (MonsterManag
 
 ### 검증 (2026-07-22, Play Mode)
 Title→Btn_Play→InGame 실제 흐름으로 확인. `GameConfigTable.SPAWN_BASE_RATE=1, SPAWN_RATE_EXPONENT=1.3` 정상 로드. 5배속 진행 중 alive 몬스터 수가 자연스럽게 늘어나는 것 확인(스폰 가속 반영). 콘솔 에러 0건.
+
+---
+
+## 2026-07-23-0
+
+### 개요
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0, [[UpdatableBehaviour]] 참고.
+
+### 파일
+- Assets/Scripts/InGame/SpawnManager.cs
+
+### 수정 (함수 단위)
+**클래스 선언**: `MonoBehaviour, IUpdatable` → `UpdatableBehaviour`.
+**Start()/OnDestroy()**(각각 Register/Unregister만 하던 것): 전부 삭제 — 베이스가 대신 처리.
+**UpdateLogic()**: `public void` → `public override void`.
+
+### 미검증
+[[SceneSingleton]] 2026-07-23-0 참고.
+
+### 2026-07-24-0 — AddElapsedTime(float) 추가(QA용 Wave 스킵)
+사용자 요청("배속 말고 플레이 타임 조절, Wave 건너뛸수있게") — [[CombatDebugWindow]]가 Wave를 건너뛸 수 있도록 `public void AddElapsedTime(float _seconds) { m_ElapsedTime += _seconds; }` 추가. 이 클래스의 `m_ElapsedTime`이 Wave/스폰 배율 판정의 실제 기준(`GetActivePhase`)이라, [[TimerManager]].`AddElapsedTime()`과 항상 같은 델타로 세트 호출해야 UI 표시 시간과 실제 웨이브가 어긋나지 않는다.
+검증: 컴파일 에러 0건. Play Mode 실측 — `WaveTable`의 마지막 Wave(StartTime 480s)로 스킵 → `GetActivePhase()`가 정확히 해당 Wave를 반환, 스킵 후 자동 전투 진행에도 콘솔 에러 0건. 상세는 [[CombatDebugWindow]] 2026-07-24-1 참고.

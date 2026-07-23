@@ -10,6 +10,9 @@ public partial struct MoveSystem : ISystem
     {
         float deltaTime = SystemAPI.Time.DeltaTime;
 
+        // Time Slow 카드(#504) — 보유 중이면 CardEffectState.TimeSlowMultiplier가 1보다 작은 값으로 설정됨(기본 1 = 무효과)
+        float timeSlowMultiplier = CardEffectState.TimeSlowMultiplier;
+
         // ECB는 직접 생성하지 않고 EndSimulationECBSystem에서 받아서 sync point 최소화
         EntityCommandBuffer commandBuffer = SystemAPI
             .GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
@@ -31,7 +34,7 @@ public partial struct MoveSystem : ISystem
             float3 targetPosition = new float3(waypointPosition.x, waypointPosition.y, 0f);
             float3 currentPosition = localTransform.ValueRO.Position;
             float distanceToTarget = math.distance(currentPosition, targetPosition);
-            float moveDistance = math.min(moveData.ValueRO.MoveSpeed * deltaTime, distanceToTarget);
+            float moveDistance = math.min(moveData.ValueRO.MoveSpeed * timeSlowMultiplier * deltaTime, distanceToTarget);
             float3 direction = math.normalizesafe(targetPosition - currentPosition);
 
             localTransform.ValueRW.Position = currentPosition + direction * moveDistance;

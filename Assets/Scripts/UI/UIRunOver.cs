@@ -13,19 +13,20 @@ public class UIRunOver : UIPopup
     {
         base.Show();
 
-        int killCount = (MonsterManager.Current != null) ? MonsterManager.Current.killCount.Value : 0;
-        int bossKillCount = (MonsterManager.Current != null) ? MonsterManager.Current.bossKillCount.Value : 0;
-        float survivalSeconds = (TimerManager.Current != null) ? TimerManager.Current.elapsedTime : 0f;
+        int killCount = (InGameScene.Current.monsterManager != null) ? InGameScene.Current.monsterManager.killCount.Value : 0;
+        int bossKillCount = (InGameScene.Current.monsterManager != null) ? InGameScene.Current.monsterManager.bossKillCount.Value : 0;
+        float survivalSeconds = (InGameScene.Current.timerManager != null) ? InGameScene.Current.timerManager.elapsedTime : 0f;
+        int cardsObtained = (InGameScene.Current.cardManager != null) ? InGameScene.Current.cardManager.obtainedCardCount : 0;
 
-        // Score/CardsObtained는 아직 별도 집계 시스템이 없어 킬 수를 임시 지표로 사용/0으로 둠
-        // — 카드 시스템이 실제로 생기면 그 값으로 교체할 것 (BossKills/Shards 정산은 2026-07-22에 반영 완료)
+        // Score는 아직 별도 집계 시스템이 없어 킬 수를 임시 지표로 사용
+        // — 카드 시스템이 실제로 생기면 그 값으로 교체할 것 (BossKills/Shards 정산은 2026-07-22에 반영 완료, CardsObtained는 2026-07-24에 반영)
         RunRecord runRecord = new RunRecord
         {
             Score = killCount,
             KillCount = killCount,
             BossKills = bossKillCount,
             SurvivalSeconds = survivalSeconds,
-            CardsObtained = 0,
+            CardsObtained = cardsObtained,
         };
 
         PlayerManager.instance.AddRunRecord(runRecord);
@@ -35,7 +36,7 @@ public class UIRunOver : UIPopup
             + (runRecord.KillCount / 50)
             + (runRecord.BossKills * 10);
 
-        float difficultyShardMultiplier = (DifficultyManager.Current != null) ? DifficultyManager.Current.GetShardMultiplier() : 1f;
+        float difficultyShardMultiplier = (InGameScene.Current.difficultyManager != null) ? InGameScene.Current.difficultyManager.GetShardMultiplier() : 1f;
 
         // 05_meta.html "ECONOMY" 줄기 — M-303 Shard Bonus 등 해금분을 추가로 곱함
         MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();

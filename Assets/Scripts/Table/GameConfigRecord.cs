@@ -19,6 +19,51 @@ public class GameConfigTable : Table<GameConfigRecord>
     public static float HP_MULTIPLIER_GROWTH = 0.4f;
     public static float DAMAGE_MULTIPLIER_GROWTH = 0.25f;
 
+    // Assets/Design/04_card.html "레벨업 곡선" 공식: requiredXp(level) = base + level×linear + level²×quadratic
+    public static float XP_REQUIRED_BASE = 5f;
+    public static float XP_REQUIRED_LINEAR = 3f;
+    public static float XP_REQUIRED_QUADRATIC = 0.5f;
+
+    // 02_combat.html "치명타 시스템" — DamageTextManager 소유 VFX 튜닝값(2026-07-24, "Const는 왠만하면 다 ConfigTable로" 요청으로 이전)
+    public static int DAMAGE_TEXT_POOL_SIZE = 50;
+    public static int DAMAGE_TEXT_MAX_SPAWN_PER_SECOND = 10;
+    public static int CRIT_EXPLOSION_POOL_SIZE = 6;
+    public static float CRIT_SHAKE_DURATION = 0.08f;
+    public static float CRIT_SHAKE_STRENGTH = 0.15f;
+    public static int CRIT_SHAKE_VIBRATO = 30;
+    public static float VIBRATE_PULSE_INTERVAL = 0.08f;
+
+    // 2026-07-24 "Const로 관리하는애들 다 ConfigTable로 보내" — 프로젝트 전체 수치 튜닝 const 일괄 이전
+    public static int MAX_RECENT_RUN_COUNT = 10;
+    public static int DRAFT_SIZE = 3;
+    public static int PITY_THRESHOLD = 5;
+    public static int SKIP_SHARD_REWARD = 5;
+    public static float SHIELD_BURST_RADIUS = 3f;
+    public static float CRIT_EXPLOSION_SCALE_POP_DURATION = 0.15f;
+    public static float CRIT_EXPLOSION_FADE_DURATION = 0.25f;
+    public static float CRIT_EXPLOSION_TARGET_SCALE = 0.5f;
+    public static float DAMAGE_TEXT_CRIT_SCALE = 1.5f;
+    public static float DAMAGE_TEXT_MOVE_UP_DISTANCE = 0.8f;
+    public static float DAMAGE_TEXT_FADE_DURATION = 0.5f;
+    public static float TOWER_COLOR_TWEEN_DURATION = 0.5f;
+    public static float TOWER_GLOW_TWEEN_DURATION = 0.5f;
+    public static float TOWER_LOW_PULSE_DURATION = 0.4f;
+    public static float TOWER_MID_HP_RATIO = 0.7f;
+    public static float TOWER_LOW_HP_RATIO = 0.3f;
+    public static int PROJECTILE_POOL_SIZE = 20;
+    public static float PROJECTILE_PREFAB_NATIVE_DIAMETER = 2.22f;
+    public static float ORBITAL_DAMAGE_TICK_INTERVAL = 0.5f;
+    public static float PROJECTILE_HOMING_TURN_RATE = 6f;
+
+    // 02_combat.html "투사체 종류" — Splash/Chain 명중 시각 이펙트(2026-07-24, 사용자 요청 "폭발이랑 연쇄 좀 보이게 해줘")
+    public static int SPLASH_EXPLOSION_POOL_SIZE = 6;
+    public static float SPLASH_EXPLOSION_SCALE_POP_DURATION = 0.12f;
+    public static float SPLASH_EXPLOSION_FADE_DURATION = 0.2f;
+    public static float SPLASH_EXPLOSION_TARGET_SCALE = 0.6f;
+    public static int CHAIN_LIGHTNING_POOL_SIZE = 6;
+    public static float CHAIN_LIGHTNING_FADE_DURATION = 0.25f;
+    public static float CHAIN_LIGHTNING_WIDTH = 0.08f;
+
     public GameConfigTable(List<GameConfigRecord> listRecord) : base(listRecord)
     {
         TAP_SCALE = GetValue("TapScale", TAP_SCALE);
@@ -28,6 +73,47 @@ public class GameConfigTable : Table<GameConfigRecord>
         SPAWN_RATE_EXPONENT = GetValue("SpawnRateExponent", SPAWN_RATE_EXPONENT);
         HP_MULTIPLIER_GROWTH = GetValue("HpMultiplierGrowth", HP_MULTIPLIER_GROWTH);
         DAMAGE_MULTIPLIER_GROWTH = GetValue("DamageMultiplierGrowth", DAMAGE_MULTIPLIER_GROWTH);
+
+        XP_REQUIRED_BASE = GetValue("XpRequiredBase", XP_REQUIRED_BASE);
+        XP_REQUIRED_LINEAR = GetValue("XpRequiredLinear", XP_REQUIRED_LINEAR);
+        XP_REQUIRED_QUADRATIC = GetValue("XpRequiredQuadratic", XP_REQUIRED_QUADRATIC);
+
+        DAMAGE_TEXT_POOL_SIZE = (int)GetValue("DamageTextPoolSize", DAMAGE_TEXT_POOL_SIZE);
+        DAMAGE_TEXT_MAX_SPAWN_PER_SECOND = (int)GetValue("DamageTextMaxSpawnPerSecond", DAMAGE_TEXT_MAX_SPAWN_PER_SECOND);
+        CRIT_EXPLOSION_POOL_SIZE = (int)GetValue("CritExplosionPoolSize", CRIT_EXPLOSION_POOL_SIZE);
+        CRIT_SHAKE_DURATION = GetValue("CritShakeDuration", CRIT_SHAKE_DURATION);
+        CRIT_SHAKE_STRENGTH = GetValue("CritShakeStrength", CRIT_SHAKE_STRENGTH);
+        CRIT_SHAKE_VIBRATO = (int)GetValue("CritShakeVibrato", CRIT_SHAKE_VIBRATO);
+        VIBRATE_PULSE_INTERVAL = GetValue("VibratePulseInterval", VIBRATE_PULSE_INTERVAL);
+
+        MAX_RECENT_RUN_COUNT = (int)GetValue("MaxRecentRunCount", MAX_RECENT_RUN_COUNT);
+        DRAFT_SIZE = (int)GetValue("DraftSize", DRAFT_SIZE);
+        PITY_THRESHOLD = (int)GetValue("PityThreshold", PITY_THRESHOLD);
+        SKIP_SHARD_REWARD = (int)GetValue("SkipShardReward", SKIP_SHARD_REWARD);
+        SHIELD_BURST_RADIUS = GetValue("ShieldBurstRadius", SHIELD_BURST_RADIUS);
+        CRIT_EXPLOSION_SCALE_POP_DURATION = GetValue("CritExplosionScalePopDuration", CRIT_EXPLOSION_SCALE_POP_DURATION);
+        CRIT_EXPLOSION_FADE_DURATION = GetValue("CritExplosionFadeDuration", CRIT_EXPLOSION_FADE_DURATION);
+        CRIT_EXPLOSION_TARGET_SCALE = GetValue("CritExplosionTargetScale", CRIT_EXPLOSION_TARGET_SCALE);
+        DAMAGE_TEXT_CRIT_SCALE = GetValue("DamageTextCritScale", DAMAGE_TEXT_CRIT_SCALE);
+        DAMAGE_TEXT_MOVE_UP_DISTANCE = GetValue("DamageTextMoveUpDistance", DAMAGE_TEXT_MOVE_UP_DISTANCE);
+        DAMAGE_TEXT_FADE_DURATION = GetValue("DamageTextFadeDuration", DAMAGE_TEXT_FADE_DURATION);
+        TOWER_COLOR_TWEEN_DURATION = GetValue("TowerColorTweenDuration", TOWER_COLOR_TWEEN_DURATION);
+        TOWER_GLOW_TWEEN_DURATION = GetValue("TowerGlowTweenDuration", TOWER_GLOW_TWEEN_DURATION);
+        TOWER_LOW_PULSE_DURATION = GetValue("TowerLowPulseDuration", TOWER_LOW_PULSE_DURATION);
+        TOWER_MID_HP_RATIO = GetValue("TowerMidHpRatio", TOWER_MID_HP_RATIO);
+        TOWER_LOW_HP_RATIO = GetValue("TowerLowHpRatio", TOWER_LOW_HP_RATIO);
+        PROJECTILE_POOL_SIZE = (int)GetValue("ProjectilePoolSize", PROJECTILE_POOL_SIZE);
+        PROJECTILE_PREFAB_NATIVE_DIAMETER = GetValue("ProjectilePrefabNativeDiameter", PROJECTILE_PREFAB_NATIVE_DIAMETER);
+        ORBITAL_DAMAGE_TICK_INTERVAL = GetValue("OrbitalDamageTickInterval", ORBITAL_DAMAGE_TICK_INTERVAL);
+        PROJECTILE_HOMING_TURN_RATE = GetValue("ProjectileHomingTurnRate", PROJECTILE_HOMING_TURN_RATE);
+
+        SPLASH_EXPLOSION_POOL_SIZE = (int)GetValue("SplashExplosionPoolSize", SPLASH_EXPLOSION_POOL_SIZE);
+        SPLASH_EXPLOSION_SCALE_POP_DURATION = GetValue("SplashExplosionScalePopDuration", SPLASH_EXPLOSION_SCALE_POP_DURATION);
+        SPLASH_EXPLOSION_FADE_DURATION = GetValue("SplashExplosionFadeDuration", SPLASH_EXPLOSION_FADE_DURATION);
+        SPLASH_EXPLOSION_TARGET_SCALE = GetValue("SplashExplosionTargetScale", SPLASH_EXPLOSION_TARGET_SCALE);
+        CHAIN_LIGHTNING_POOL_SIZE = (int)GetValue("ChainLightningPoolSize", CHAIN_LIGHTNING_POOL_SIZE);
+        CHAIN_LIGHTNING_FADE_DURATION = GetValue("ChainLightningFadeDuration", CHAIN_LIGHTNING_FADE_DURATION);
+        CHAIN_LIGHTNING_WIDTH = GetValue("ChainLightningWidth", CHAIN_LIGHTNING_WIDTH);
     }
 
     public float GetValue(string _displayName, float _defaultValue)

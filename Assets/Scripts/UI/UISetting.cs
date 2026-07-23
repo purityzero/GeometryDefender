@@ -12,6 +12,8 @@ public class UISetting : UIPopup
     [SerializeField] private UIToggleButton m_SoundToggle;
     [SerializeField] private UIToggleButton m_HapticToggle;
     [SerializeField] private UIToggleButton m_LeftHandToggle;
+    [SerializeField] private UIToggleButton m_EnemyDamageTextToggle;
+    [SerializeField] private UIToggleButton m_AllyDamageTextToggle;
 
     public override void Show()
     {
@@ -29,6 +31,8 @@ public class UISetting : UIPopup
         m_SoundToggle.SetData(optionData.isSoundOn, OnClickSoundToggle);
         m_HapticToggle.SetData(optionData.isHapticOn, OnClickHapticToggle);
         m_LeftHandToggle.SetData(optionData.isLeftHandMode, OnClickLeftHandToggle);
+        m_EnemyDamageTextToggle.SetData(optionData.isEnemyDamageTextOn, OnClickEnemyDamageTextToggle);
+        m_AllyDamageTextToggle.SetData(optionData.isAllyDamageTextOn, OnClickAllyDamageTextToggle);
     }
 
     // Fps 항목의 OnText/OffText는 StringTable Key라 ToggleButtonList가 생성 직후엔 Key 문자열 그대로 보임 — 실제 문구로 덮어씀
@@ -73,5 +77,15 @@ public class UISetting : UIPopup
     private void OnClickLeftHandToggle(UIToggleButton _toggle)
     {
         PlayerManager.instance.SetLeftHandMode(_toggle.isOn);
+    }
+
+    private void OnClickEnemyDamageTextToggle(UIToggleButton _toggle)
+    {
+        PlayerManager.instance.SetEnemyDamageTextOn(_toggle.isOn);
+    }
+
+    private void OnClickAllyDamageTextToggle(UIToggleButton _toggle)
+    {
+        PlayerManager.instance.SetAllyDamageTextOn(_toggle.isOn);
     }
 }

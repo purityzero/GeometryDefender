@@ -12,6 +12,9 @@
 
 ## 작업 내역
 
+### 2026-07-24-0
+[[xp-leveling]] 스펙 구현 — `public int XpReward;` 필드 추가. `MonsterManager.Spawn()`에서 `RewardData.XpReward = _record.XpReward` 채움, `XpManager.OnMonsterKilled(RewardData)`가 `OnMonsterDie` 이벤트로 이 값을 읽어 `AddXp()` 호출. 미검증(컴파일/Play 확인 안 됨).
+
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)
 

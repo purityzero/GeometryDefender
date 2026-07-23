@@ -265,3 +265,127 @@ Play Mode 실측으로 수정 전 캐시값(0.25) < 실제 경계(0.32) 확인 �
 
 ### 관련 클래스
 - [TitleSquareEffect.md](../class/TitleSquareEffect.md) 2026-07-22-0
+
+---
+
+## 2026-07-23-0 — World.DefaultGameObjectInjectionWorld null 재현 (2026-07-21-1 미해결 이슈, 오늘도 재현)
+
+### 개요
+XP/레벨업 + 카드 드래프트 시스템(전체 30장) 신규 구현 QA. TitleScene → `Btn_Play` 실제 클릭(`ExecuteEvents.Execute` pointerClick) → 난이도 선택 팝업 → "노멀" 클릭 → InGameScene 실제 씬 전환 흐름으로 검증하던 중, **[client-issues.md 2026-07-21-1](#2026-07-21-1)에 이미 기록된, 그때 "미착수/범위 밖"으로 남겨뒀던 바로 그 버그**가 오늘도 재현됨 — 별개의 새 버그가 아니라 약 이틀간 방치된 기존 이슈의 재확인.
+
+### 증상
+InGameScene 진입 완료 직후(`BaseScene.Current.gameObject.name == "InGameScene"`으로 전환 자체는 정상 확인됨) `execute_code`로 직접 조회:
+- `Unity.Entities.World.DefaultGameObjectInjectionWorld == null`
+- `Unity.Entities.World.All.Count == 0` (기본 월드뿐 아니라 ECS 월드 자체가 하나도 없음)
+
+`MonsterManager.Init()` 첫 줄(`m_EntityManager = World.DefaultGameObjectInjectionWorld.EntityManager;`)에서 NRE로 즉시 중단 → `m_isInitialized`가 계속 false로 남아 스폰/처치/보상 로직 전체 불능. 연쇄로 `InGameScene.OnSetup()`에 이후 초기화 코드가 있는 경우(`XpManager.Init()`/`CardManager.Init()` 등, 2026-07-24 신규 추가분) `MonsterManager.Current == null` 조건에 걸려 마찬가지로 조기 return — **XP/카드 드래프트 시스템 전체가 정상 플레이로는 절대 트리거될 수 없는 상태**(몬스터가 죽어야 XP가 붙는데 몬스터 자체가 관리되지 않음).
+
+같은 세션에서 별도로 관찰된 연관 증상(모두 같은 씬 전환 타이밍에 몰려서 발생, 근본 원인이 얽혀있을 가능성):
+- `BaseScene.Current`(및 `MonsterManager.Current`/`TimerManager.Current`/`TowerHealth.Current`/`XpManager.Current` 등 나머지 `SceneSingleton<T>` 전부)가 InGameScene 진입 후 한동안(또는 계속) null로 남아있는 경우가 반복 관측됨 — `UpdatableBehaviour.OnEnable()`/`UIBase.OnEnable()`(`Assets/Scripts/Glory/UI/UIManager.cs:214`)/`SceneSingleton<T>.OnEnable()`에서 매 프레임 다수의 NRE 스팸. [[BaseScene]]/[[InGameScene]]/[[TitleScene]] 2026-07-24-0에서 이미 `[DefaultExecutionOrder(-1000)]`로 부분 수정을 시도했으나 오늘 재현 결과 완전히 막지 못함 — 씬 로드 시점의 Awake/OnEnable 순서뿐 아니라, TitleScene→InGameScene **전환 도중**(구 씬의 `BaseScene.Current` 소멸 ~ 신 씬의 `BaseScene.Awake()` 사이 구간)에 다른 오브젝트(예: 팝업, additive 로드된 신 씬의 다른 오브젝트)의 `OnEnable()`이 끼어드는 경로는 이 attribute로 커버되지 않는 것으로 보임(미확정).
+- Play Mode 도중 `EditorApplication.isCompiling/isPlaying` 정상인데도 `Febucci.TextAnimatorForUnity.TextAnimatorComponentBase.Animate()`가 TitleScene의 `Canvas/Top/Text_Title`(타이틀 로고, wave 애니메이션)에서 매 프레임 NRE — [memory: project_febucci_hotreload_bug.md]에 이미 문서화된 "Play 중 재컴파일 시 Text Animator 영구 고장" 증상과 스택트레이스까지 일치. 이번 세션 시작 전 어느 시점에 스크립트 재컴파일이 있었던 것으로 추정(사용자가 XP/카드 시스템을 이 세션 이전에 구현할 때 발생했을 가능성). **Stop→Play를 다시 해도 해소되지 않고 재현됨** — 이 증상은 Editor 프로세스 자체의 재시작이 필요할 가능성이 있음(미검증, Unity MCP로는 에디터 프로세스 재시작 불가).
+
+### 근거
+- `execute_code` 직접 조회 스냅샷(오늘, 여러 회): `World.DefaultGameObjectInjectionWorld` null, `World.All.Count=0`, `BaseScene.Current`/`MonsterManager.Current`/`TowerHealth.Current` null.
+- Stop→Play를 3회 반복(매번 콘솔 clear 후 재현 확인) — 재현 여부 자체는 매번 일정하지 않음(1회는 전환 직후 `BaseScene.Current`가 정상, 이후 시점에 다시 null로 바뀌는 것도 관측 — 완전히 결정론적이지 않고 타이밍에 좌우되는 레이스로 보임). 단, `World.DefaultGameObjectInjectionWorld == null`은 InGameScene 진입 후 확인한 모든 시도에서 재현됨.
+- 콘솔 스택트레이스(`UpdatableBehaviour.OnEnable`, `UIBase.OnEnable`, `SceneSingleton\`1[T].OnEnable`)가 [client-issues.md 2026-07-21-1] 및 [[SceneSingleton]] 2026-07-24-0에 기록된 것과 동일 패턴.
+- `Assets/Scripts/Glory/Scene/SceneManager.cs`의 `Command_CleanupDontDestroy`에 이미 "이런 오브젝트를 지우면 해당 서브시스템(ECS World 포함)이 망가져 이후 매 프레임 NRE가 발생할 수 있다(2026-07-20 확인)"는 주석과 함께 `HasProjectMonoBehaviourInChildren` 필터가 있으나(프로젝트 소유 MonoBehaviour가 있는 DontDestroyOnLoad 루트만 정리 대상으로 제한), 오늘도 World가 null이 되는 것으로 보아 이 필터만으로는 완전히 막지 못하고 있거나, ECS World 소멸 경로가 이 Command 외에 따로 있을 가능성.
+
+### 원인 (미확정 — 2026-07-21-1과 동일하게 범위 밖으로 재차 보류)
+2026-07-21-1 당시와 마찬가지로 프로젝트 코드 어디에도 `World.DefaultGameObjectInjectionWorld`를 직접 null 대입하는 곳이 없다(grep 0건, 오늘도 재확인). 유력 후보 두 가지(구분 못함):
+1. `SceneManager.NextScene()`의 Command 시퀀스(특히 `Command_CleanupDontDestroy`/`Command_CleanupMemory`) 실행 중 ECS 인프라가 함께 정리되는 경로가 `HasProjectMonoBehaviourInChildren` 필터를 우회해서 여전히 존재.
+2. 이번 세션 진입 전에 있었던 것으로 보이는 Play 중 재컴파일(Febucci 증상과 동일 시점 추정)이 도메인 리로드를 일으켜 ECS 월드가 통째로 사라졌고, Stop→Play로 재진입해도 이 프로젝트/Editor 세션 안에서는 정상적으로 재부트스트랩되지 않는 상태로 남아있을 가능성 — 이 경우 원인은 SceneManager.cs 코드가 아니라 오염된 Editor 세션 자체이고, **Editor 프로세스 재시작으로 확인 필요**(Unity MCP로는 재시작 불가, 사용자 확인 필요).
+
+### 수정
+미착수 — 2026-07-21-1에서 이미 "범위 밖, 별도 세션에서 원인 규명 필요"로 보류됐던 이슈가 이틀 뒤(오늘)까지 그대로 남아있음. 이번에도 코드 수정 없이 리포트만 갱신. **다음 세션에서 우선 확인할 것**:
+1. Unity Editor 프로세스를 완전히 재시작한 깨끗한 상태에서 TitleScene→`Btn_Play`(사용자 직접 클릭, 자동화 아님)→InGameScene 흐름을 재현해, Febucci/World-null 증상이 여전히 나오는지부터 확인(재현 안 되면 "오염된 Editor 세션" 쪽이 원인, 재현되면 SceneManager.cs 쪽 코드 결함 쪽에 무게).
+2. 위에서 여전히 재현되면 `Command_CleanupDontDestroy`/`Command_CleanupMemory` 실행 전후로 `World.All`을 로그로 직접 찍어 정확히 어느 Command 단계에서 World가 사라지는지 특정.
+
+### 관련 클래스
+- [MonsterManager.md](../class/MonsterManager.md) 2026-07-21-2
+- [SceneManager.md](../class/SceneManager.md)
+- [BaseScene.md](../class/BaseScene.md), [InGameScene.md](../class/InGameScene.md) 2026-07-24-0, [TitleScene.md](../class/TitleScene.md) 2026-07-24-0
+- [SceneSingleton.md](../class/SceneSingleton.md) 2026-07-23-0/2026-07-24-0
+- [XpManager.md](../class/XpManager.md), [CardManager.md](../class/CardManager.md) — `Init()`이 `MonsterManager.Current` 의존, 이 버그의 직접 피해자
+
+### 이번 세션에서 확인 못한 것 (위 블로커로 인해)
+- 몬스터 처치 → XP 게이지 상승 → 레벨업 → `UICardDraft` 팝업 오픈 → 카드 3장 표시 → 선택 시 스탯 반영 → 팝업 닫힘 → `Time.timeScale` 복구까지 전체 루프. 정상 흐름으로는 위 블로커 때문에 몬스터가 애초에 관리되지 않아 트리거 자체가 불가능했음(리플렉션으로 `Awake()`/`Register()`를 수동 재호출해 강제로 복구를 시도했으나, 그렇게 만든 상태는 실제 플레이 경로가 아니라 신뢰할 수 있는 QA 근거로 채택하지 않음).
+- Pierce/Splash/Chain Lightning/Homing Missile/Orbital Ring 등 ECS 로직이 필요한 신규 카드의 실동작.
+- 카드 드래프트 팝업(`Text_Name`/`Text_Effect`)의 한글 텍스트 실제 렌더링(아래 참고).
+
+### 한글 깨짐 리포트 관련 — 부분 확인, 결론 못 냄 (사용자 추가 증언으로 원인 후보 갱신)
+- **확인됨(정상)**: `UIDifficultySelect` 팝업("난이도 선택"/"노멀"/"하드"/"헬"/"인피니트"/"뒤로")은 실제 스크린샷으로 한글이 깨짐 없이 정상 렌더링되는 것을 직접 확인함.
+- **정적 분석(라이브 미검증)**: `Assets/Resources/Prefabs/UI/UICardDraft.prefab`의 `Text_Name`/`Text_Effect`/`Text_Title` 전부 `LiberationSans SDF`(guid `8f586378b4e144a9851e7b34d9b748ee`) 폰트를 직접 참조하며, 이 폰트 에셋(`Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset`)의 `m_FallbackFontAssetTable`에 `DungGeunMo Bitmap`(guid `7e00a561b2f97e04bbe6e3b6876e22e5`, 한글 포함 비트맵 폰트)이 2번째 항목으로 실제로 등록돼 있음을 확인 — [[UIText]] 2026-07-22-0에서 등록한 Fallback 체인이 카드 드래프트 텍스트에도 그대로 적용되는 구조로 보임.
+- **사용자 증언(2026-07-23, 이번 QA 직후)**: "전체가 그랬어(모든 화면에서 한글이 깨짐), TextAnimator 에러나면서 그러는거 보니까 그쪽 부분이 맞는거 같다, 폰트도 다 깨지는거 같다" — 즉 사용자가 실제로 플레이했을 때는 **특정 화면 하나가 아니라 전 화면에서 깨졌고**, 그 시점이 콘솔에 Febucci `TextAnimator` NRE(위 증상)가 뜨던 시점과 겹쳤다고 직접 확인해줌.
+- **재검토**: 프로젝트 전체에서 Febucci `TextAnimator_TMP`/`TypewriterCustom` 컴포넌트를 쓰는 씬은 `Assets/Scenes/TitleScene.unity`(`Text_Title` 하나)뿐 — `UICardDraft`/`UIDifficultySelect` 등 나머지 화면은 Febucci를 아예 안 쓴다(grep 확인). 즉 Febucci NRE 자체가 다른 화면 텍스트를 직접 깨뜨리는 코드 경로는 없어 보인다. 사용자가 목격한 "전 화면 한글 깨짐"과 "TextAnimator 에러"가 시간적으로 겹쳤다면, **가장 유력한 설명은 둘 다 같은 원인(세션 도중 있었던 것으로 추정되는 스크립트 재컴파일/도메인 리로드)의 서로 다른 증상**이라는 것 — 그 재컴파일이 Febucci의 내부 캐릭터 정보 배열만이 아니라 TMP의 공유 폰트 아틀라스/머티리얼 같은 전역 정적 캐시까지 함께 깨뜨렸고, 그 결과가 Febucci가 붙은 텍스트에서는 "매 프레임 NRE"로, 나머지 TMP 텍스트에서는 "글리프/아틀라스 깨짐"으로 다르게 나타났을 가능성이 높다(글꼴 Fallback 체인 자체는 설정상 문제없는 것으로 확인됐으므로, "체인이 잘못됐다"보다 "그 체인을 읽는 TMP 런타임 상태 자체가 오염됐다" 쪽에 무게).
+- **결론**: 카드 드래프트 화면 자체의 폰트/Fallback 설정이 원인일 가능성은 낮아졌고(설정은 정상), 대신 위 2026-07-23-0 블로커와 같은 뿌리(에디터 세션 오염, Editor 재시작 필요)일 가능성이 높아짐. 다만 이번 세션에서 카드 드래프트 화면 자체를 직접 눈으로 못 봤기 때문에(위 블로커로 도달 불가) 100% 확정은 아님 — **다음 세션에서 Editor 재시작 후 재검증하면 Febucci NRE와 한글 깨짐이 동시에 사라지는지가 이 가설의 직접적인 검증 포인트.**
+
+### ⚠️ 위 "에디터 세션 오염" 결론은 틀렸음 → 2026-07-23-1에서 진짜 원인 확정/수정
+
+---
+
+## 2026-07-23-1 — 한글 깨짐 진짜 원인 확정 + 수정 완료 (DungGeunMo Bitmap 폰트 아틀라스 한도 초과)
+
+### 개요
+사용자가 Unity Editor를 재시작한 뒤 직접 "메타 트리" 화면에 들어가서 재현시킴("메타트리 들어가서 글씨 깨지는지 다 체크해볼래?"). 실제로 재현 성공 — 위 2026-07-23-0의 "에디터 세션 오염" 가설은 틀렸고, 진짜 원인은 완전히 별개의, 훨씬 단순하고 확정적인 문제였다.
+
+### 증상
+`UIMetaTree` 팝업의 탭 4개와 섹션 헤더 텍스트 중 일부 글자만 "ㅁ"로 깨져 보임:
+- "시작 능력치" → "시작 ㅁ력치" (능 깨짐)
+- "카드 풀" → "카드 ㅁ" (풀 깨짐)
+- "경제" → "경ㅁ" (제 깨짐)
+- "유틸리티" → "ㅁㅁ리ㅁ" (유/틸/티 깨짐, 리만 정상)
+
+반면 "시작 체력 I/II", "시작 공격력 I/II", "시작 사거리", "뒤로" 등은 전부 정상 렌더링됨 — 즉 모든 한글이 깨지는 게 아니라 **특정 글자만** 깨짐.
+
+### 원인
+`Assets/font/DungGeunMo Bitmap.asset`(TMP Font Asset, 소스: `DungGeunMo.ttf`)이 `Dynamic` 아틀라스 모드(런타임에 처음 쓰이는 글자만 그때그때 아틀라스에 채워 넣음)로 설정되어 있는데, `m_IsMultiAtlasTexturesEnabled: 0`(Multi Atlas Textures 비활성화) + 아틀라스 크기 1024×1024 고정이라 **아틀라스 한 장이 가득 차면 그 이후 새로 요청되는 글자는 영구히 추가되지 못하고 깨진 채로 렌더링**된다.
+- `execute_code`로 직접 확인: Play 세션 동안 이미 101개 문자가 아틀라스에 채워진 상태에서 `TMP_FontAsset.TryAddCharacters("능풀제유틸티", ...)` 호출 시 `success=False`, `missingCharacters`에 6글자 전부 반환됨 — 아틀라스가 실제로 꽉 차서 추가 불가 상태임을 재현/확정.
+- 세션 초반에 자주 쓰인 흔한 글자(체력/공격력/사거리/뒤로 등)는 먼저 아틀라스에 들어가 정상 표시되고, 세션 후반에 처음 등장하는 글자(메타 트리 탭처럼 나중에 열어본 화면의 텍스트)일수록 깨질 확률이 높은 구조 — 화면을 오래 플레이할수록 더 많은 화면에서 이 현상이 나타날 수 있다.
+- 2026-07-23-0에서 있었던 Febucci `TextAnimator` NRE는 이 문제와 **무관한 별개의 증상**이었음(둘 다 비슷한 시점에 있었을 뿐 인과관계 없음) — 프로젝트 내 Febucci 사용처는 TitleScene의 `Text_Title` 하나뿐이라 카드/메타트리 화면 텍스트에 영향을 줄 코드 경로 자체가 없다.
+
+### 수정
+`Assets/font/DungGeunMo Bitmap.asset`: `m_IsMultiAtlasTexturesEnabled` `0` → `1`. 아틀라스가 가득 차면 추가 아틀라스 텍스처를 자동 생성해 이어서 채우도록 함(1024×1024 아틀라스 크기 자체는 그대로 유지 — 늘리는 대신 여러 장 허용하는 쪽을 선택, TMP 권장 표준 대응 방식).
+
+### 검증
+- 수정 전: `execute_code`로 `TryAddCharacters("능풀제유틸티", ...)` → `success=False`.
+- Unity `refresh_unity`(force)로 리임포트 반영, 콘솔 에러 0건 확인.
+- 수정 후 새 Play 세션: `isMultiAtlasTexturesEnabled=True` 확인, 같은 6글자 `TryAddCharacters` → `success=True`, `missingCharacters=''`.
+- Play 중 `Btn_MetaTree` 실제 클릭 → 팝업 오픈 → 스크린샷 확인: "시작 능력치"/"카드 풀"/"경제"/"유틸리티" 탭과 헤더 전부 정상 렌더링, 콘솔 에러 0건.
+
+### 관련 클래스
+- 해당 없음(순수 폰트 에셋 설정 변경, 스크립트 변경 없음)
+
+---
+
+## 2026-07-23-2 — MissingReferenceException (MonsterManager.RecycleVisual, 실제 사용자 플레이 중 발견) → 근본 원인 확정 + 수정 완료
+
+### 개요
+사용자가 직접 플레이하다가 콘솔 예외를 보고. 최초엔 방어 코드만 추가하고 원인 미확정으로 남겼으나, 사용자가 재현 조건("게임하고나서 다른 난이도로 또 플레이시 나타난거야")을 제보해줘서 근본 원인까지 확정하고 수정 완료함. **위 2026-07-23-0의 World-null 계열 이슈와는 결국 별개의 원인**으로 판명(둘 다 ECS World 생명주기 관리 미흡이라는 큰 범주는 같지만, World-null은 여전히 미해결).
+
+### 증상
+```
+MissingReferenceException: The object of type 'UnityEngine.Transform' has been destroyed but you are still trying to access it.
+  UnityEngine.Component.GetComponent[T] ()
+  MonsterManager.RecycleVisual (Entity _entity) (MonsterManager.cs:256)
+  MonsterManager.ProcessReachedEndMonsters () (MonsterManager.cs:222)
+  MonsterManager.UpdateLogic () (MonsterManager.cs:186)
+  BaseScene.Update () (BaseScene.cs:36)
+```
+몬스터가 목적지에 도달해 `RecycleVisual()`이 호출되는 시점에, 해당 몬스터의 풀링된 `ActorMonster` GameObject(`VisualObject.transform`)가 이미 파괴된 상태였음.
+
+### 원인 (확정)
+`World.DefaultGameObjectInjectionWorld`(ECS 월드)는 Unity 씬 언로드와 완전히 별개의 생명주기라, 씬이 바뀌어도 자동으로 정리되지 않는다. `MonsterManager.OnDestroy()`는 `EntityQuery`만 Dispose할 뿐 **그 시점에 아직 죽지도/도달하지도 않은(플레이 중이던) 몬스터 엔티티는 그대로 방치**하고 있었다. 그래서 런을 끝내고(몬스터가 여전히 살아있는 채로) 다른 난이도로 재플레이하면, 이전 런의 좀비 엔티티가 새 런까지 살아남는다 — 그 엔티티는 이미 파괴된(구 씬과 함께 사라진) 시각 오브젝트를 `VisualObject.transform`으로 계속 참조하고 있었고, 새 런에서 그 엔티티가 죽거나 도달 판정을 받는 순간 `RecycleVisual()`이 파괴된 Transform에 접근해 크래시가 났다.
+- 정상 재활용 경로(`MemoryPoolFactory.Recycle`/`MemoryPooling.Push`)는 `SetActive(false)`만 하고 `Destroy()`하지 않으므로 이 경로에서는 예외가 날 수 없다는 코드 리뷰는 맞았음 — 문제는 재활용 로직이 아니라 **엔티티 자체가 세션을 넘어 살아남는 것**이었다.
+- 부가 위험(크래시 없이 조용히 넘어갔어도 있었을 문제): 새 런에서 이전 런 소속 엔티티에 대해 `OnMonsterDie`/`OnMonsterReachEnd`가 잘못 발동해, 이전 런의 몬스터가 새 런의 킬 카운트/타워 HP에 영향을 줄 수 있었다.
+
+### 수정
+[[MonsterManager]] 2026-07-23-2 참고 — `OnDestroy()`에서 World 생존 확인 후, 쿼리 Dispose보다 먼저 `MonsterTag`만으로 새 쿼리를 만들어 살아있는 것까지 포함해 이 세션이 만든 몬스터 엔티티 전부를 `m_EntityManager.DestroyEntity(query)`로 일괄 파괴. 동일 버그가 `ProjectileManager`(투사체/오비탈 엔티티)에도 있어 [[ProjectileManager]] 2026-07-23-1에서 같이 수정. (2026-07-23-1의 `RecycleVisual()` null 가드는 그대로 유지 — 방어선으로서 여전히 유효.)
+
+### 검증 (실제 재현 시나리오로 확인)
+`execute_code`로 사용자가 보고한 흐름을 그대로 재현: TitleScene→"노멀" 플레이→몬스터 10마리 생존 확인(쿼리 카운트=10) → 몬스터가 살아있는 채로 씬 전환(런 도중 이탈) → TitleScene 복귀 후 `MonsterTag` 쿼리 카운트 **0**으로 정리 확인(수정 전이었다면 10 그대로 잔존) → 재플레이("하드")로 실제 타워 사망까지 자연 진행, 콘솔 에러 0건 → 메인 메뉴 복귀 후 `MonsterTag`/`ProjectileTag` 둘 다 0 확인.
+
+### 관련 클래스
+- [MonsterManager.md](../class/MonsterManager.md) 2026-07-23-1, 2026-07-23-2
+- [ProjectileManager.md](../class/ProjectileManager.md) 2026-07-23-1
+
+---

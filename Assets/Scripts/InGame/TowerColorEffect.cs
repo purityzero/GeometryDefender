@@ -1,7 +1,7 @@
 using DG.Tweening;
 using UnityEngine;
 
-public class TowerColorEffect : MonoBehaviour, IUpdatable
+public class TowerColorEffect : UpdatableBehaviour
 {
     private enum eHpTier
     {
@@ -11,11 +11,6 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
     }
 
     private const string GLOW_AMOUNT_PROPERTY = "_GlowAmount";
-    private const float COLOR_TWEEN_DURATION = 0.5f;
-    private const float GLOW_TWEEN_DURATION = 0.5f;
-    private const float LOW_PULSE_DURATION = 0.4f;
-    private const float MID_HP_RATIO = 0.7f;
-    private const float LOW_HP_RATIO = 0.3f;
 
     [SerializeField] private SpriteRenderer m_SpriteRenderer;
 
@@ -39,38 +34,34 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
         // SpriteRenderer.color(표준 틴트)가 프리팹에 시안으로 baked돼 있어 material._Color와 곱해져 렌더링됨
         // — 이후 색 전환은 material.color만 트윈하므로, 틴트를 흰색으로 고정해 곱 연산이 결과를 왜곡하지 않게 함
         m_SpriteRenderer.color = Color.white;
-
-        BaseScene.Current.Register(this);
     }
 
     private void OnDestroy()
     {
-        BaseScene.Current?.Unregister(this);
-
         if (m_RegisteredObservable != null)
             m_RegisteredObservable.UnregisterObserver(OnHpChanged);
 
         m_GlowTween?.Kill();
     }
 
-    public void UpdateLogic()
+    public override void UpdateLogic()
     {
         if (m_RegisteredObservable != null)
             return;
 
-        if (TowerHealth.Current == null)
+        if (InGameScene.Current.towerController == null)
             return;
 
-        m_RegisteredObservable = TowerHealth.Current.currentHp;
+        m_RegisteredObservable = InGameScene.Current.towerController.currentHp;
         m_RegisteredObservable.RegisterObserver(OnHpChanged);
     }
 
     private void OnHpChanged(int _oldValue, int _newValue)
     {
-        if (TowerHealth.Current == null || TowerHealth.Current.maxHp <= 0)
+        if (InGameScene.Current.towerController == null || InGameScene.Current.towerController.maxHp <= 0)
             return;
 
-        float hpRatio = (float)_newValue / TowerHealth.Current.maxHp;
+        float hpRatio = (float)_newValue / InGameScene.Current.towerController.maxHp;
         eHpTier targetTier = GetTierForRatio(hpRatio);
 
         if (m_CurrentTier != null && m_CurrentTier.Value == targetTier)
@@ -80,16 +71,16 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
 
         Material material = m_SpriteRenderer.material;
 
-        TweenUtil.Color(material, GetColorForTier(targetTier), COLOR_TWEEN_DURATION);
+        TweenUtil.Color(material, GetColorForTier(targetTier), GameConfigTable.TOWER_COLOR_TWEEN_DURATION);
         ApplyGlowForTier(material, targetTier);
     }
 
     private eHpTier GetTierForRatio(float _hpRatio)
     {
-        if (_hpRatio <= LOW_HP_RATIO)
+        if (_hpRatio <= GameConfigTable.TOWER_LOW_HP_RATIO)
             return eHpTier.Low;
 
-        if (_hpRatio <= MID_HP_RATIO)
+        if (_hpRatio <= GameConfigTable.TOWER_MID_HP_RATIO)
             return eHpTier.Mid;
 
         return eHpTier.High;
@@ -114,12 +105,12 @@ public class TowerColorEffect : MonoBehaviour, IUpdatable
         if (_tier == eHpTier.Low)
         {
             _material.SetFloat(GLOW_AMOUNT_PROPERTY, m_LowPulseMinGlowAmount);
-            m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, m_LowPulseMaxGlowAmount, LOW_PULSE_DURATION)
+            m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, m_LowPulseMaxGlowAmount, GameConfigTable.TOWER_LOW_PULSE_DURATION)
                 .SetLoops(-1, LoopType.Yoyo);
             return;
         }
 
         float targetGlowAmount = (_tier == eHpTier.Mid) ? m_MidGlowAmount : m_HighGlowAmount;
-        m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, targetGlowAmount, GLOW_TWEEN_DURATION);
+        m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, targetGlowAmount, GameConfigTable.TOWER_GLOW_TWEEN_DURATION);
     }
 }

@@ -9,7 +9,7 @@ public enum eDifficultyLevel
     Infinite
 }
 
-public class DifficultyManager : SceneSingleton<DifficultyManager>, IUpdatable
+public class DifficultyManager : UpdatableBehaviour
 {
     // 난이도 선택 UI가 아직 없어 기본값 Normal 고정 — 선택 화면이 생기면 InGameScene 진입 전 이 값만 설정해주면 된다
     public static eDifficultyLevel SelectedDifficulty = eDifficultyLevel.Normal;
@@ -48,12 +48,7 @@ public class DifficultyManager : SceneSingleton<DifficultyManager>, IUpdatable
         m_isInitialized = true;
     }
 
-    private void Start()
-    {
-        BaseScene.Current.Register(this);
-    }
-
-    public void UpdateLogic()
+    public override void UpdateLogic()
     {
         if (m_isInitialized == false)
             return;
@@ -61,10 +56,10 @@ public class DifficultyManager : SceneSingleton<DifficultyManager>, IUpdatable
         if (m_isCleared == true)
             return;
 
-        if (TimerManager.Current == null)
+        if (InGameScene.Current.timerManager == null)
             return;
 
-        if (TimerManager.Current.elapsedTime < m_WaveTable.GetFinalPhaseStartTime())
+        if (InGameScene.Current.timerManager.elapsedTime < m_WaveTable.GetFinalPhaseStartTime())
             return;
 
         m_isCleared = true;
@@ -104,14 +99,9 @@ public class DifficultyManager : SceneSingleton<DifficultyManager>, IUpdatable
             return 0f;
 
         float finalStartTime = m_WaveTable.GetFinalPhaseStartTime();
-        float elapsed = (TimerManager.Current != null) ? TimerManager.Current.elapsedTime : finalStartTime;
+        float elapsed = (InGameScene.Current.timerManager != null) ? InGameScene.Current.timerManager.elapsedTime : finalStartTime;
         float overtime = Mathf.Max(0f, elapsed - finalStartTime);
 
         return Mathf.Floor(overtime / m_CurrentRecord.InfiniteStepSeconds);
-    }
-
-    private void OnDestroy()
-    {
-        BaseScene.Current?.Unregister(this);
     }
 }

@@ -216,6 +216,16 @@ BaseScene.Update → MonsterManager.UpdateLogic (2026-07-21부터 자체 Update(
 
 ## 작업 내역
 
+### 2026-07-24-0 — 카드 드래프트 시스템용 확장
+[[card-draft]] 스펙 구현.
+
+**Spawn(EnemyRecord)**: `RewardData.XpReward = _record.XpReward` 추가([[xp-leveling]] 연동), `EnemyManager.AddComponentData(entity, new EnemySpeciesData { Species = _record.Species })` 추가(Triangle Hunter #108 카드가 `TowerController.Fire()`에서 조회).
+
+**신규 `DamageEntitiesInRadius(Vector2 _center, float _radius, int _damage)`**(public): Shield Burst(#404) 카드용. 호출 시점에 임시 `EntityQuery`(LocalTransform+MonsterTag, Dead/ReachedEnd 제외)를 생성 → 반경 내 전체에 `DamageRequest` 추가 → 즉시 Dispose. `GetAliveMonsterCount()`와 동일하게 호출 빈도가 낮아 필드 캐싱 없이 즉석 생성/해제 방식 채택.
+
+### 미검증
+Unity MCP 미연결, 컴파일/Play 확인 안 됨.
+
 ### 2026-07-21-3
 
 #### 개요
@@ -582,3 +592,76 @@ Title→Btn_Play→InGame 실제 흐름. `TimerManager.Current.elapsedTime≈18.
 
 ### 검증
 [[UIRunOver]] 2026-07-22-3 참고.
+
+---
+
+## 2026-07-23-0
+
+### 개요
+사용자 요청("IUpdatable 인터페이스로 만들지 말고, UIBase 등등 최상위 클래스에서 등록") — 상세 배경은 [[SceneSingleton]] 2026-07-23-0 참고.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**클래스 선언**: `SceneSingleton<MonsterManager>, IUpdatable` → `SceneSingleton<MonsterManager>`(IUpdatable 제거).
+**Start()**(Register만 하던 것): 삭제.
+**UpdateLogic()**: `public void` → `public override void`.
+**OnDestroy()**: 수동 `BaseScene.Current?.Unregister(this);` 호출 제거(`base.OnDestroy()`가 대신 처리), World 생존 확인 후 EntityQuery Dispose하는 나머지 로직은 그대로 유지.
+
+### 미검증
+[[SceneSingleton]] 2026-07-23-0 참고.
+
+---
+
+## 2026-07-23-1
+
+### 개요
+사용자가 실제 플레이 중 `MissingReferenceException`(`RecycleVisual` 내부, 이미 파괴된 `Transform`에 `GetComponent` 호출) 보고. 정확한 발생 경로(무엇이 해당 `ActorMonster` GameObject를 먼저 파괴했는지)는 특정 못함 — 진행 중인 `World.DefaultGameObjectInjectionWorld`/`BaseScene.Current` 불안정 이슈([[SceneSingleton]]/client-issues.md 2026-07-23-0)와 같은 뿌리일 가능성이 있으나 미확정. 우선 크래시 자체를 막는 방어 코드만 추가(근본 원인 규명은 별도).
+
+### 증상
+```
+MissingReferenceException: The object of type 'UnityEngine.Transform' has been destroyed but you are still trying to access it.
+  UnityEngine.Component.GetComponent[T] ()
+  MonsterManager.RecycleVisual (Entity _entity) (MonsterManager.cs:256)
+  MonsterManager.ProcessReachedEndMonsters () (MonsterManager.cs:222)
+  MonsterManager.UpdateLogic () (MonsterManager.cs:186)
+```
+가드 없이 예외가 나면 `ProcessReachedEndMonsters()`가 중간에 중단돼 `entities.Dispose()`/`rewards.Dispose()`(NativeArray)가 실행되지 않고, 루프에 남은 나머지 엔티티들도 `DestroyEntity()`되지 않아 좀비 상태로 남는 부작용도 있었음.
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**RecycleVisual(Entity)**
+- 전: `VisualObject visualObject = ...; ActorMonster actorMonster = visualObject.transform.GetComponent<ActorMonster>(); m_MonsterFactory.Recycle(actorMonster);` — `transform`이 이미 파괴된 경우 가드 없음.
+- 후: `GetComponentObject` 직후 `if (visualObject.transform == null) return;` 가드 추가(Unity 오버로드 `==`로 "파괴됨" 감지) — 이미 파괴된 경우 조용히 스킵.
+
+### 검증
+`refresh_unity`(scripts, force) 재컴파일 후 콘솔 에러 0건 확인. **근본 원인(왜 Transform이 먼저 파괴됐는지) 재현/규명은 못함** — 실제 플레이 중 이 경로를 다시 타는지, World-null 계열 이슈와 같은 뿌리인지는 다음 세션에서 추가 확인 필요.
+
+---
+
+## 2026-07-23-2 — 근본 원인 확정 + 수정 (ECS World가 씬 언로드와 별개라 몬스터 엔티티가 세션 간 누수됨)
+
+### 개요
+사용자 재현 조건 제보("게임하고나서 다른 난이도로 또 플레이시 나타난거야")로 2026-07-23-1의 근본 원인 확정. `World.DefaultGameObjectInjectionWorld`(ECS 월드)는 Unity 씬 언로드와 완전히 별개의 생명주기라, 씬이 바뀌어도 자동으로 정리되지 않는다. 그런데 `OnDestroy()`는 `EntityQuery`만 Dispose할 뿐 **그 시점에 아직 죽지도/도달하지도 않은(플레이 중이던) 몬스터 엔티티는 그대로 방치**했다 — 런 종료 후 다른 난이도로 재플레이하면 이전 런의 좀비 엔티티가 새 런까지 살아남아, 이미 파괴된(구 씬과 함께 사라진) 시각 오브젝트를 참조한 채로 있다가 죽거나 도달 판정을 받아 2026-07-23-1의 크래시가 났던 것. (부가 위험: 크래시 없이 조용히 처리됐다면 새 런에서 `OnMonsterDie`/`OnMonsterReachEnd`가 잘못 발동해 이전 런의 몬스터가 새 런의 타워에 데미지를 주거나 킬 카운트를 오염시켰을 수 있음.)
+
+### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 수정 (함수 단위)
+**OnDestroy()**
+- 전: World 생존 확인 후 `m_DeadQuery.Dispose(); m_ReachedEndQuery.Dispose();`만 수행 — 살아있는 몬스터 엔티티 자체는 정리 안 함.
+- 후: 같은 World 생존 확인 블록 안에서, 쿼리 Dispose보다 먼저 `MonsterTag`만으로 새 쿼리를 만들어 `m_EntityManager.DestroyEntity(allMonsterQuery)`로 **살아있는 것까지 포함해 이 세션이 만든 몬스터 엔티티 전부를 일괄 파괴**한 뒤 그 쿼리를 Dispose. (동일 버그가 `ProjectileManager`에도 있어 같이 수정 — [[ProjectileManager]] 참고.)
+
+### 검증 (2026-07-23, Play Mode, 실제 재현 시나리오)
+`execute_code`로 실제 사용자 플로우를 그대로 재현: TitleScene→`Btn_Play`→"노멀" 선택→InGameScene 진입 후 몬스터 10마리 생존 확인(`MonsterTag` 쿼리 카운트=10) → 아직 몬스터가 살아있는 채로 `SceneManager.instance.NextScene("TitleScene")` 호출(런 도중 이탈 시나리오) → TitleScene 복귀 후 `MonsterTag` 쿼리 카운트=**0**(수정 전이었다면 10 그대로 남았을 상황) → 다시 `Btn_Play`→"하드" 선택으로 재플레이 → 실제로 타워가 죽어 런 종료 화면까지 자연 도달(콘솔 에러 0건, 크래시 없음) → `Btn_MainMenu`로 정상 복귀 후 `MonsterTag`/`ProjectileTag` 쿼리 카운트 둘 다 0 확인. 전체 과정 콘솔 에러 0건.
+
+### 관련 클래스
+- [ProjectileManager.md](../class/ProjectileManager.md) — 동일 버그 패턴, 같이 수정
+
+---
+
+### 2026-07-23-3 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리)
+사용자 지적("Manager가 너무 많지 않아?") — 개별 `.Current` 폐지, `InGameScene.Current.monsterManager`로 접근하도록 통일. `TimerManager.Current`/`DifficultyManager.Current` 참조도 `InGameScene.Current.timerManager`/`.difficultyManager`로 교체. 상세 설계/버그/검증은 [[InGameScene]] 2026-07-23-1 참고.

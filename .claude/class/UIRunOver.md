@@ -40,6 +40,9 @@ public class UIRunOver : UIPopup
 
 ## 작업 내역
 
+### 2026-07-24-0
+[[card-draft]] 스펙 구현 — `CardsObtained` 하드코딩 `0` → `(CardManager.Current != null) ? CardManager.Current.obtainedCardCount : 0`으로 실제 카운트 대체. 연관: [[CardManager]]. 미검증.
+
 ### 2026-07-22-3
 
 #### 개요
