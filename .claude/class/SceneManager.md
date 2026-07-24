@@ -7,6 +7,8 @@
 
 ## 현재 상태
 - `Command_CleanupDontDestroy`: DontDestroyOnLoad 씬의 **루트** 오브젝트 중, ① 계층 내에 `MonoSingleton<>` 파생 컴포넌트가 없고, ② 계층 내에 **프로젝트가 만든**(Assembly-CSharp 소속) MonoBehaviour가 하나라도 있는 것만 파괴. 즉 싱글톤 매니저와 그 자식, 그리고 DOTween/Addressables/렌더 파이프라인 등 **엔진·플러그인이 심어둔 인프라 오브젝트**는 생존 (2026-07-20 조건 ② 추가, 아래 사고 기록 참고)
+- `Command_LoadScene`: `allowSceneActivation`을 켜는 시점(progress≥0.9f)과 씬이 실제로 로드 완료되는 시점(`isDone`)을 분리 — `isFinished`는 `isDone == true`가 됐을 때만 켜진다(2026-07-25 수정, 아래 사고 기록 참고).
+- `Command_UnloadScene`: `UnloadSceneAsync()`가 null을 반환하면(Unity가 언로드를 거부한 경우) 그 자리에서 바로 `isFinished = true`로 처리 — null인 채로 방치하면 `Update()`가 영원히 조기 return만 하게 됨(2026-07-25 수정).
 - 직렬화 필드: `m_FadeOutObject`(Image) — 페이드용, 씬에 배치 필요
 
 ---
@@ -106,3 +108,32 @@ Object.Destroy(rootObject);
 
 ### 검증
 [[UIPopup]] 2026-07-22-0 참고 — 실제 TitleScene→InGameScene 전환 경로로 팝업 스택/토스트 정리 흐름 자체는 코드 배선만 확인, `NextScene()` 호출 시점에 열린 팝업이 있는 상태에서의 End-to-End 검증(전환 직전에 팝업을 띄워둔 채 전환)은 별도로 안 함(CloseAllPopups() 자체는 [[UIPopup]]에서 직접 호출 검증 완료).
+
+---
+
+## 2026-07-25-0 — 버그 수정: TitleScene→InGameScene 전환 후 페이드 화면이 안 사라짐
+
+### 증상
+사용자가 실물 태블릿에서 InGameScene에 진입하면 화면에 검정 페이드 오버레이가 계속 남아있고, 그 뒤로 게임(타이머/스폰 등)은 정상 진행되는 상태로 멈춤. `adb logcat`으로 실시간 캡처해 확인.
+
+### 원인 (로그로 확정)
+전환 직후 아래 경고가 찍힘:
+```
+Unloading the last loaded scene Assets/Scenes/TitleScene.unity(build index: 0), is not supported.
+Please use SceneManager.LoadScene()/EditorSceneManager.OpenScene() to switch to another scene.
+  Command_UnloadScene:Execute()
+  FlowCommand:Update()
+```
+`FlowCommand.Update()`는 현재 커맨드가 `IsFinished()==true`가 되기 전까지 다음 커맨드로 절대 안 넘어가는 완전 순차 구조. 그런데 기존 `Command_LoadScene.Update()`는 `loadOperation.progress >= 0.9f`가 되는 즉시(`allowSceneActivation=true`를 켠 시점) `isFinished = true`를 잡았음 — 이건 "활성화를 허용했다"는 것이지 "씬이 실제로 로드 목록에 추가됐다"는 뜻이 아니다. 그 결과 InGameScene이 아직 Unity의 로드된 씬 목록에 반영되기 전에 다음 커맨드인 `Command_UnloadScene(TitleScene)`이 실행되고, 이 시점엔 Unity가 "TitleScene이 로드된 마지막 하나의 씬"이라 판단해 언로드 자체를 거부(`UnloadSceneAsync()`가 **null** 반환). 기존 `Command_UnloadScene.Update()`는 `unloadOperation == null`이면 그냥 `return`만 하고 `isFinished`를 절대 못 켰기 때문에, `FlowCommand`가 이 커맨드에서 영구 정지 → 뒤에 있는 `Command_CleanupDontDestroy`/`Command_CleanupMemory`/**페이드인(화면을 다시 투명하게 만드는 마지막 커맨드)**까지 전부 미실행 상태로 멈춤.
+
+### 수정 (함수 단위)
+
+**Command_LoadScene.Update()**
+- 전: `progress >= 0.9f`가 되는 즉시 `allowSceneActivation=true` + `isFinished=true`를 같은 블록에서 동시 처리
+- 후: `allowSceneActivation` 켜는 것과 `isFinished` 판정을 분리 — `isFinished`는 `loadOperation.isDone == true`가 됐을 때만 켜짐. 이러면 `Command_UnloadScene`이 실행되는 시점엔 InGameScene이 이미 확실히 로드 완료 상태라 "마지막 남은 씬" 오판 자체가 발생하지 않음(근본 원인 제거).
+
+**Command_UnloadScene.Execute()**
+- 후: `UnloadSceneAsync()` 결과가 null이면(위 근본 원인이 다른 경로로 재발하더라도) 그 자리에서 `Logger.Error` + `isFinished = true` 즉시 처리 — `FlowCommand`가 영구 정지하는 것을 막는 방어 코드(근본 수정과 별개로, 향후 유사 레이스가 다른 지점에서 재발해도 최소한 "멈추지는" 않게).
+
+### 검증
+`mcp__ide__getDiagnostics`로 컴파일 에러 0건 확인. **Play Mode(태블릿) 재검증은 사용자 몫** — 다음 TitleScene→InGameScene 전환에서 페이드가 정상적으로 사라지는지, `adb logcat`에 "Unloading the last loaded scene" 경고가 더 이상 안 뜨는지 확인 필요.

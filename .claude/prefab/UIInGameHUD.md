@@ -26,6 +26,12 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
          └─ Image_GaugeFill (...1081) — Filled(Horizontal) 시안, fillAmount 0
 ```
 
+추가(2026-07-23-4, 루트 직속 자식으로 append):
+```
+├─ Text_Fps (...1090)                — 좌상단 anchor(0,1) pos(16,-16), "FPS: 60" #A0A0B8 16pt, UIFpsCounter 부착(m_FpsText 자기참조)
+└─ Btn_Cheat (...1100)               — Btn_Pause 왼쪽(anchoredPosition -108,-140) 72×72, 투명 Image + Button / Text_Cheat "CHEAT" — OnClick → UIInGameHUD.OnClickCheatButton() → UICheatWindow 팝업
+```
+
 ## 씬 배치 (2026-07-23-2부터)
 - InGameScene.unity의 `Canvas`(fileID 655750134/RectTransform 655750138) 직속 자식. PrefabInstance fileID 1786891867, stripped RectTransform 1786891868.
 - RectTransform 오버라이드는 `m_Name` 하나뿐 — 나머지는 prefab 기본값(풀스트레치) 그대로 상속.
@@ -37,6 +43,24 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 - XP/시너지 게이지는 Image Filled 타입 — 코드에서 `fillAmount`로 갱신할 예정이었으나 아직 미구현(이번 작업 범위 밖).
 - Btn_Pause 좌/우 반전(왼손 모드)은 코드에서 anchoredPosition.x 부호 전환으로 처리 예정(미구현).
 - **멀티 스프라이트 텍스처 참조 시 주의(참고용, 현재는 미사용)**: `frame_capsule.png`/`icon_*.png`류는 TextureImporter가 `spriteMode: 2`(Multiple)라, `m_Sprite`의 `fileID`는 관용적인 `21300000`이 아니라 각 텍스처 `.meta`의 `internalIDToNameTable`(classID 213) 값을 그대로 써야 한다 — 이번엔 되돌려져서 실제로 화면에 뜨는지 검증되지 않은 채 남음. 나중에 다시 이 방식으로 아이콘/스프라이트를 붙이게 되면 이 패턴을 재사용하되, 에디터에서 실제로 렌더링되는지 먼저 확인할 것.
+
+---
+
+## 2026-07-23-4 — FPS 표시 + 치트 창 열기 버튼 추가
+
+### 개요
+[[UIInGameHUD]](class.md) 2026-07-23-4 참고. Unity MCP 미연결로 YAML 직접 편집(append 방식) + `[[UICheatWindow]]`(prefab.md) 신규 생성.
+
+### 수정 (오브젝트 단위)
+루트(...1001) `m_Children`에 `{fileID: ...1091}`, `{fileID: ...1101}` 2개 추가.
+- **Text_Fps**(...1090) 신규: RectTransform+CanvasRenderer+TextMeshProUGUI+UIFpsCounter.
+- **Btn_Cheat**(...1100) 신규: Btn_Pause 구조 복제(Image+Button+Text_Cheat 자식), OnClick Persistent Call → 루트(...1900) `OnClickCheatButton`.
+
+### 검증
+`grep`으로 파일 전체 fileID 중복 0건, dangling reference 0건(외부 sprite guid 참조 제외) 확인.
+
+### 미검증
+Unity MCP 미연결, 컴파일/Play Mode 확인 안 됨. Text_Fps가 다른 Pill과 겹치지 않는지, Btn_Cheat 클릭 시 실제로 UICheatWindow가 열리는지 에디터에서 확인 필요.
 
 ---
 

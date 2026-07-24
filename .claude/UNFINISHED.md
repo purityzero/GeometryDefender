@@ -1,5 +1,43 @@
 # 미완료 작업
 
+## 2026-07-25-1
+
+### 개요
+사용자가 태블릿 실기기(adb 연결, `HA2CNQGT`)에서 리포트한 "InGameScene 진입 후 화면 중앙 검정 화면이 안 사라지고 뒤에서 게임은 진행되는" 버그. `adb logcat` 실시간 캡처로 원인 확정: `SceneManager.cs`의 `Command_LoadScene`이 씬 로드 완료 전에 `isFinished=true`를 잡아, 뒤이은 `Command_UnloadScene(TitleScene)`이 "마지막 남은 씬" 취급으로 Unity에 언로드 거부당하고(`UnloadSceneAsync()` null 반환), `FlowCommand`가 거기서 영구 정지 — 페이드인 커맨드가 끝내 실행 안 돼 검정 오버레이가 안 사라짐. 상세는 [[SceneManager]] 2026-07-25-0 참고.
+
+### 수정 완료, 재빌드+재배포 검증 필요
+`Assets/Scripts/Glory/Scene/SceneManager.cs`의 `Command_LoadScene.Update()`/`Command_UnloadScene.Execute()` 수정 완료, 컴파일 에러 0건. **태블릿에 올라간 빌드는 수정 전 코드라 재현 안 될 리 없음** — 다음 세션(또는 이어서) 재빌드 후 태블릿에 재배포하고 TitleScene→InGameScene 전환에서 페이드가 정상적으로 사라지는지, `adb logcat`에 "Unloading the last loaded scene" 경고가 더 이상 안 뜨는지 확인 필요.
+
+---
+
+## 2026-07-25-0
+
+### 개요
+사용자 요청("에러 날 때 화면 제일 앞에 에러 메시지+발생 위치가 나오는 스크롤뷰 팝업, 흰 글씨")으로 [[ErrorLogManager]](Application.logMessageReceived 구독) + [[UIErrorWindow]](표시용 팝업) 신규 생성. `GameManager.Awake()`에서 `ErrorLogManager.instance.Init()` 호출로 부팅 초반 구독 시작. UITable.csv에 Id=9로 등록.
+
+### 다음 세션 최우선 작업 — Unity 연결 후 검증
+Unity MCP 미연결 상태(YAML 직접 편집)라 컴파일 진단(`mcp__ide__getDiagnostics`, 에러 0건)만 확인하고 Play Mode 실측은 전혀 안 됨.
+1. 실제로 에러(예: 임의 NRE)를 발생시켜 `UIErrorWindow`가 화면 제일 앞에 뜨는지, 텍스트가 흰색으로 잘 보이는지.
+2. 다른 팝업(치트 창 등)이 열려있는 상태에서 에러가 나도 그 위로 올라오는지.
+3. 스택트레이스가 긴 에러를 여러 개 연달아 발생시켜 스크롤뷰 항목별 높이가 정상 계산되는지(Content의 `VerticalLayoutGroup.ChildControlHeight=1` 조합), 자동 스크롤이 맨 아래로 내려가는지.
+4. 같은 에러가 매프레임 반복되는 상황(예: Update 안 NRE)에서 중복 스팸 방지 로직이 실제로 동작하는지(엔트리 1개만 추가되는지).
+상세는 `.claude/class/ErrorLogManager.md`, `.claude/class/UIErrorWindow.md`, `.claude/prefab/UIErrorWindow.md` 참고.
+
+---
+
+## 2026-07-23-5
+
+### 개요
+2026-07-23-4에서 만든 [[UICheatWindow]] 실측 중 사용자가 Unity 콘솔 에러를 공유 — 치트 창 내부 버튼 20개 전부가 `Button` 대신 `UIText`(guid 혼동)로 잘못 붙어있어 클릭 불가 + NRE 반복 발생하던 버그를 확정/수정 완료(상세는 `.claude/class/UICheatWindow.md` 2026-07-23-5 참고). `Instantiate` 직접 호출도 사용자 지적으로 `ResUtil.Create`로 교체. IDE 진단(hint) 0건 확인.
+
+### 다음 세션 최우선 작업 — Unity 연결 후 검증 (이어짐)
+1. **Play Mode 재확인 필요**: Btn_Cheat 클릭 → UICheatWindow 오픈/닫기, 이제는 버튼들이 실제로 클릭되는지(이전엔 guid 오류로 전혀 반응 없었음), 시간배속(1x~5x)/웨이브 스킵(+10/30/60초 + 개별 웨이브 버튼)/치명타 2개/몬스터 스폰(Variant 토글 3개+수량 프리셋 4개)/카드 즉시 적용(30장) 전부 실제 동작 확인.
+2. **레이아웃 확인**: `UIInGameHUD.prefab`의 `Text_Fps`/`Btn_Cheat`가 기존 Pill과 안 겹치는지, `UICheatWindow.prefab`의 ScrollView가 카드 30개+웨이브 5개를 포함한 전체 컨텐츠를 정상 스크롤하는지, 버튼 균등분할 레이아웃이 보기에 괜찮은지.
+3. FPS 텍스트가 0.5초마다 정상 갱신되는지.
+4. 상세는 `.claude/class/UICheatWindow.md`, `.claude/class/UIFpsCounter.md`, `.claude/prefab/UICheatWindow.md`, `.claude/class/UIInGameHUD.md`, `.claude/prefab/UIInGameHUD.md` 참고.
+
+---
+
 ## 2026-07-24
 
 ### 개요

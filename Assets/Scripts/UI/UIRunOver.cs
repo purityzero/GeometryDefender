@@ -77,4 +77,9 @@ public class UIRunOver : UIPopup
         Time.timeScale = 1f;
         SceneManager.instance.NextScene(EScene.TitleScene.ToString());
     }
+
+    public override void OnPressBackBtn()
+    {
+        
+    }
 }

@@ -6,5 +6,6 @@ public class GameManager : MonoSingleton<GameManager>
     {
         base.Awake();
         TableManager.instance.init();
+        ErrorLogManager.instance.Init();
     }
 }

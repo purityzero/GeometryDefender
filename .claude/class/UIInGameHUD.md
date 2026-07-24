@@ -1,6 +1,6 @@
 # UIInGameHUD
 
-연관 클래스: UIBase, BaseScene, IUpdatable, TimerManager, TowerHealth, MonsterManager, ObservableVariable, [[UIPause]](Btn_Pause가 여는 팝업)
+연관 클래스: UIBase, BaseScene, IUpdatable, TimerManager, TowerHealth, MonsterManager, ObservableVariable, [[UIPause]](Btn_Pause가 여는 팝업), [[UICheatWindow]](Btn_Cheat가 여는 팝업), [[UIFpsCounter]](Text_Fps에 부착)
 
 ## 개요
 InGame 화면 상단 HUD(HP/Timer/Kill 표시 + Pause 버튼). **2026-07-23-2부터 `UIInGameHUD.prefab`(Resources/Prefabs/UI)이 유일한 실제 HUD다** — 그 전엔 씬(`InGameScene.unity`)에 손으로 배치된 `Canvas/Top/Timer,Kill,Hp` 오브젝트가 진짜 HUD였고 이 prefab은 미사용 목업이었으나(2026-07-23-0/1 기록 참고), 사용자가 prefab을 실제 InGame 리소스(아이콘)로 다시 만들고 Pause 버튼까지 완성해서 교체하기로 결정 — 씬의 구 HUD(Canvas/Top 및 그 하위 Timer/Kill/Hp)는 전부 삭제됨.
@@ -21,6 +21,34 @@ InGame 화면 상단 HUD(HP/Timer/Kill 표시 + Pause 버튼). **2026-07-23-2부
 - `ObservableIntText<TSource>`(Glory, [[ObservableIntText]])를 재사용하지 않고 직접 구현한 이유: 그 제네릭 베이스는 "TSource 하나 + ObservableVariable 하나"만 다루도록 설계되어 있어, 서로 다른 두 소스(TowerHealth/MonsterManager)를 한 클래스에서 동시에 다뤄야 하는 이번 요구사항과 맞지 않음. 이후 사용자 요청으로 `ObservableIntText` 클래스 자체가 삭제됨 — 상세는 [[ObservableIntText]] 2026-07-23-1 참고.
 
 ## 작업 내역
+
+### 2026-07-23-4 — FPS 표시 + 치트 창 열기 버튼 추가
+
+#### 개요
+사용자 요청("InGameScene에 FPS 표시 UI랑, 지금 Tool에 있는 기능 전부 포함한 치트 창 하나 만들어줘" + "빌드해서 테스트 할꺼라서 버튼으로 만들어서 버튼 누르면 치트창 나오게 해줘야함"). `Assets/Editor/QA/*`(TimeScaleWindow/CombatDebugWindow/MonsterSpawnTestWindow)는 UnityEditor 의존이라 빌드에 안 들어가므로, 같은 기능을 런타임 uGUI 팝업 [[UICheatWindow]]로 이식하고 HUD에 여는 버튼을 추가. FPS 표시는 [[UIFpsCounter]](별도 재사용 가능한 드롭인 컴포넌트)로 구현.
+
+#### 파일
+- Assets/Scripts/UI/UIInGameHUD.cs
+- Assets/Resources/Prefabs/UI/UIInGameHUD.prefab
+- Assets/Resources/Table/UITable.csv (UICheatWindow 행 추가)
+- 신규: Assets/Scripts/UI/UIFpsCounter.cs, Assets/Scripts/UI/UICheatWindow.cs, Assets/Resources/Prefabs/UI/UICheatWindow.prefab
+
+#### 수정 (함수 단위) — UIInGameHUD.cs
+**신규**: `public void OnClickCheatButton() { UIManager.instance.Get<UICheatWindow>(); }` — `OnClickPauseButton()` 바로 아래 추가.
+
+#### 수정 (오브젝트 단위) — UIInGameHUD.prefab
+루트(...1001) RectTransform의 `m_Children`에 2개 추가.
+- **Text_Fps**(GO ...1090, RectTransform ...1091, CanvasRenderer ...1092, TextMeshProUGUI ...1093, UIFpsCounter ...1094) — 좌상단 anchor(0,1) anchoredPosition(16,-16), fontSize16, 기존 Text_Time과 동일한 회색 톤(#A0A0B8). `UIFpsCounter.m_FpsText`는 같은 GameObject의 TMP(...1093)를 자기참조.
+- **Btn_Cheat**(GO ...1100, RectTransform ...1101, CanvasRenderer ...1102, Image ...1103, Button ...1104) — Btn_Pause(...1050~1058)와 동일 구조 복제, Btn_Pause 왼쪽(anchoredPosition -108,-140)에 배치. 자식 **Text_Cheat**(GO ...1105, RectTransform ...1106, CanvasRenderer ...1107, TMP ...1108) 라벨 "CHEAT". `m_OnClick.m_PersistentCalls`에 루트(...1900) 대상 `OnClickCheatButton` Persistent Call 추가(Btn_Pause의 `m_TargetAssemblyTypeName`/`m_Mode: 1` 형식 그대로 재사용).
+
+#### 설계 결정
+- Unity MCP가 이 세션에 연결되어 있지 않아(도구 자체 미로드) YAML 직접 편집으로 진행. 프리팹 신규 파트는 PowerShell 생성 스크립트로 만들어 fileID 충돌/누락을 스크립트 레벨에서 방지(상세는 [[UICheatWindow]] class/prefab md 참고).
+- FPS 표시는 항상 켜져 있는 상시 표시로 단순화(별도 on/off 토글 UI 없음) — 치트 창은 온스크린 버튼으로만 열고 닫음(단축키 방식 아님, 빌드 테스트 전제).
+
+#### 미검증
+Unity MCP 미연결, 컴파일/Play 확인 안 됨. 확인 필요: Text_Fps가 다른 Pill과 안 겹치는지, Btn_Cheat 클릭 시 UICheatWindow가 실제로 열리는지, UIFpsCounter가 매 0.5초 FPS를 정상 갱신하는지.
+
+---
 
 ### 2026-07-24-1 — HP 필 바(게이지) 추가
 사용자 요청("HP차는것도 표시하게 해줘") — 지금까지 HP는 `Text_Hp`("100/100") 텍스트로만 표시되고 실제로 줄어드는 시각 요소가 없었음(07_ui.html 원 스펙도 텍스트 필/펄스뿐, 바 자체는 없어서 기획서에도 추가 — `Assets/Design/07_ui.html` 갱신).

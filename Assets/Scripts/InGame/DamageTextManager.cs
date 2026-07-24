@@ -162,7 +162,7 @@ public class DamageTextManager : UpdatableBehaviour
     {
         if (PlayerManager.instance.optionData.isHapticOn == false)
             return;
-
+            
         Handheld.Vibrate();
         TweenUtil.DelayedCall(GameConfigTable.VIBRATE_PULSE_INTERVAL, () => Handheld.Vibrate());
     }

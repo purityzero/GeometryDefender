@@ -112,4 +112,9 @@ public class UIInGameHUD : UIBase
     {
         UIManager.instance.Get<UIPause>();
     }
+
+    public void OnClickCheatButton()
+    {
+        UIManager.instance.Get<UICheatWindow>();
+    }
 }

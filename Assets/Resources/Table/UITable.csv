@@ -6,3 +6,5 @@ Id,UIName,UIType,PrefabPath
 5,UIPause,Popup,Prefabs/UI/UIPause
 6,UIDifficultySelect,Popup,Prefabs/UI/UIDifficultySelect
 7,UISetting,Popup,Prefabs/UI/UISetting
+8,UICheatWindow,Popup,Prefabs/UI/UICheatWindow
+9,UIErrorWindow,Popup,Prefabs/UI/UIErrorWindow

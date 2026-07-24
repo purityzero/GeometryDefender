@@ -133,6 +133,14 @@ public class Command_UnloadScene : ICommand
 
         Logger.Log("Command_UnloadScene", $"Requesting unload: {sceneName}", Logger.eColor.Blue);
         unloadOperation = UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(sceneName);
+
+        // Unity가 언로드를 거부하면(예: "마지막 남은 씬") null을 반환한다 — 이 경우 Update()가
+        // unloadOperation == null로 빠져 isFinished를 영영 못 잡고 FlowCommand 전체가 멈춘다
+        if (unloadOperation == null)
+        {
+            Logger.Error($"[Command_UnloadScene] UnloadSceneAsync Failed! {sceneName}");
+            isFinished = true;
+        }
     }
 
     public void Update()
@@ -180,9 +188,16 @@ public class Command_LoadScene : ICommand
         if (isFinished || isCanceled || loadOperation == null)
             return;
 
-        if (loadOperation.progress >= 0.9f)
+        // allowSceneActivation을 켜는 시점과 씬이 실제로 로드 완료되는 시점은 다르다 —
+        // 여기서 바로 isFinished를 true로 잡으면, 뒤이어 실행되는 Command_UnloadScene이
+        // 아직 로드 중인 씬을 카운트하지 못해 "마지막 남은 씬" 취급으로 언로드를 거부당한다
+        if (loadOperation.allowSceneActivation == false && loadOperation.progress >= 0.9f)
         {
             loadOperation.allowSceneActivation = true;
+        }
+
+        if (loadOperation.isDone == true)
+        {
             isFinished = true;
             Logger.Log($"[Command_LoadScene] {sceneName} Load Complete");
         }

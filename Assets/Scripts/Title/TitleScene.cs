@@ -6,7 +6,7 @@ public class TitleScene : BaseScene
 {
     protected override void OnSetup()
     {
-        //하지마라
+        Logger.Error("Error!");
     }
 
     public void OnClickPlayButton()
