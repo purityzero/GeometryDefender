@@ -148,3 +148,18 @@ Title→Btn_Play→InGame 실제 흐름으로 확인. `GameConfigTable.SPAWN_BAS
 ### 2026-07-24-0 — AddElapsedTime(float) 추가(QA용 Wave 스킵)
 사용자 요청("배속 말고 플레이 타임 조절, Wave 건너뛸수있게") — [[CombatDebugWindow]]가 Wave를 건너뛸 수 있도록 `public void AddElapsedTime(float _seconds) { m_ElapsedTime += _seconds; }` 추가. 이 클래스의 `m_ElapsedTime`이 Wave/스폰 배율 판정의 실제 기준(`GetActivePhase`)이라, [[TimerManager]].`AddElapsedTime()`과 항상 같은 델타로 세트 호출해야 UI 표시 시간과 실제 웨이브가 어긋나지 않는다.
 검증: 컴파일 에러 0건. Play Mode 실측 — `WaveTable`의 마지막 Wave(StartTime 480s)로 스킵 → `GetActivePhase()`가 정확히 해당 Wave를 반환, 스킵 후 자동 전투 진행에도 콘솔 에러 0건. 상세는 [[CombatDebugWindow]] 2026-07-24-1 참고.
+
+## 2026-07-27-1 — 초반 스폰 램프에 유예 구간 추가(초반 밸런스 완화)
+사용자 리포트("초반이 너무 힘들어서 지울 것 같다", 구체적으로는 첫 레벨업/카드 뜨기 전에 이미 밀림). 원인 분석: `spawnRate(t=0) = SPAWN_BASE_RATE(1.0/s)`인데, 기존 타워 기본 스탯(Damage10, AttackInterval0.5)이 Normal(HP20)을 정확히 1초에 처치 — 즉 t=0부터 이미 스폰 속도와 처치 속도가 1:1(여유 0)이었고, `hpMultiplier`/`spawnRate`가 둘 다 시간에 따라 증가하므로 첫 30초 안에 스폰이 처치를 추월하는 구조적 문제로 판단([[ActorPlayer]] 2026-07-27-6에서 AttackInterval도 0.4로 별도 완화).
+
+### 파일
+- Assets/Scripts/Table/GameConfigRecord.cs — `SPAWN_RAMP_GRACE_SECONDS`(기본 15) 필드 추가
+- Assets/Resources/Table/GameConfigTable.csv — `SpawnRampGraceSeconds,15` 행 추가
+- Assets/Scripts/InGame/SpawnManager.cs
+
+### 수정 (UpdatePhaseSpawn 함수 단위)
+- 전: `spawnRate = SPAWN_BASE_RATE × (1 + m_ElapsedTime/60)^EXPONENT × difficultyMultiplier`
+- 후: `rampElapsedTime = Max(0, m_ElapsedTime - SPAWN_RAMP_GRACE_SECONDS)`를 대신 공식에 사용 — 첫 15초는 램프가 시작되지 않고 baseRate(1.0/s)로 고정, 그 이후부터 기존 곡선을 그대로 따라감. 10~12분 사망 목표 곡선 자체는 유지(전체 곡선이 15초만큼 뒤로 밀리는 정도라 후반 영향은 미미).
+
+### 검증
+Unity MCP 미연결, IDE 진단(mcp__ide__getDiagnostics)으로 컴파일 에러 0건만 확인 — Play Mode 실측(실제로 초반 생존이 나아졌는지) 미완료.

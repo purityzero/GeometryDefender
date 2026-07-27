@@ -6,7 +6,8 @@ public enum eCardCategory
     Speed,
     Utility,
     Defense,
-    Special
+    Special,
+    Weapon
 }
 
 public enum eCardRarity
@@ -31,7 +32,6 @@ public enum eCardEffectType
     SplashEnable,
     ChainEnable,
     HomingEnable,
-    TargetingOverride,
     MaxHpAdd,
     MaxHpPercent,
     HealInstant,
@@ -42,7 +42,8 @@ public enum eCardEffectType
     ReviveOnce,
     BerserkerCurve,
     OrbitalRing,
-    TimeSlowAura
+    TimeSlowAura,
+    WeaponUnlock
 }
 
 public class CardRecord : Record

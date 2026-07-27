@@ -70,6 +70,30 @@ D:\Unity\Job (구 작업 폴더, 2026-06-09까지 작업)에서 머지로 신규
 
 ---
 
+## 2026-07-27-3 — 카메라 orthographic size 6.5→10 변경에 따른 ActorPlayer 스케일 재계산
+
+### 개요
+사용자가 TitleScene/InGameScene 카메라 orthographic size를 직접 10으로 수정(에디터에서 수동 변경, "참고해줘"로 통지). 위 2026-07-20-0에서 `ActorPlayer.m_LocalScale=0.40625`를 **InGame 카메라 orthographic size 6.5**를 전제로 계산했었는데, 카메라만 바뀌고 이 스케일 값은 그대로 남아있어 타워가 타이틀 헥사곤보다 작게 보이는 상태였음 — 발견 즉시 재계산해 반영.
+
+### 파일
+- Assets/Scenes/InGameScene.unity
+
+### 재계산
+- 새 pixelsPerUnit = 1280 ÷ (2×10) = 64 (기존 98.4615에서 감소 — orthoSize가 커지면 화면에 더 많은 월드 유닛이 보이므로 유닛당 픽셀 수는 줄어듦)
+- 새 scale = 88.8 ÷ (64 × 2.22) = 0.625 (세로 77.6 ÷ (64×1.94) = 0.625로 동일하게 확인)
+
+**ActorPlayer (fileID 1165160029, Transform 1165160030)**
+- 전: `m_LocalScale: {x: 0.40625, y: 0.40625, z: 1}`
+- 후: `m_LocalScale: {x: 0.625, y: 0.625, z: 1}`
+
+### 참고 — 다른 곳은 수정 불필요
+`TitleSquareEffect.cs`/`WayPoint.cs`가 `orthographicSize`를 매 프레임 동적으로 읽어 쓰므로(하드코딩 없음, grep으로 확인) 카메라 값 변경에 자동으로 대응됨 — 이 ActorPlayer 스케일만 씬에 굳어있던 값이라 예외적으로 수동 재계산이 필요했음.
+
+### 미검증
+에디터 미실행 상태 편집. 실제로 타이틀 헥사곤과 인게임 타워가 화면상 같은 크기로 보이는지 Play Mode 확인 필요.
+
+---
+
 ## 2026-07-20-1
 
 ### 개요

@@ -16,7 +16,7 @@
   - **정정(2026-07-24)**: "같은 씬의 모든 오브젝트의 Awake가 끝난 뒤에야 OnEnable이 실행된다"는 가정은 **틀렸다** — 그 보장은 `Start()`에만 있고 `OnEnable()`에는 없다. 실제로 다른 스크립트의 `OnEnable()`이 `BaseScene`(InGameScene/TitleScene) 자신의 `Awake()`보다 먼저 실행돼 `BaseScene.Current`가 null인 채로 `Register`를 호출하는 NRE가 실사용에서 재현됨. **수정**: `InGameScene`/`TitleScene`(구체 파생 클래스)에 `[DefaultExecutionOrder(-1000)]`를 붙여 이 둘의 Awake/OnEnable이 씬 내 다른 모든 스크립트보다 먼저 실행되도록 강제 — 상세는 [[InGameScene]] 2026-07-24-0 참고. 이 attribute는 추상 베이스(`BaseScene`)가 아니라 실제 씬에 부착되는 구체 클래스 각각에 붙여야 한다(Unity 제약, 상속으로 전파 안 됨) — 새 `BaseScene` 파생 클래스를 추가할 때 이 attribute를 빠뜨리지 않을 것.
 - `Register(IUpdatable _updatable)` / `Unregister(IUpdatable _updatable)` — 내부 `List<IUpdatable>`에 추가/제거. `Register`는 이미 등록된 항목이면 무시(중복 등록 방지, 2026-07-21 추가) — `OnEnable`/`OnDisable`로 옮기면서 `SetActive` 토글마다 재호출되는 게 기본 동작이 됐으므로 이 멱등 가드가 여전히 유효.
 - `protected virtual void OnSetup()` — 기본 빈 구현, 파생 클래스가 오버라이드해서 씬 진입 초기화를 넣는 지점.
-- `BaseScene` 자신은 `SceneSingleton<T>.OnEnable()/OnDisable()`을 **아무 것도 안 하게 오버라이드**해서 자기 자신을 자기 갱신 리스트에 등록하지 않는다(2026-07-23) — 등록해도 빈 `UpdateLogic()`이라 해는 없지만 의미 없는 자기 참조라 의도적으로 생략.
+- `BaseScene` 자신은 `SceneSingleton<T>.OnEnable()`을 **자기 자신을 갱신 리스트에 등록하지 않도록** 오버라이드한다(Register 호출은 생략) — 등록해도 빈 `UpdateLogic()`이라 해는 없지만 의미 없는 자기 참조라 의도적으로 생략. 다만 2026-07-27부터 `OnEnable()`이 완전 no-op은 아니고 `Current = this;`는 그대로 수행한다(아래 2026-07-27-0 참고). `OnDisable()`은 여전히 완전 no-op.
 - **적용 예외**: `MonoSingleton<T>` 기반 매니저(예: Glory SceneManager)는 이 패턴을 타지 않는다 — 씬을 넘어 유지되는 전역 매니저는 계속 자기 자신의 MonoBehaviour `Update()`로 스스로 구동한다 (2026-07-21 사용자 확정). IUpdatable을 구현하지 않으면 자연히 이 목록에 들어오지 않으므로 별도 필터링 코드는 불필요.
 
 ## 작업 내역
@@ -111,3 +111,28 @@
 
 ### 검증
 컴파일 에러 0건. Play Mode 실측(Unity MCP `execute_code`) — `isPaused=true` 상태에서 ECS 몬스터 위치/`TimerManager.elapsedTime`을 3초 간격 두 번 샘플링해 완전히 동일함을 확인(진짜로 멈춤), `isPaused=false`로 되돌리면 다시 정상 진행되는 것도 확인. 상세 재현/검증 시나리오는 [[InGameScene]] 2026-07-24-1 참고.
+
+---
+
+## 2026-07-27-0 — Play 중 재컴파일 후 Current 영구 null 버그 수정 (BaseScene 쪽 대응)
+
+### 개요
+근본 원인/[[SceneSingleton]] 쪽 수정은 [[SceneSingleton]] 2026-07-27-0 참고. `SceneSingleton<T>.Current`의 setter를 `private`→`protected`로 완화하면서, `BaseScene`도 자기 자신의 `Current`를 도메인 리로드 후 재복구할 수 있게 됐다.
+
+### 파일
+- Assets/Scripts/Glory/Scene/BaseScene.cs
+
+### 수정 (함수 단위)
+**`OnEnable()`**
+- 전: `protected override void OnEnable() { }` (완전 no-op)
+- 후:
+```csharp
+protected override void OnEnable()
+{
+    Current = this;
+}
+```
+Register 호출은 여전히 생략(자기 참조 방지, 기존 의도 유지)하되, `Current` 재설정만 추가 — Play 중 재컴파일로 static이 초기화된 뒤 `Awake()`는 재호출 안 되고 `OnEnable()`만 재호출되므로, 여기서 갱신 안 하면 `BaseScene.Current`가 영구 null로 남는다.
+
+### 검증
+IDE 진단(컴파일 에러 0건)만 확인. Play Mode 실측(재컴파일 강제 재현)은 미완 — qa-tester 후속 세션에서 확인 예정.

@@ -62,7 +62,10 @@ public class CullingObject : MonoBehaviour
     public void UpdateLogic()
     {
         if (mainCamera == null)
-			return;
+            mainCamera = Camera.main;
+
+        if (mainCamera == null)
+            return;
 
         bool isInView = this.IsInCameraView;
 

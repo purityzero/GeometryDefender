@@ -1,5 +1,69 @@
 # 미완료 작업
 
+## 2026-07-27-2
+
+### 개요
+사용자 요청 다수 처리: (1) 카드 306/307(타겟팅 변경 카드) 제거 + 기획 문서 반영, (2) Play 중 재컴파일 시 `BaseScene.Current` 영구 null 버그 수정([[SceneSingleton]]/[[BaseScene]] 2026-07-27-0), (3) InGame→Title 복귀 시 `TitleSquareEffect`가 화면 밖으로 나가는 버그 수정, (4) 밸런스 구조적 병목 발견(단일 타겟 타워 사거리 vs 스폰레이트) 후 CentralTower Range/TowerMaxHp/SpawnRampGraceSeconds 1차 조정, (5) 카메라 orthographic size 6.5→10 변경에 따른 ActorPlayer 스케일 재계산, (6) UICheatWindow — Variant 토글 시각 피드백 버그 + 카드 ScrollView 방향 버그 수정, 메타트리 치트 섹션 신설, (7) 사용자 스크린샷 지적으로 웨이브 버튼 리스트 겹침(높이 0) 버그·카드 리스트 드래그 안 먹힘(Viewport 레이캐스트 그래픽 부재) 버그 추가 수정, (8) Cheat 창 열리면 게임 일시정지되도록 신규 추가 — 전부 Unity MCP로 직접 프리팹/씬 조회하며 진행.
+
+### 검증 상태 — Play Mode 확인 대부분 미완료 (재확인 완료: 에디터 재시작 필요)
+세션 내내 여러 차례 Play 진입을 시도했으나, 기존에 알려진 "Play 중 재컴파일이 누적되면 Text Animator/UI 초기화가 영구 고장 나는" 증상이 **Stop→Play를 반복해도 해소되지 않고 계속 재현됨을 재확인**(TitleScene 자체는 스크린샷으로 정상 렌더링 확인됐으나, `UIDifficultySelect` 같이 새로 Instantiate되는 팝업의 Typewriter 텍스트에서는 여전히 NRE 반복 → 팝업이 캐시 등록 안 돼 중복 생성까지 관측됨 → InGameScene 전환 자체가 끝내 안 됨). **다음 세션 최우선**: Unity 에디터 프로세스를 완전히 재시작(단순 Stop/Play 아님)한 뒤,
+1. TitleScene이 정상적으로 보이는지(헥사곤+사각형+버튼 전부) — 확인 완료.
+2. `Btn_Play`→난이도 선택→InGameScene 흐름이 정상 동작하는지(재시작 전 계속 막힘).
+3. 카드 306/307이 드래프트 풀에 안 나오는지.
+4. 밸런스 조정(Range 7.0/TowerMaxHp 150/SpawnRampGraceSeconds 30) 후 실제 생존 시간이 얼마나 늘었는지.
+5. InGame→Title 왕복 시 사각형이 화면 안에 계속 있는지.
+6. 치트 창 — Variant 토글 시각 피드백, 웨이브 버튼 리스트 겹침 해소, 카드 ScrollView 드래그(세로 스크롤 + Viewport 레이캐스트), 메타트리 섹션 즉시 해금/Shard 지급, 창 열릴 때 게임 일시정지 — 전부 실제 동작 확인.
+7. 타이틀 헥사곤과 인게임 타워가 화면상 같은 크기로 보이는지(스케일 0.625 재계산).
+8. 호밍 미사일(#305) 재조준 + 최대 생존시간(25초) — [[ProjectileMoveSystem]] 2026-07-27-0/1/2. **격리 ECS 테스트로 로직 자체는 검증 완료**(재조준·시간 만료 둘 다 확인됨) — 다만 InGameScene 정상 플레이 경로로는 아직 미확인(에디터 재시작 후 실제 카드 뽑아서 눈으로 확인 필요, 특히 방향 전환이 시각적으로 부드럽게 보이는지).
+9. 테마 무기(Mage/ChainCoil/HomingPod) 고유 능력 무기 자체 내장 — [[ActorPlayer]] 2026-07-27-7/8, [[CardManager]] 2026-07-27-3. 대응 카드(#303/#304/#305) 없이도 스플래시/체인/유도가 실제로 발동하는지, 카드까지 있을 때 더 강한 쪽(Max)이 적용되는지, **다른 무기(CentralTower/Archer)에는 절대 안 붙는지**, 무기 미보유 시 해당 카드가 드래프트에 안 나오는지 Play Mode 확인 필요.
+10. Normal 난이도 2차 완화 — `DifficultyTable.csv` DifficultyMultiplier 1.0→0.8(design-issues.md 2026-07-27 "2차 조정" 참고). 실제 생존 시간이 얼마나 늘었는지 재측정 필요.
+11. 발사체 부채꼴 스프레드 + Double Shot 반복 드래프트 — [[ActorPlayer]] 2026-07-27-9, [[CardManager]] 2026-07-27-4. 2발 이상일 때 실제로 갈라져 나가는지, Double Shot을 여러 번 뽑으면 탄수가 계속 늘어나는지 확인 필요.
+12. 인게임 하단 무기 쿨다운 게이지(구 Panel_Synergy 자리) — [[UIInGameHUD]] 2026-07-27-0, [[UIInGameHUD]](prefab.md) 2026-07-27-0. 무기 수만큼 행이 정확히 생기는지, 게이지가 무기별 색으로 차오르는지, 이름이 언어 설정에 맞게 로컬라이즈되는지 확인 필요.
+13. TowerRecord `NameKey` 신설(무기 이름 로컬라이즈) — [[TowerRecord]] 2026-07-27-4. Archer/Mage/ChainCoil/HomingPod는 카드 이름 키(Card601~604Name) 재사용, CentralTower는 신규 키(TowerNameCentral). 언어 전환 시 무기 쿨다운 라벨이 정상 갱신되는지 확인 필요.
+14. 알려진 이슈(미해결, 보류): `m_hasHoming`/`SetHoming()`이 죽은 코드가 됨 — Homing Missile 카드(#305)가 이제 HomingPod에 아무 추가 효과를 못 줌(Splash/Chain과 달리 강화할 수치가 없음). #306/#307과 같은 이유로 카드 제거 후보이나 사용자 확인 전까지 보류([[ActorPlayer]] 2026-07-27-9 "알려진 사소한 이슈" 참고).
+상세는 각각 `.claude/qa/client-issues.md`(2026-07-27-1/2/4), `.claude/class/{SceneSingleton,BaseScene,TitleSquareEffect,TowerRecord,GameConfigRecord,InGameScene,UICheatWindow}.md`(2026-07-27-7 포함), `.claude/prefab/UICheatWindow.md`의 2026-07-27 항목 참고.
+
+---
+
+## 2026-07-27-1
+
+### 개요
+사용자 요청("타워 미사일이 하나뿐인데 여러 무기를 동시에 갖고 싶다" + "The Tower" 모바일 게임 레퍼런스 + "초반이 너무 힘들어서 지울 것 같다") — 무기 다양화(독립 쿨다운/타겟팅을 갖는 무기 리스트, 카드로 해금) + 초반 밸런스 완화(타워 공속/XP 요구량/스폰 램프 유예) 구현 완료. 도중 사용자가 ECS `SystemAPI.Query` foreach의 튜플 구조 분해를 지적해 CODE.MD에 "튜플 대신 struct/class" 규칙을 추가하고 `CardManager.cs`의 실제 튜플 사용처(RARITY_WEIGHTS/m_GrantedSynergyTiers)를 struct로 교체(ECS foreach 튜플 7군데는 프레임워크 강제 계약이라 예외로 확정).
+
+### 변경 파일
+- `Assets/Scripts/InGame/Actor/ActorPlayer.cs` — 무기 리스트(`TowerWeapon`) 구조로 리팩터링, `AddWeapon(int)` 신설
+- `Assets/Scripts/InGame/CardManager.cs` — `WeaponUnlock` 카드 케이스 추가, 튜플 사용처 struct로 교체
+- `Assets/Scripts/Table/CardRecord.cs` — `eCardCategory.Weapon`, `eCardEffectType.WeaponUnlock` 추가
+- `Assets/Scripts/Table/GameConfigRecord.cs` — `SPAWN_RAMP_GRACE_SECONDS` 추가
+- `Assets/Scripts/InGame/SpawnManager.cs` — 스폰 램프 계산에 유예 구간 반영
+- `Assets/Resources/Table/{TowerTable,CardTable,GameConfigTable,StringTable}.csv` — 무기 2종/카드 4장/설정값/현지화 문자열 추가
+- `.claude/CODE.MD` — 튜플 금지 규칙(ECS SystemAPI.Query 예외 명시)
+
+### 검증 상태 — Unity MCP 미연결로 전부 미검증
+이번 세션 내내 Unity MCP가 연결되지 않아 `mcp__ide__getDiagnostics`(VS Code 언어 서버)로 컴파일 에러 0건만 확인했다. **다음 세션 Unity 연결 후 최우선 확인**:
+1. TitleScene→Play→InGameScene 실제 흐름에서 컴파일 에러/Missing Script 없이 정상 로드되는지.
+2. 카드 드래프트 풀에 무기 해금 카드(Id 601~604) 4장이 실제로 섞여 나오는지, 뽑으면 화면에 새 발사체가 기존 발사와 별도로 동시에 나가는지(무기별 독립 쿨다운 확인).
+3. 기본 무기(CentralTower)의 타겟팅 카드(#306/#307)가 추가 무기의 타겟팅에는 영향 안 주는지(의도된 설계).
+4. 초반(0~30초) 체감 난이도가 실제로 완화됐는지 — 첫 레벨업(3킬)이 이전보다 확실히 빨리 뜨는지, 첫 카드 없이도 30초 안팎은 버티는지.
+5. 신규 필드/enum 추가가 기존 저장 데이터(PlayerManager 세이브 등)와 충돌 없는지.
+
+## 2026-07-27-0
+
+### 개요
+사용자 요청("인게임에서 CullingObject 적용해줘") → 몬스터 6종에 적용 완료. **구동 주체가 세션 중 한 번 바뀜**: 처음엔 `MemoryPooling<T>.UpdateLogic()`(공용 풀링 클래스)에 캐싱을 얹었으나, 사용자 지적("Pooling이 아니라 MonsterManager에서 관리해야 하는거 아니야?")으로 되돌리고 `ActorMonster`(CullingObject 직렬화 캐시 + `UpdateCullingLogic()`) + `MonsterManager`(`UpdateCulling()`로 매 프레임 활성 몬스터 순회) 구조로 재설계 완료. 프리팹 6개(Triangle/Square/Star/Pentagon/Diamond/Circle)엔 CullingObject 부착 + ActorMonster의 `m_CullingObject` 필드로 연결까지 완료. 상세는 `.claude/class/{Pooling,Factory,ActorMonster,MonsterManager,CullingObject}.md` 2026-07-27 항목, `.claude/prefab/{Triangle,Square,Star,Pentagon,Diamond,Circle}.md` 참고.
+
+### 검증 완료
+Unity 에디터에 포커스를 재부여해 강제 재컴파일/재임포트 유도 → 최종 코드 기준 `Tundra build success`(에러 0건), 프리팹 6개 재임포트 시 Missing Script 등 파싱 에러 없음 확인.
+
+### Play Mode 실측 → 버그 발견 → 수정 완료
+qa-tester 에이전트로 실측(2026-07-27). **발견: 화면 밖으로 나가도 몬스터가 전혀 비활성화되지 않음** — `CullingObject.Awake()`가 `Camera.main`을 1회만 캐싱하는데, 몬스터가 풀링 재사용 오브젝트라 `Awake()`가 최초 1회만 불림. TitleScene→InGameScene 전환의 카메라 2개 겹침 창에서 풀 Prewarm이 실행돼 TitleScene 카메라가 캐싱됐다가 파괴되고, 이후 `mainCamera == null` 가드가 매 프레임 조용히 조기 종료돼 컬링이 영구적으로 죽음. `IsInCameraView` 판정 수식 자체는 정상.
+
+**수정 완료**: `UpdateLogic()`에 `mainCamera == null`일 때 `Camera.main`으로 재조회하는 로직 추가. Play Mode에서 재현 조건(캐싱된 카메라를 직접 파괴)을 만들어 격리 검증 완료 — 재조회 후 화면 밖 오브젝트가 정확히 비활성화됨, 콘솔 에러 0건. 상세는 [[CullingObject]] 2026-07-27-2, [client-issues.md 2026-07-27-0](qa/client-issues.md) 참고.
+
+**남은 것**: 정상 몬스터 스폰 경로(TitleScene→Play→InGameScene)로의 End-to-End 재검증은 미완 — 검증 도중 기존에 이미 알려진 별개의 미해결 버그(`World.DefaultGameObjectInjectionWorld`가 씬 전환 중 null이 되는 문제, 2026-07-21-1/2026-07-23-0)가 재현돼 `MonsterManager.Init()`이 막혀 CullingObject 단독 격리 테스트로 대체함. World-null 버그가 해결되면 실제 스폰 경로로도 재확인 필요(이번 세션 범위 아님, 별도 이슈로 계속 추적 중).
+
+---
+
 ## 2026-07-25-1
 
 ### 개요

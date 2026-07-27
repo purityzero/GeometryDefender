@@ -57,6 +57,7 @@ public class MemoryPooling<T> where T : Component
 
         m_ActiveList.Add(obj);
         obj.gameObject.SetActive(true);
+
         return obj;
     }
 

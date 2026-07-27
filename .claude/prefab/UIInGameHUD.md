@@ -19,11 +19,11 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 ├─ Image_XpGauge (...1041)           — 상단 스트레치 h6, y-120, 배경 #1A1A26
 │  └─ Image_XpFill (...1045)         — Filled(Horizontal) shape_square 시안, fillAmount 0 (미구현 — 코드에서 갱신 안 함)
 ├─ Btn_Pause (...1051)               — 우상단 72×72, 투명 Image + Button / Text_Pause "II" — **2026-07-23-2부터 OnClick 연결됨**(UIInGameHUD.OnClickPauseButton() → UIPause 팝업)
-└─ Panel_Synergy (...1061)           — 하단 스트레치 h170, y+40, VerticalLayoutGroup
-   └─ Item_Synergy (...1071)         — 행 템플릿 h30 (코드가 4개로 복제 — 미구현, 아직 아무도 인스턴스화 안 함)
-      ├─ Text_Label (...1073)        — "OFFENSE 0/5" #A0A0B8 (우측 180px 제외 스트레치)
+└─ Panel_WeaponCooldown (...1061, 2026-07-27 Panel_Synergy에서 리네임/용도 변경) — 하단 스트레치 h170, y+40, VerticalLayoutGroup
+   └─ Item_WeaponCooldown (...1071, 구 Item_Synergy)  — 행 템플릿 h30, **비활성**(코드가 무기 수만큼 `ResUtil.Create`로 복제, [[UIInGameHUD]] 2026-07-27-0 참고)
+      ├─ Text_Label (...1073)        — 무기 이름으로 런타임 갱신 (우측 180px 제외 스트레치)
       └─ Image_GaugeBG (...1077)     — 우측 160×10 #1A1A26
-         └─ Image_GaugeFill (...1081) — Filled(Horizontal) 시안, fillAmount 0
+         └─ Image_GaugeFill (...1081) — Filled(Horizontal), 색은 무기 `ColorHex`로 런타임 갱신, fillAmount=무기 쿨다운 진행률
 ```
 
 추가(2026-07-23-4, 루트 직속 자식으로 append):
@@ -43,6 +43,22 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 - XP/시너지 게이지는 Image Filled 타입 — 코드에서 `fillAmount`로 갱신할 예정이었으나 아직 미구현(이번 작업 범위 밖).
 - Btn_Pause 좌/우 반전(왼손 모드)은 코드에서 anchoredPosition.x 부호 전환으로 처리 예정(미구현).
 - **멀티 스프라이트 텍스처 참조 시 주의(참고용, 현재는 미사용)**: `frame_capsule.png`/`icon_*.png`류는 TextureImporter가 `spriteMode: 2`(Multiple)라, `m_Sprite`의 `fileID`는 관용적인 `21300000`이 아니라 각 텍스처 `.meta`의 `internalIDToNameTable`(classID 213) 값을 그대로 써야 한다 — 이번엔 되돌려져서 실제로 화면에 뜨는지 검증되지 않은 채 남음. 나중에 다시 이 방식으로 아이콘/스프라이트를 붙이게 되면 이 패턴을 재사용하되, 에디터에서 실제로 렌더링되는지 먼저 확인할 것.
+
+---
+
+## 2026-07-27-0 — Panel_Synergy → Panel_WeaponCooldown 리네임/용도 변경 (Unity MCP 사용)
+
+### 개요
+사용자 요청("인게임 하단 비어있는 곳에... 무기 쿨타임... exp 차는거처럼") — 시너지 표시는 애초에 한 번도 실사용된 적 없는 미구현 기능이라 사용자 확정으로 폐기하고 같은 자리를 무기 쿨다운 게이지로 재활용. [[UIInGameHUD]](class.md) 2026-07-27-0 참고.
+
+### 수정 (오브젝트 단위, Unity MCP `manage_gameobject`)
+- **Panel_Synergy(...1061) → Panel_WeaponCooldown**: 이름만 변경, RectTransform(하단 스트레치 h170, y+40)/VerticalLayoutGroup(spacing 8, childControlHeight false)은 그대로 재사용.
+- **Item_Synergy(...1071) → Item_WeaponCooldown**: 이름 변경 + `SetActive(false)`로 비활성화(원래도 "미구현이라 인스턴스화 안 함"이었지만 `activeSelf: true`로 남아있어 실제로는 플레이스홀더 텍스트("OFFENSE 0/5")가 그대로 노출되고 있었음 — 이번에 정식 템플릿으로 전환).
+- **Text_Label**: 플레이스홀더 텍스트 "OFFENSE 0/5" → "Weapon"(런타임에 무기 이름으로 즉시 덮어써짐, 아무 의미 없는 placeholder).
+- Image_GaugeBG/Image_GaugeFill 구조·좌표는 무변경 — 코드가 `row.transform.Find("Image_GaugeBG/Image_GaugeFill")` 경로로 직접 찾으므로 계층 이름을 그대로 유지해야 함.
+
+### 검증
+`UIInGameHUD` 컴포넌트의 `m_WeaponCooldownContainer`/`m_WeaponCooldownTemplate` 필드가 각각 새 이름의 오브젝트로 정상 연결됨을 리소스 조회로 확인. Play Mode 실측은 [[UIInGameHUD]](class.md) 2026-07-27-0 참고(미완료).
 
 ---
 

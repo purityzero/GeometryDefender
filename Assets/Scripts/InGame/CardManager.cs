@@ -15,17 +15,38 @@ public class CardManager : UpdatableBehaviour
         { "OrbitalRing", 503 },
     };
 
+    // Splash(#303)/Chain(#304)/Homing(#305)은 이제 무기 전용 강화 카드(ActorPlayer.ApplyInnateWeaponAbility 참고) —
+    // 이 런에서 해당 무기(Mage/ChainCoil/HomingPod)를 아직 안 뽑았으면 드래프트 풀에서 제외(사용자 요청: "무기가 없으면 다른 걸 뽑아와야지").
+    private static readonly Dictionary<int, int> WEAPON_REQUIRED_CARD_IDS = new Dictionary<int, int>
+    {
+        { 303, 2 }, // Splash I → Mage
+        { 304, 4 }, // Chain Lightning → ChainCoil
+        { 305, 5 }, // Homing Missile → HomingPod
+    };
+
+    // Double Shot(#107)은 Legendary라 등급상 유니크 취급되지만, 사용자 요청("더블샷 계속 먹으면 탄수 한번에 늘어나게")대로
+    // 반복 드래프트가 가능해야 하는 예외 카드 — 계속 뽑을 때마다 AddProjectileCount(1)이 그대로 누적된다.
+    private static readonly HashSet<int> REPEATABLE_CARD_IDS = new HashSet<int> { 107 };
+
+    // 카테고리 시너지(3/5/7장) 중복 부여 방지용 키 — 튜플 대신 struct 사용(CODE.MD "튜플 구조 분해/저장 금지")
+    private struct SynergyTierKey
+    {
+        public eCardCategory Category;
+        public int Tier;
+    }
+
     private List<CardRecord> m_AllCards;
     private List<int> m_ObtainedCardIds = new List<int>();
     private HashSet<int> m_ObtainedUniqueIds = new HashSet<int>();
     private Dictionary<eCardCategory, int> m_CategoryCounts = new Dictionary<eCardCategory, int>();
-    private HashSet<(eCardCategory Category, int Tier)> m_GrantedSynergyTiers = new HashSet<(eCardCategory, int)>();
+    private HashSet<SynergyTierKey> m_GrantedSynergyTiers = new HashSet<SynergyTierKey>();
 
     private int m_PitySinceEpic;
     private int m_RerollsUsed;
 
     private bool m_hasVampire;
     private float m_VampireChancePercent;
+    private float m_VampireHealAmount;
 
     [System.NonSerialized] private bool m_isInitialized;
 
@@ -102,12 +123,19 @@ public class CardManager : UpdatableBehaviour
         return RollRarity(_pool);
     }
 
-    private static readonly (eCardRarity Rarity, float Weight)[] RARITY_WEIGHTS = new[]
+    // 등급별 가중치 — 튜플 대신 struct 사용(CODE.MD "튜플 구조 분해/저장 금지")
+    private struct RarityWeight
     {
-        (eCardRarity.Common, 60f),
-        (eCardRarity.Rare, 25f),
-        (eCardRarity.Epic, 12f),
-        (eCardRarity.Legendary, 3f),
+        public eCardRarity Rarity;
+        public float Weight;
+    }
+
+    private static readonly RarityWeight[] RARITY_WEIGHTS = new[]
+    {
+        new RarityWeight { Rarity = eCardRarity.Common, Weight = 60f },
+        new RarityWeight { Rarity = eCardRarity.Rare, Weight = 25f },
+        new RarityWeight { Rarity = eCardRarity.Epic, Weight = 12f },
+        new RarityWeight { Rarity = eCardRarity.Legendary, Weight = 3f },
     };
 
     private eCardRarity RollRarity(Dictionary<eCardRarity, List<CardRecord>> _pool)
@@ -172,7 +200,10 @@ public class CardManager : UpdatableBehaviour
             if (IsCardUnlocked(record) == false)
                 continue;
 
-            bool isUnique = (record.Rarity == eCardRarity.Epic || record.Rarity == eCardRarity.Legendary);
+            if (HasRequiredWeapon(record) == false)
+                continue;
+
+            bool isUnique = IsUniqueCard(record);
             if (isUnique == true && m_ObtainedUniqueIds.Contains(record.Id) == true)
                 continue;
 
@@ -216,6 +247,23 @@ public class CardManager : UpdatableBehaviour
         return false;
     }
 
+    private bool HasRequiredWeapon(CardRecord _record)
+    {
+        if (WEAPON_REQUIRED_CARD_IDS.TryGetValue(_record.Id, out int requiredTowerRecordId) == false)
+            return true;
+
+        return InGameScene.Current.towerController.HasWeapon(requiredTowerRecordId);
+    }
+
+    // Epic/Legendary는 원래 한 런에 한 장만(유니크) — REPEATABLE_CARD_IDS에 등록된 카드(Double Shot #107)만 예외로 반복 드래프트 허용.
+    private bool IsUniqueCard(CardRecord _record)
+    {
+        if (REPEATABLE_CARD_IDS.Contains(_record.Id) == true)
+            return false;
+
+        return (_record.Rarity == eCardRarity.Epic || _record.Rarity == eCardRarity.Legendary);
+    }
+
     public int GetMaxRerolls()
     {
         MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
@@ -252,8 +300,7 @@ public class CardManager : UpdatableBehaviour
     {
         m_ObtainedCardIds.Add(_record.Id);
 
-        bool isUnique = (_record.Rarity == eCardRarity.Epic || _record.Rarity == eCardRarity.Legendary);
-        if (isUnique == true)
+        if (IsUniqueCard(_record) == true)
             m_ObtainedUniqueIds.Add(_record.Id);
 
         if (m_CategoryCounts.ContainsKey(_record.Category) == false)
@@ -275,10 +322,11 @@ public class CardManager : UpdatableBehaviour
             if (count < tier)
                 continue;
 
-            if (m_GrantedSynergyTiers.Contains((_category, tier)) == true)
+            SynergyTierKey tierKey = new SynergyTierKey { Category = _category, Tier = tier };
+            if (m_GrantedSynergyTiers.Contains(tierKey) == true)
                 continue;
 
-            m_GrantedSynergyTiers.Add((_category, tier));
+            m_GrantedSynergyTiers.Add(tierKey);
             GrantSynergyBonus(_category, tier);
         }
     }
@@ -336,7 +384,7 @@ public class CardManager : UpdatableBehaviour
     {
         if (InGameScene.Current.towerController == null || InGameScene.Current.towerController == null)
         {
-            Logger.Error($"[CardManager] ApplyCardEffect Failed! TowerController/TowerHealth not ready - Id:{_record.Id}");
+            Logger.Error($"[CardManager] ApplyCardEffect Failed! ActorPlayer/TowerHealth not ready - Id:{_record.Id}");
             return;
         }
 
@@ -398,11 +446,6 @@ public class CardManager : UpdatableBehaviour
                 InGameScene.Current.towerController.SetHoming();
                 break;
 
-            case eCardEffectType.TargetingOverride:
-                if (Enum.TryParse(_record.EffectParam, out eTargetingType targetingType) == true)
-                    InGameScene.Current.towerController.SetTargetingStrategy(targetingType);
-                break;
-
             // Fortify(#402) 전용 — MaxHp +50(EffectValue)에 더해 그만큼 즉시 회복(AddMaxHp가 이미 델타만큼 자동 회복하므로 별도 처리 불필요)
             case eCardEffectType.MaxHpAdd:
                 InGameScene.Current.towerController.AddMaxHp(Mathf.RoundToInt(_record.EffectValue));
@@ -426,6 +469,7 @@ public class CardManager : UpdatableBehaviour
             case eCardEffectType.LifestealOnKill:
                 m_hasVampire = true;
                 m_VampireChancePercent = _record.EffectValue;
+                m_VampireHealAmount = (string.IsNullOrEmpty(_record.EffectParam) == false && float.TryParse(_record.EffectParam, out float parsedHealAmount) == true) ? parsedHealAmount : 1f;
                 break;
 
             case eCardEffectType.ReviveOnce:
@@ -448,6 +492,11 @@ public class CardManager : UpdatableBehaviour
             case eCardEffectType.TimeSlowAura:
                 CardEffectState.TimeSlowMultiplier = 1f - (_record.EffectValue / 100f);
                 break;
+
+            // 무기 해금 카드 — EffectValue = TowerTable(무기 정의)의 Id, 독립 쿨다운/타겟팅을 갖는 무기 슬롯을 추가
+            case eCardEffectType.WeaponUnlock:
+                InGameScene.Current.towerController.AddWeapon(Mathf.RoundToInt(_record.EffectValue));
+                break;
         }
     }
 
@@ -457,7 +506,7 @@ public class CardManager : UpdatableBehaviour
             return;
 
         if (UnityEngine.Random.value < m_VampireChancePercent / 100f)
-            InGameScene.Current.towerController?.Heal(1);
+            InGameScene.Current.towerController?.Heal(Mathf.RoundToInt(m_VampireHealAmount));
     }
 
     private void OnDestroy()

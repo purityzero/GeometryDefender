@@ -1,8 +1,8 @@
 # MonsterManager
 
 ## 연관 클래스
-- ActorMonster
-- MemoryPoolFactory
+- ActorMonster — CullingObject 캐시 보유, `UpdateCullingLogic()` 노출(2026-07-27)
+- MemoryPoolFactory — `GetAllActive()`(2026-07-27)로 활성 몬스터 순회
 - WayPoint
 - EnemyRecord
 - BaseScene, IUpdatable (Update 대신 구동)
@@ -665,3 +665,33 @@ MissingReferenceException: The object of type 'UnityEngine.Transform' has been d
 
 ### 2026-07-23-3 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리)
 사용자 지적("Manager가 너무 많지 않아?") — 개별 `.Current` 폐지, `InGameScene.Current.monsterManager`로 접근하도록 통일. `TimerManager.Current`/`DifficultyManager.Current` 참조도 `InGameScene.Current.timerManager`/`.difficultyManager`로 교체. 상세 설계/버그/검증은 [[InGameScene]] 2026-07-23-1 참고.
+
+---
+
+### 2026-07-27-0 — 몬스터 컬링 구동 주체를 이 클래스로 이동
+
+#### 개요
+사용자 요청("인게임에서 CullingObject 적용해줘") → 몬스터만 대상으로 확정, 처음엔 [[Pooling]](`MemoryPooling<T>`, 공용 클래스)에 구동 로직을 얹었으나 사용자 지적("Pooling이 아니라 MonsterManager에서 관리해야 하는거 아니야?")으로 이 클래스가 직접 구동하도록 재설계. 상세 배경은 [[Pooling]]/[[Factory]]/[[ActorMonster]] 2026-07-27 항목, [[CullingObject]] 참고.
+
+#### 파일
+- Assets/Scripts/InGame/MonsterManager.cs
+
+#### 수정 (함수 단위)
+**UpdateLogic()**
+- 전: `ProcessDeadMonsters(); ProcessReachedEndMonsters(); m_MonsterFactory.UpdateLogic();`
+- 후: 마지막 줄에 `UpdateCulling();` 추가
+
+**신규 `UpdateCulling()`**(private)
+```csharp
+private void UpdateCulling()
+{
+    foreach (ActorMonster actorMonster in m_MonsterFactory.GetAllActive())
+    {
+        actorMonster.UpdateCullingLogic();
+    }
+}
+```
+- `m_MonsterFactory.GetAllActive()`([[Factory]] 2026-07-27 참고, 팩토리가 이미 추적 중이던 활성 오브젝트 집합 재사용)로 현재 스폰되어 있는 몬스터 전체를 순회, 각각의 `ActorMonster.UpdateCullingLogic()`(캐시된 CullingObject.UpdateLogic() 호출)을 매 프레임 호출.
+
+#### 검증
+Unity 에디터 포커스 재부여로 실제 재컴파일 확인(`Tundra build success`, 에러 0건). **Play Mode 실측(몬스터가 화면 밖/안에서 실제로 비활성화/재활성화되는지)은 미검증** — qa-tester 에이전트로 확인 예정.

@@ -185,6 +185,15 @@ public class MonsterManager : UpdatableBehaviour
         ProcessDeadMonsters();
         ProcessReachedEndMonsters();
         m_MonsterFactory.UpdateLogic();
+        UpdateCulling();
+    }
+
+    private void UpdateCulling()
+    {
+        foreach (ActorMonster actorMonster in m_MonsterFactory.GetAllActive())
+        {
+            actorMonster.UpdateCullingLogic();
+        }
     }
 
     private void ProcessDeadMonsters()

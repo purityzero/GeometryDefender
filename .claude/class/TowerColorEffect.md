@@ -201,3 +201,36 @@ private Color GetColorForRatio(float _hpRatio)
 ## 2026-07-24-0 — const 전부 GameConfigTable로 이관
 [[GameConfigRecord]] 2026-07-24-0 참고. `COLOR_TWEEN_DURATION`/`GLOW_TWEEN_DURATION`/`LOW_PULSE_DURATION`/`MID_HP_RATIO`/`LOW_HP_RATIO` 제거 → `GameConfigTable.TOWER_COLOR_TWEEN_DURATION`/`TOWER_GLOW_TWEEN_DURATION`/`TOWER_LOW_PULSE_DURATION`/`TOWER_MID_HP_RATIO`/`TOWER_LOW_HP_RATIO` 참조. `GLOW_AMOUNT_PROPERTY`(셰이더 프로퍼티명 문자열)는 그대로 유지.
 검증: 컴파일 에러 0건. Play Mode 재검증 미완료.
+
+---
+
+## 2026-07-27-0 — halo 렌더러 연동 (TitleScene 헥사곤 방식 Glow)
+
+### 개요
+사용자 요청("InGame의 Player도 Glow효과 다 넣어줘야해" — TitleScene 헥사곤 코어+halo 2계층 방식) — `ActorPlayer`(InGameScene.unity)에 halo 자식(`ActorPlayerGlow`)을 추가하고, 이 클래스가 코어뿐 아니라 halo 머테리얼에도 동일한 HP 티어 색상/GlowAmount를 적용하도록 확장.
+
+### 파일
+- Assets/Scripts/InGame/TowerColorEffect.cs
+- Assets/Scenes/InGameScene.unity (halo 오브젝트 추가, 상세는 [[ActorPlayer]] 2026-07-27-4 참고)
+
+### 수정 (함수 단위)
+**필드 추가**: `[SerializeField] private SpriteRenderer m_GlowSpriteRenderer;`, `m_GlowTween` → `m_CoreGlowTween`/`m_HaloGlowTween` 2개로 분리(코어/halo가 각자 독립된 트윈을 가져야 티어 전환 시 서로 안 죽이고 따로 갱신됨).
+
+**OnHpChanged(int, int)**
+- 전: 코어 머테리얼에만 `TweenUtil.Color`/`ApplyGlowForTier` 적용.
+- 후: 코어 적용 로직은 그대로 두고, `if (m_GlowSpriteRenderer != null)` 이면 halo 머테리얼에도 동일한 `GetColorForTier(targetTier)`/`ApplyGlowForTier`를 반복 적용.
+
+**ApplyGlowForTier(Material, eHpTier)**
+- 전: `Material _material, eHpTier _tier` — 내부에서 필드 `m_GlowTween`을 직접 참조.
+- 후: `Material _material, eHpTier _tier, ref Tween _glowTween` — 코어 호출 시 `ref m_CoreGlowTween`, halo 호출 시 `ref m_HaloGlowTween`을 넘겨 서로 독립적으로 Kill/재생성되도록 함.
+
+**OnDestroy()**: `m_GlowTween?.Kill();` → `m_CoreGlowTween?.Kill(); m_HaloGlowTween?.Kill();`
+
+### 참고
+halo의 알파 pulsing(숨쉬는 효과)은 이 클래스가 아니라 halo 오브젝트에 붙은 `FadeTweenEffect`/`TweenEffectPlayer`가 독립적으로 담당 — 이 클래스는 색상(`_Color`)/글로우 강도(`_GlowAmount`)만 코어와 halo 양쪽에 동기화한다. 두 채널(알파 vs 색상/글로우)이 서로 다른 프로퍼티라 충돌 없음(TitleScene Hexagon/HexagonGlow와 동일 설계).
+
+### 검증
+컴파일 에러 0건. Play Mode 시각 확인은 사용자가 직접 진행 예정 — 이 세션에서는 스크린샷 검증 안 함.
+
+### ⚠️ 현재 씬에서는 m_GlowSpriteRenderer 미연결 상태 (2026-07-27-5)
+사용자가 InGameScene의 halo 오브젝트(`ActorPlayerGlow`)를 지우고 `HexagonGlow`로 직접 재구성하면서 `m_GlowSpriteRenderer`를 연결하지 않은 채로 남겨둠(fileID 0) — 즉 이 필드/로직 자체는 코드에 살아있지만 현재 아무 halo도 참조하지 않아 사실상 비활성 상태(코어만 기존처럼 HP 티어 색상/글로우 적용받음). 상세는 [[ActorPlayer]] 2026-07-27-5 참고. 나중에 필요해지면 그 halo의 SpriteRenderer를 연결하면 바로 동작한다.

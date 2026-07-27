@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,9 +11,15 @@ public class UIInGameHUD : UIBase
     [SerializeField] private Image m_XpFillImage;
     [SerializeField] private Image m_HpFillImage;
 
+    [Header("# 무기 쿨다운")]
+    [SerializeField] private Transform m_WeaponCooldownContainer;
+    [SerializeField] private GameObject m_WeaponCooldownTemplate;
+
     private ObservableVariable<int> m_HpObservable;
     private ObservableVariable<int> m_KillObservable;
     private ObservableVariable<int> m_XpObservable;
+
+    private List<Image> m_WeaponCooldownFills = new List<Image>();
 
     private void OnDestroy()
     {
@@ -32,6 +39,7 @@ public class UIInGameHUD : UIBase
         TryRegisterHpObservable();
         TryRegisterKillObservable();
         TryRegisterXpObservable();
+        UpdateWeaponCooldowns();
     }
 
     private void UpdateTimeText()
@@ -106,6 +114,41 @@ public class UIInGameHUD : UIBase
             return;
 
         m_XpFillImage.fillAmount = (float)_newValue / InGameScene.Current.xpManager.requiredXp;
+    }
+
+    // 무기는 카드로 계속 늘어나기만 하므로(줄어들 일 없음), 새로 생긴 무기만큼만 행을 추가로 만들고 나머지는 매 프레임 fillAmount만 갱신 —
+    // ActorPlayer.GetWeaponCooldownRatio()는 쿨다운마다 0(방금 발사)→1(재장전 완료)로 차오르는 값이라 XP 게이지와 동일한 방식으로 표현.
+    private void UpdateWeaponCooldowns()
+    {
+        if (InGameScene.Current == null || InGameScene.Current.towerController == null)
+            return;
+
+        ActorPlayer towerController = InGameScene.Current.towerController;
+
+        while (m_WeaponCooldownFills.Count < towerController.weaponCount)
+        {
+            int index = m_WeaponCooldownFills.Count;
+
+            GameObject row = ResUtil.Create(m_WeaponCooldownTemplate, m_WeaponCooldownContainer);
+            row.SetActive(true);
+
+            StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+            string weaponName = (stringTable != null) ? stringTable.GetString(towerController.GetWeaponNameKey(index)) : towerController.GetWeaponNameKey(index);
+
+            TextMeshProUGUI label = row.GetComponentInChildren<TextMeshProUGUI>();
+            label.text = weaponName;
+
+            Image fill = row.transform.Find("Image_GaugeBG/Image_GaugeFill").GetComponent<Image>();
+            if (ColorUtility.TryParseHtmlString(towerController.GetWeaponColorHex(index), out Color weaponColor) == true)
+                fill.color = weaponColor;
+
+            m_WeaponCooldownFills.Add(fill);
+        }
+
+        for (int i = 0; i < m_WeaponCooldownFills.Count; ++i)
+        {
+            m_WeaponCooldownFills[i].fillAmount = towerController.GetWeaponCooldownRatio(i);
+        }
     }
 
     public void OnClickPauseButton()

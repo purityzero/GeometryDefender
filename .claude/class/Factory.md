@@ -10,8 +10,32 @@
 - `MemoryPoolFactory<T, TEnum>` — enum 키별 MemoryPooling을 딕셔너리로 보유. (2026-07-21까지는 `<T1, TEnum1>`이었음 — 리팩토링으로 `IFactory`/`IMemoryPoolFactory` 인터페이스와 동일한 이름으로 통일, 아래 참고)
 - Create: 풀에서 Pop 후 `Open()` 호출. Recycle: 풀 반납(Push) 성공 시에만 `Close()` 호출.
 - 생성자에서 enum→Resources 경로 매핑을 받아 풀 구성. Prewarm/Clear는 전체 풀 일괄.
+- `GetAllActive()`(2026-07-27) — `m_ObjectTypeDictionary.Keys` 그대로 반환. `Create()`로 내준 뒤 아직 `Recycle()` 안 된 오브젝트 전체 집합을 이미 이 딕셔너리가 추적 중이라(2026-07-22-0 참고) 별도 저장소 없이 재사용. 호출부(`MonsterManager`)가 매 프레임 활성 오브젝트를 순회해야 할 때 사용.
 
 ## 작업 내역
+
+### 2026-07-27-0
+
+#### 개요
+사용자 지적("CullingObject를 Pooling에서 관리할게 아니라 MonsterManager에서 관리해야하는거 아니야?") — 몬스터 컬링 구동을 [[MonsterManager]]가 맡도록 재설계하며, "현재 활성화된 오브젝트 전체"를 얻을 방법이 필요해 추가. 상세 배경은 [[Pooling]]/[[ActorMonster]]/[[MonsterManager]] 2026-07-27 항목 참고.
+
+#### 파일
+- Assets/Scripts/Glory/Partterns/Factory/Factory.cs
+
+#### 수정 (함수 단위)
+**신규 `GetAllActive()`**
+```csharp
+public IEnumerable<T> GetAllActive()
+{
+    return m_ObjectTypeDictionary.Keys;
+}
+```
+- 새 리스트/딕셔너리를 따로 만들지 않고, 이미 `Create()`/`Recycle()`이 갱신 중이던 `m_ObjectTypeDictionary`(2026-07-22-0 참고)를 그대로 노출 — 같은 "활성 오브젝트 집합"을 두 곳에서 중복 추적하지 않기 위함.
+
+#### 검증
+Unity 에디터 포커스 재부여로 실제 재컴파일 확인(`Tundra build success`, 에러 0건). **Play Mode 실측은 미검증.**
+
+---
 
 ### 2026-07-22-0
 

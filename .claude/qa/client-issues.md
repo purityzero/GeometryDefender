@@ -6,6 +6,136 @@
 
 ---
 
+## 2026-07-27-1 — Play 중 스크립트 재컴파일 후 BaseScene.Current 영구 null → SceneSingleton 전원 NRE
+
+### 개요
+타겟팅 변경 카드(#306/#307) 제거 QA를 위해 qa-tester 에이전트로 여러 회차 Play 세션을 반복하던 중, `execute_code` 호출(스크립트 컴파일 유발) 직후부터 `read_console`/`manage_scene` 같은 비컴파일 도구만 써도 `BaseScene.Current`가 계속 null인 채로 NRE가 쏟아짐을 발견. QA 세션 전체가 이 블로커로 더 진행되지 못함(InGameScene에 들어가도 SpawnManager/MonsterManager/TimerManager 등록 자체가 실패해 몬스터가 안 스폰될 수 있는 수준).
+
+### 증상
+Play 중 아무 스크립트나 한 번 재컴파일되면(이 프로젝트에선 Unity MCP `execute_code` 호출이 트리거였음), 그 이후로 콘솔에 `SceneSingleton<T>` 계열(TimerManager/MonsterManager 등) 등록 시점마다 NRE가 반복 발생. 에이전트가 격리 테스트(컴파일 없는 도구만 쓰고 5초 대기)로도 동일 증상이 지속됨을 확인 — 반복 호출 패턴 자체는 원인이 아니었음.
+
+### 원인
+Unity는 Play 모드 도중 스크립트가 재컴파일되면(도메인 리로드) **static 필드는 전부 기본값으로 초기화되지만, 이미 살아있는(파괴되지 않은) 오브젝트의 `Awake()`는 재호출되지 않고 `OnEnable()`만 재호출**된다. `Assets/Scripts/Glory/Partterns/Singleton/SceneSingleton.cs`의 `Current`는 오직 `Awake()`에서만 세팅되고, `BaseScene`(`Assets/Scripts/Glory/Scene/BaseScene.cs`)은 `OnEnable()`을 완전 no-op으로 오버라이드해뒀었다 — 그래서 재컴파일 이후 `BaseScene.Current`가 영구 null로 남고, 그 뒤로 `OnEnable()`이 재호출되는 모든 `SceneSingleton<T>` 파생 클래스가 `BaseScene.Current.Register(this)`(null 참조)에서 NRE.
+
+### 수정 완료
+- `SceneSingleton.cs`: `Current` 프로퍼티 setter를 `private`→`protected`로 완화, `OnEnable()`에서 `Current = this as T;`를 추가로 재대입(도메인 리로드로 Awake가 안 불려도 여기서 복구됨) + `BaseScene.Current?.Register(this)`로 null 가드 추가.
+- `BaseScene.cs`: `OnEnable()`을 완전 no-op에서 `Current = this;`만 수행하도록 변경(자기 자신을 갱신 리스트에 등록하는 것은 여전히 생략).
+- 상세는 [[SceneSingleton]] 2026-07-27-0, [[BaseScene]] 2026-07-27-0 참고.
+
+### 검증
+IDE 진단(컴파일 에러 0건)만 확인 — **Play 중 재컴파일을 실제로 재현해 `Current`가 복구되는지는 아직 미검증**. 다음 QA 세션에서 최우선으로: (1) Play 중 아무 스크립트나 저장해 재컴파일을 강제 유발한 뒤 `BaseScene.Current`/`TimerManager.Current`/`MonsterManager.Current`가 null로 안 남고 정상 복구되는지, (2) 그 상태로 몬스터 스폰/타이머/카드 드래프트가 계속 정상 동작하는지 확인 필요. 원래 목적이었던 "카드 306/307이 드래프트 풀에 안 나오는지" 검증도 이 블로커 때문에 이번 세션에선 완료 못함 — 재검증 필요.
+
+### 관련 클래스
+- [SceneSingleton.md](../class/SceneSingleton.md)
+- [BaseScene.md](../class/BaseScene.md)
+
+### 추가 검증 (같은 날, 이후 세션)
+위 "검증" 항목에서 남겨둔 미검증 사항을 실제로 확인함: Play Mode 중 `refresh_unity`(compile 요청)로 강제 재컴파일을 유발한 뒤 `BaseScene.Current`를 리플렉션으로 확인 — 재컴파일 전후 모두 유효한 참조 유지(재컴파일 후에도 TitleScene 인스턴스를 계속 가리킴, null로 안 떨어짐). **수정이 실제로 동작함을 확인.**
+
+---
+
+## 2026-07-27-4 — InGame→Title 복귀 시 TitleSquareEffect(배경 사각형)가 화면 밖으로 나가버림
+
+### 개요
+사용자 리포트("TitleScene에서 Square들 InGame → Title로 다시 돌아가면 밖으로 나가버려"). [[CullingObject]] 2026-07-27-2와 동일한 클래스의 버그 — `TitleSquareEffect.m_MainCamera`가 `Start()`에서 1회만 캐싱되는데, InGameScene→TitleScene 전환 도중 두 씬 카메라가 잠깐 공존하는 창에서 곧 파괴될 InGameScene 카메라를 캐싱했을 가능성. 캐시가 파괴된 뒤 `CheckBounce()`의 null 가드가 매 프레임 조기 종료되지만 `Move()`는 계속 실행돼 반사 없이 화면 밖으로 계속 이동.
+
+### 수정
+`CheckBounce()`에 `if (m_MainCamera == null) m_MainCamera = Camera.main;` 재조회 추가 — CullingObject와 동일 패턴. 상세는 [TitleSquareEffect.md](../class/TitleSquareEffect.md) 2026-07-27-4 참고.
+
+### 검증
+IDE 진단 컴파일 에러 0건. Play Mode 실측(InGame↔Title 반복 전환) 미완 — 다음 세션 확인 필요.
+
+---
+
+## 2026-07-27-2 — World.DefaultGameObjectInjectionWorld null 재현 (2026-07-21-1/2026-07-23-0과 동일 이슈, 오늘도 재현 + 새 근거)
+
+### 개요
+타겟팅 카드 제거 QA 도중 재현. [[BaseScene]]/[[SceneSingleton]] 2026-07-27-0(위 2026-07-27-1 항목)의 `BaseScene.Current` 도메인 리로드 버그를 고치는 과정에서 코디네이터가 "혹시 같은 원인(Play 중 재컴파일)이 World도 죽인 게 아니냐"는 가설을 세웠으나, **오늘 재검증으로 이 가설은 기각됨.**
+
+### 새로 확인된 것
+- **강제 재컴파일이 전혀 없는 클린 세션**(Stop→Play, `isCompiling=false` 유지, `refresh_unity` 미호출)에서도 재현됨 — 2026-07-23-0에서 "미확정 후보 2번"으로 남겨뒀던 "재컴파일로 오염된 Editor 세션" 가설이 원인이 아님을 이번에 배제할 수 있게 됨.
+- 같은 조건(Stop→Play→동일 클릭 시퀀스)을 반복해도 매번 결과가 다름 — 1회차 정상(World 살아있음), 2회차 실패(World 사라짐, `World.All.Count=0`). **재컴파일과 무관한 진짜 레이스 컨디션**으로 좁혀짐. 어느 `SceneManager` Command 단계에서 갈리는지는 이번에도 특정 못함(2026-07-23-0의 "다음 확인" #2가 여전히 유효한 다음 조사 방향).
+
+### 결정 — 오늘은 이 버그를 더 파지 않고 우회
+이미 두 차례(2026-07-21, 2026-07-23) 별도 세션에서 원인 규명을 시도했으나 미해결로 남은 이슈라, 오늘의 실제 목적(타겟팅 카드 제거 검증 + 밸런스 관찰)에 더 이상 시간을 쓰지 않기로 함. World가 정상인 Play 세션이 나올 때까지 Stop→Play를 재시도해 그 세션에서 카드/밸런스 검증을 진행하는 우회로 QA를 이어감.
+
+### 관련 클래스
+- 기존 2026-07-23-0 항목과 동일(아래 참고) — [SceneManager.md](../class/SceneManager.md), [MonsterManager.md](../class/MonsterManager.md)
+
+---
+
+## 2026-07-27-3 — 카드 306/307 제거 검증 + 무기 다양화 카드 정상 적용 확인 (버그 아님, 검증 결과)
+
+### 개요
+당초 QA 목적(카드 306/307 "최강 타겟팅"/"최속 타겟팅" 제거 검증)을 위 2026-07-27-1/2026-07-27-2 블로커를 우회(World가 정상인 클린 세션이 나올 때까지 Stop→Play 재시도)해가며 최종 완료. 독립된 Play 세션 3회, 총 7회의 카드 드래프트 이벤트를 `execute_code`로 `UICardDraft.m_CurrentDraft`(private 필드) 리플렉션 직접 조회 — 화면 텍스트 판독이 아니라 실제 드래프트에 담긴 `CardRecord` 리스트를 코드 레벨로 확인.
+
+### 확인 결과
+- **카드 Id 306/307 은 7회 드래프트(3장씩, 총 21슬롯) 어디에도 등장하지 않음.** `CardTable.csv`/`StringTable.csv`에서 완전히 삭제되어 있고 `CardManager.cs`의 `eCardEffectType.TargetingOverride` 케이스/enum 값도 삭제된 상태 — 구조적으로도 재등장이 불가능함을 코드/테이블 직접 대조로도 재확인.
+- 드래프트 UI(`UICardDraft`) 정상 동작: 매번 3장 제시, 실제 UI 클릭(`ExecuteEvents.pointerClickHandler`)으로 선택 시 `CardManager.ApplyCard()` 정상 적용(`categoryCounts` 갱신 확인), 관련 콘솔 에러/경고 0건.
+- 카드 제거로 인한 드래프트 풀 개수 불일치/3장 미만 노출 등 부작용 없음(7회 전부 3장 정상 제시).
+- **무기 다양화 카드**: 3회 중 1회차 드래프트에서 Id 601(Category=Weapon, Epic, WeaponUnlock, EffectValue=1)이 뽑혀 선택 → `CardManager.cs`의 `WeaponUnlock` 케이스가 `ActorPlayer.AddWeapon(1)` 호출 → `categoryCounts[Weapon]=1`로 정상 반영, 에러 없음. `ActorPlayer.cs` 코드 확인 결과 `AddWeapon()`은 독립된 `CooldownTimer`를 가진 `TowerWeapon`을 `m_WeaponList`에 추가하고, `UpdateLogic()`이 매 프레임 `m_WeaponList` 전체를 순회하며 각자의 쿨다운을 독립적으로 감소/발사시키는 구조 — **설계상 독립 쿨다운 동시 발사가 맞게 구현되어 있음을 코드 레벨로 확인**.
+
+### 미검증(한계)
+- **무기 카드는 601 한 종류만 실측**(Archer/Mage/ChainCoil/HomingPod로 추정되는 나머지 Weapon 카드 602~604는 이번 3판에서 드래프트에 안 나와 못 뽑아봄).
+- 무기 2개 이상이 실제로 "동시에" 발사체를 쏘는 장면을 시각적으로(프레임 단위) 확인하지는 못함 — `m_WeaponList.Count`가 실제로 2 이상이 된 상태에서의 실사격 로그/스크린샷 확인이 남은 항목. 카드 적용 자체(`categoryCounts` 반영)와 코드 구조(독립 쿨다운 루프)까지는 확인했으나, 런타임 동시발사 시각 확인은 이번 세션에서 시간 관계상 완료 못 함.
+- 영상 녹화는 ffmpeg가 이 머신에 없어(사용자 확인, 재설치는 보류 요청) mp4로 못 남김 — PNG 프레임 시퀀스만 `QA_Recordings/qa_*_frames/`에 보존.
+
+### 관련 클래스
+- [CardManager.md](../class/CardManager.md)
+- [ActorPlayer.md](../class/ActorPlayer.md)
+
+---
+
+## 2026-07-27-0 — CullingObject가 몬스터 6종에서 실질적으로 전혀 동작 안 함 (Awake에서 캐싱한 mainCamera가 씬 전환 도중 파괴된 참조로 굳어버림)
+
+### 개요
+사용자 요청("인게임에서 CullingObject 적용해줘") 후속 QA. [[CullingObject]]/[[ActorMonster]]/[[MonsterManager]] 2026-07-27 작업분(몬스터 6종 프리팹에 CullingObject 부착 + `ActorMonster.UpdateCullingLogic()` → `MonsterManager.UpdateCulling()`이 매 프레임 활성 몬스터를 순회하며 구동)을 Play Mode로 실측. TitleScene → `Btn_Play` 실제 클릭 → 난이도 팝업(`UIDifficultySelect`, DontDestroyOnLoad라 `find_gameobjects`에는 안 잡힘 — `Resources.FindObjectsOfTypeAll`로 확인) → `Item_Normal` 실제 클릭 → InGameScene 진입까지 전부 실제 UI 클릭 경로로 진행.
+
+**결론: 화면 밖으로 나가도 몬스터가 절대 비활성화되지 않는다.** 콘솔 에러/예외는 0건 — 조용히 기능이 죽어있는 케이스.
+
+### 증상
+InGameScene 진입 후 살아있는 몬스터 8마리(전부 Triangle) 전원이 `activeSelf == true`인 채로, 그중 다수가 카메라 뷰포트(직접 계산: `orthographicSize=6.5`, `aspect=0.5625` 기준 x:[-3.66,3.66], y:[-6.50,6.50]) 밖에 있었다:
+- pos=(5.71,-3.66), (4.55,1.83), (-5.19,5.69) — x축 기준 뷰포트 경계를 0.9~2unit 이상 벗어남에도 계속 활성 상태.
+- pos=(-3.90,0.61)은 경계를 살짝(0.24unit) 벗어났지만 스프라이트 반경 마진 때문에 정상적으로 계속 보여야 하는 경계 케이스(버그 아님, 아래 원인 검증 참고).
+
+### 근거
+1. `execute_code`로 `ActorMonster` 전체(풀 60개: 6종×10개 prewarm)를 조회 — 8개 활성(Triangle) 전부 `activeSelf=true`, 나머지 52개는 비활성 상태로 풀 부모 위치(0,0) 대기 중(정상 풀링 동작, 버그 아님).
+2. 리플렉션으로 8개 활성 몬스터 각각의 `CullingObject.mainCamera` private 필드를 직접 읽음 — **8개 전부 "파괴된 Camera 오브젝트" 참조**였음(Unity의 `== null` 오버로드 때문에 `camValue == null` 체크로는 "NULL"로만 보이지만, 실제로 `IsInCameraView` 프로퍼티를 강제 호출하면 `MissingReferenceException`(`The object of type 'UnityEngine.Camera' has been destroyed but you are still trying to access it.`)이 실제로 던져짐 — 즉 `mainCamera`가 단순 null이 아니라 "파괴됐지만 아직 들고 있는" 상태).
+3. **원인 격리 검증**: 리플렉션으로 8개 전부의 `mainCamera` 필드를 현재 유효한 `Camera.main`으로 교체한 뒤 `UpdateLogic()`을 강제 재호출 → 뷰포트 밖에 있던 3개(x=5.71/4.55/-5.19)는 즉시 `SetActive(false)`로 정확히 꺼졌고, 뷰포트 안/경계 케이스 5개는 그대로 켜진 상태 유지. **즉 `IsInCameraView`의 뷰포트 판정 수식 자체는 정상 — 문제는 오직 캐싱된 카메라 참조 하나뿐.**
+4. 녹화 시도: `Tools/QA/Start Recording`/`Stop Recording`으로 2437프레임 PNG 캡처 성공(`QA_Recordings/qa_20260727_011145_frames/`). 이 환경엔 ffmpeg가 PATH/`%LOCALAPPDATA%\ffmpeg`에 없어 mp4 스티칭은 실패(`last_recording.json.path == null`, [[QARecorder]] 문서에 이미 기록된 기존 환경 제약). PNG 프레임을 직접 열어 확인 — 다만 이 버그는 애초에 영상으로는 절대 드러나지 않는다는 점이 중요: `SetActive(false)`는 순수 최적화(비활성 오브젝트의 Update/렌더 비용 회피)이고, 카메라 프러스텀 밖의 오브젝트는 `activeSelf` 값과 무관하게 화면에 렌더링되지 않으므로, 버그가 있어도 없어도 화면상으로는 동일하게 보인다 — 위 2/3번의 직접 상태 조회(리플렉션)만이 유효한 검증 수단이었다. (참고로 녹화 시작 시점엔 이미 타워가 죽어 "런 종료" 화면이었음 — 몬스터 6마리가 그 화면 뒤에 정지된 채로 잡혔을 뿐, 이번 조사와 무관.)
+
+### 원인
+`Assets/Scripts/Glory/Optimization/CullingObject.cs`의 `Awake()`:
+```csharp
+void Awake()
+{
+    mainCamera = Camera.main;
+    ...
+}
+```
+이 컴포넌트는 몬스터 6종 프리팹에 붙어 **풀링(재사용)되는 오브젝트**다. `Awake()`는 GameObject가 실제로 `Instantiate`될 때(=풀 Prewarm 시점) 딱 한 번만 호출되고, 이후 `Push()`/`Pop()`으로 몇 번을 재사용해도 다시 호출되지 않는다(`SetActive`는 `OnEnable`/`OnDisable`만 태움).
+
+`SceneManager`의 씬 전환 흐름은 "InGameScene을 additive로 로드 → 잠시 후 TitleScene을 언로드"라, 짧은 시간 동안 TitleScene의 Main Camera와 InGameScene의 Main Camera가 동시에 존재하는 창이 있다(둘 다 `MainCamera` 태그). 몬스터 풀 Prewarm(`MonsterManager.Init()`)이 이 창 안에서(또는 그 근접한 타이밍에) 실행되면 `Camera.main`이 TitleScene 쪽 카메라를 반환할 수 있고, 그 참조가 `mainCamera` 필드에 굳어버린 채로 곧이어 TitleScene이 언로드되며 그 카메라가 파괴된다. 이후 `UpdateLogic()`의 가드,
+```csharp
+if (mainCamera == null)
+    return;
+```
+는 Unity의 "파괴된 UnityEngine.Object는 `== null`이 true" 오버로드 덕에 매 프레임 조용히 조기 종료돼버려서, **에러 로그 하나 없이 해당 인스턴스의 컬링이 그 Play 세션 내내 영구적으로 죽는다.** 재사용(Pop/Push)으로도 복구되지 않는다 — `Awake()`가 다시 안 불리기 때문.
+
+### 수정 완료 (2026-07-27-2)
+`CullingObject.UpdateLogic()`의 `if (mainCamera == null) return;` 가드 앞에 `if (mainCamera == null) mainCamera = Camera.main;` 재조회를 추가 — 파괴된 참조를 만나면 즉시 자연 복구됨. 상세는 [[CullingObject]] 2026-07-27-2 참고.
+
+#### 검증
+Play Mode에서 재현 조건(캐싱된 카메라를 `DestroyImmediate`로 파괴)을 직접 만들어 `UpdateLogic()` 호출 → `mainCamera`가 유효한 카메라로 재할당되고 화면 밖 테스트 오브젝트가 정확히 `SetActive(false)` 처리됨을 확인, 콘솔 에러 0건. **단, 정상 몬스터 스폰 경로(TitleScene→Btn_Play→InGameScene)를 통한 End-to-End 재검증은 이번엔 못함** — 검증 도중 기존에 이미 알려진 별개의 미해결 버그(`World.DefaultGameObjectInjectionWorld`가 씬 전환 중 null이 되는 문제, 아래 2026-07-21-1/2026-07-23-0 참고)가 다시 재현되어 `MonsterManager.Init()`이 막힘 — 이 버그와 CullingObject 수정은 무관하므로 CullingObject 단독 격리 테스트로 대신 검증함. World-null 버그가 먼저 해결되면 실제 몬스터 스폰 경로로도 재검증 권장.
+
+### 관련 클래스
+- [CullingObject.md](../class/CullingObject.md)
+- [ActorMonster.md](../class/ActorMonster.md)
+- [MonsterManager.md](../class/MonsterManager.md)
+- [QARecorder.md](../class/QARecorder.md) — 이 환경 ffmpeg 부재로 mp4 미생성(PNG 프레임만 남음), 기존에 알려진 제약
+
+---
+
 ## 2026-07-20-0
 
 ### 개요

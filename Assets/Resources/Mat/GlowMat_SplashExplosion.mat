@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: GlowMat_SplashExplosion
-  m_Shader: {fileID: -6465566751694194690, guid: 2dfbed5add6fd584aaf3b1004bdea590, type: 3}
+  m_Shader: {fileID: 4800000, guid: 6f5c48c11d91509cd463ce14a75e7875, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -23,6 +23,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTexture:
         m_Texture: {fileID: 2800000, guid: 588f05082b07f734aa6cae1e2e54d676, type: 3}
         m_Scale: {x: 1, y: 1}

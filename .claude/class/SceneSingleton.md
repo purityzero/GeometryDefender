@@ -12,7 +12,7 @@
 ```csharp
 public abstract class SceneSingleton<T> : MonoBehaviour, IUpdatable where T : SceneSingleton<T>
 {
-    public static T Current { get; private set; }
+    public static T Current { get; protected set; }
 
     protected virtual void Awake()
     {
@@ -21,7 +21,8 @@ public abstract class SceneSingleton<T> : MonoBehaviour, IUpdatable where T : Sc
 
     protected virtual void OnEnable()
     {
-        BaseScene.Current.Register(this);
+        Current = this as T;
+        BaseScene.Current?.Register(this);
     }
 
     protected virtual void OnDisable()
@@ -122,3 +123,26 @@ public abstract class SceneSingleton<T> : MonoBehaviour, IUpdatable where T : Sc
 
 #### 미검증
 에디터 미실행 상태 편집. 실제 NRE가 나던 시나리오에서 콘솔 에러 0건으로 재확인 필요.
+
+---
+
+### 2026-07-27-0 — Play 중 재컴파일(도메인 리로드) 후 Current 영구 null 버그 수정
+
+#### 개요
+qa-tester 에이전트가 Play Mode 실측 중 `execute_code` 호출(스크립트 컴파일 유발) 직후부터 `BaseScene.Current`가 null이 되며 이후 모든 `SceneSingleton<T>`(TimerManager/MonsterManager 등) 등록이 NRE로 전부 실패하는 것을 발견/재현. 원인: Unity는 Play 중 스크립트가 재컴파일되면(도메인 리로드) **static 필드는 초기화되지만 이미 살아있는 오브젝트의 `Awake()`는 재호출되지 않고 `OnEnable()`만 재호출**된다. `Current`가 오직 `Awake()`에서만 설정되던 구조라, 재컴파일 이후 `Current`가 영구 null로 남아 그 뒤로 등록되는 모든 `SceneSingleton<T>` 인스턴스가 `BaseScene.Current.Register(this)`(null 참조)에서 NRE.
+
+#### 파일
+- Assets/Scripts/Glory/Partterns/Singleton/SceneSingleton.cs
+- Assets/Scripts/Glory/Scene/BaseScene.cs ([[BaseScene]] 2026-07-27-0 참고)
+
+#### 수정 (함수 단위)
+**`Current` 프로퍼티**
+- 전: `public static T Current { get; private set; }` — `private set`이라 파생 클래스(BaseScene)에서 직접 대입 불가.
+- 후: `public static T Current { get; protected set; }` — BaseScene이 자기 타입의 Current를 재대입할 수 있도록 접근자 완화.
+
+**`OnEnable()`**
+- 전: `BaseScene.Current.Register(this);` (null 가드 없음, Current 재설정도 안 함)
+- 후: `Current = this as T;` 를 추가로 대입한 뒤 `BaseScene.Current?.Register(this);`(`?.`로 방어 추가, [[UpdatableBehaviour]]/OnDisable과 대칭). `OnEnable()`은 도메인 리로드 후에도 재호출되므로 여기서 `Current`를 다시 세팅해두면 `Awake()`가 재호출 안 되는 경로에서도 복구된다.
+
+#### 검증
+IDE 진단(컴파일 에러 0건)만 확인. qa-tester 후속 세션에서 Play 중 recompile을 강제 재현해 `Current`가 실제로 복구되는지, NRE 카스케이드가 재발하지 않는지 확인 필요.

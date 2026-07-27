@@ -7,4 +7,5 @@ public struct ProjectileMotion : IComponentData
     public float3 SpawnPosition;
     public float MaxDistance;
     public float Speed;
+    public float ElapsedTime;
 }

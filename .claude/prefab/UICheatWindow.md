@@ -29,7 +29,12 @@ UICheatWindow (...1001)                    — RectTransform 풀스트레치, UI
 │        ├─ Row — Btn_Variant_Normal/Elite/Boss (m_VariantToggleButtons[3])
 │        ├─ Row — Btn_SpawnCount_10/50/150/300 (m_SpawnCountButtons[4])
 │        ├─ Text_Header "CARD APPLY"
-│        └─ Container_List (VLG+CSF) — Row_CardTemplate(비활성, m_CardRowTemplate) → Text_CardName + Btn_ApplyCard — 코드가 CardTable 개수만큼 Instantiate
+│        ├─ ScrollView_Card (ScrollRect, 2026-07-27 vertical=true/horizontal=false로 수정 — 아래 참고)
+│        │  └─ Viewport (RectMask2D)
+│        │     └─ Container_List (VLG+CSF) — Row(비활성, m_CardRowTemplate) → Text_CardName + Btn_ApplyCard — 코드가 CardTable 개수만큼 Instantiate
+│        ├─ Text_Header "# 메타트리" (2026-07-27 신설)
+│        ├─ Row_MetaTreeTemplate (비활성, m_MetaTreeRowTemplate) → Text_Label + Btn_Unlock(자식 Text_Label="해금") — 코드가 MetaTreeTable 개수만큼 Instantiate (2026-07-27 신설)
+│        └─ Row_ShardGrant — Btn_AddShard("Shard +1000", m_AddShardButton) (2026-07-27 신설)
 ```
 
 ## 설계 메모
@@ -39,6 +44,17 @@ UICheatWindow (...1001)                    — RectTransform 풀스트레치, UI
 - Row/Container GameObject 이름이 전부 "Row"/"Container_List"로 동일(생성 스크립트가 이름을 파라미터화하지 않음) — 계층 탐색 시 부모-자식 관계와 내용(어떤 버튼이 들어있는지)으로 구분해야 함.
 
 ## 작업 내역
+
+### 2026-07-27-0 — Variant 토글 시각 피드백 버그 + 카드 ScrollView 방향 버그 수정, 메타트리 치트 섹션 신설 (Unity MCP 사용)
+사용자 리포트("치트쪽... 제대로 고르지도 못해", "ScrollView도 이상함", "메타트리도 치트 할 수 있게") — 이번엔 Unity MCP가 연결돼 있어 `open_prefab_stage`로 직접 열어 진단/수정(과거 YAML 직접 편집과 달리 실제 컴포넌트 속성을 조회하며 원인 특정).
+
+- **Btn_Variant_Normal/Elite/Boss**: `Button.transition`을 `ColorTint`(1) → `None`(0)으로 변경. 코드(`SetVariantToggleVisual()`)가 `Image.color`를 직접 칠하는데, ColorTint가 상호작용마다 `colors.normalColor`(흰색)로 그래픽 색을 강제 재대입해 선택 상태가 시각적으로 안 보였음 — 상세 원인은 [[UICheatWindow]](class.md) 2026-07-27-6 참고.
+- **ScrollView_Card**: `ScrollRect.horizontal=true, vertical=false` → `horizontal=false, vertical=true`. 카드 리스트가 `VerticalLayoutGroup`으로 세로로 쌓이는데 세로 스크롤이 꺼져있어 카드 대부분에 도달 불가능했음.
+- **메타트리 섹션 신규 생성**: `manage_gameobject`(create)로 `Text_Header`("# 메타트리"), `Row_MetaTreeTemplate`(비활성, `Text_Label`+`Btn_Unlock`), `Row_ShardGrant`(`Btn_AddShard`)를 바깥 `Container_List`(`ScrollView`의 Content) 밑에 직접 생성 — Wave 목록과 동일하게 별도 내부 ScrollRect 없이 바깥 스크롤에 얹음(노드 14개 정도라 충분, 중첩 ScrollRect 추가는 버그 유발 위험만 커짐). 신규 버튼들도 `Button.transition=None`으로 생성(Variant 버그와 같은 이유 선제 방지).
+- `UICheatWindow.cs`에 `m_AddShardButton`/`m_MetaTreeListContainer`/`m_MetaTreeRowTemplate` 필드 3개 wiring 완료(컴포넌트 instanceID 직접 대입, `manage_components.set_property`).
+
+#### 검증
+IDE 진단/콘솔 에러 0건. **Play Mode 확인 못함** — Play 진입 시도 중 기존에 알려진 "Play 중 재컴파일 누적 시 Text Animator/UI 초기화 영구 고장" 증상이 재현돼(타이틀 화면에 헥사곤 로고만 보이고 버튼/사각형 전부 미표시) 정상 테스트 불가 — Unity 에디터 재시작 후 재검증 필요.
 
 ### 2026-07-23-5 — Button guid 오류 수정
 모든 Button 컴포넌트(20개)가 실제로는 `1a37630bea274644a85de3916ce19d91`(= `UIText`, `UnityEngine.UI.Button` 아님)로 붙어있던 버그 수정 — 올바른 guid `4e29b1a8efbd4b44bb3f3716e73f07ff`로 재생성. 상세 원인/증상은 [[UICheatWindow]](class.md) 2026-07-23-5 참고. `grep`으로 20개 전부 `EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button` 재확인.

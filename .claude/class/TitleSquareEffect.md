@@ -17,6 +17,27 @@
 
 ## 작업 내역
 
+### 2026-07-27-4 — InGame→Title 복귀 시 사각형이 화면 밖으로 나가는 버그 수정
+
+#### 개요
+사용자 리포트: "TitleScene에서 Square들 InGame → Title로 다시 돌아가면 밖으로 나가버려." — 2026-07-22-0의 회전-경계 버그(이미 수정/확인 완료)와는 증상 발생 조건이 다름(그건 회전각에 따라 상시 발생, 이번 건 InGame→Title **씬 전환 복귀 시점**에 한정) — 별개 원인으로 판단.
+
+#### 원인
+[[CullingObject]] 2026-07-27-2와 동일한 클래스의 버그. `m_MainCamera`가 `Start()`에서 딱 1회만 캐싱되는데, `SceneManager`의 씬 전환(additive 로드 → 잠시 후 이전 씬 언로드)이 InGameScene→TitleScene으로 돌아올 때도 두 씬의 카메라가 잠깐 동시에 존재하는 창이 있다. 이 창 안에서(또는 그 근접 타이밍에) TitleScene의 사각형이 `Start()`를 실행하면 `Camera.main`이 곧 파괴될 InGameScene 쪽 카메라를 반환할 수 있고, 그 참조가 굳어버린 채 InGameScene이 언로드되며 파괴된다. 이후 `CheckBounce()`의 `if (m_MainCamera == null) return;` 가드가 매 프레임 조용히 조기 종료되는데, **`Move()`는 카메라와 무관하게 계속 실행되므로** 반사(bounce) 판정만 영구히 멈추고 사각형은 원래 방향으로 계속 이동해 화면 밖으로 나가버린다.
+
+#### 파일
+- Assets/Scripts/Title/TitleSquareEffect.cs
+
+#### 수정 (함수 단위)
+**CheckBounce()**
+- 전: `if (m_MainCamera == null) return;`
+- 후: `if (m_MainCamera == null) m_MainCamera = Camera.main;` 재조회를 추가한 뒤에도 여전히 null이면 그때 return — 파괴된 참조를 만나면 다음 프레임에 자연 복구.
+
+#### 검증
+IDE 진단 컴파일 에러 0건. Play Mode 실측(InGame→Title 반복 전환 후 사각형이 실제로 경계 안에 계속 머무는지)은 미완 — 다음 세션에서 확인 필요.
+
+---
+
 ### 2026-07-23-1
 
 #### 개요

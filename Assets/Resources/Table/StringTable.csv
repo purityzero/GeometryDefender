@@ -99,10 +99,6 @@ Id,Key,Kr,En,Cn,Jp
 98,Card304Effect,3체까지 연쇄 (반경 2.0),Chains to 3 enemies (radius 2.0),连锁3个敌人 (半径2.0),3体まで連鎖 (半径2.0)
 99,Card305Name,호밍 미사일,Homing Missile,追踪导弹,ホーミングミサイル
 100,Card305Effect,투사체가 목표를 추적합니다,Projectiles home in on targets,弹药会追踪目标,弾が目標を追尾します
-101,Card306Name,최강 타겟팅,Target Strongest,锁定最强,最強ターゲット
-102,Card306Effect,체력이 가장 높은 적을 우선 공격,Targets highest HP enemy first,优先攻击生命值最高的敌人,HPが最も高い敵を優先攻撃
-103,Card307Name,최속 타겟팅,Target Fastest,锁定最快,最速ターゲット
-104,Card307Effect,가장 빠른 적을 우선 공격,Targets fastest enemy first,优先攻击速度最快的敌人,最も速い敵を優先攻撃
 105,Card401Name,보강,Reinforce,加固,補強
 106,Card401Effect,최대 체력 +20,Max HP +20,最大生命值 +20,最大HP +20
 107,Card402Name,강화,Fortify,强化,強化
@@ -133,3 +129,12 @@ Id,Key,Kr,En,Cn,Jp
 132,PauseBuildTargetingLabel,타겟팅,Targeting,索敌,ターゲティング
 133,PauseBuildCardListLabel,획득한 카드,Cards Obtained,已获得卡牌,獲得カード
 134,PauseBuildNoCards,아직 없음,None yet,暂无,まだなし
+135,Card601Name,래피드 오토캐논,Rapid Autocannon,速射机炮,ラピッドオートキャノン
+136,Card601Effect,독립 쿨다운의 연사 무기 슬롯 추가,Adds an independent rapid-fire weapon slot,增加一个独立冷却的速射武器槽,独立クールダウンの速射武器スロットを追加
+137,Card602Name,스플래시 모르타르,Splash Mortar,溅射迫击炮,スプラッシュ迫撃砲
+138,Card602Effect,독립 쿨다운의 광역 무기 슬롯 추가,Adds an independent splash weapon slot,增加一个独立冷却的溅射武器槽,独立クールダウンの範囲武器スロットを追加
+139,Card603Name,체인 코일,Chain Coil,连锁线圈,チェインコイル
+140,Card603Effect,독립 쿨다운의 무기 슬롯 추가,Adds an independent weapon slot,增加一个独立冷却的武器槽,独立クールダウンの武器スロットを追加
+141,Card604Name,호밍 포드,Homing Pod,追踪导弹舱,ホーミングポッド
+142,Card604Effect,독립 쿨다운의 무기 슬롯 추가,Adds an independent weapon slot,增加一个独立冷却的武器槽,独立クールダウンの武器スロットを追加
+143,TowerNameCentral,중앙 타워,Central Tower,中央塔,中央タワー

@@ -104,5 +104,57 @@ Unity MCP 연결 확인 후 `refresh_unity(compile=request, mode=force)` → `re
 
 ---
 
+## 2026-07-27-2 — 초반 밸런스 완화: XpRequiredBase 5→3, SPAWN_RAMP_GRACE_SECONDS 신설
+
+### 개요
+사용자 리포트("초반이 너무 힘들어서 지울 것 같다", 첫 레벨업 전에 이미 밀림) — 상세 원인 분석/설계는 [[SpawnManager]] 2026-07-27-1, [[ActorPlayer]] 2026-07-27-6 참고.
+
+### 수정
+- `XP_REQUIRED_BASE` 코드 기본값 + CSV 17행 값 5 → 3(첫 카드가 3킬 만에 등장).
+- `static SPAWN_RAMP_GRACE_SECONDS`(15f) 신설, CSV에 `55,SpawnRampGraceSeconds,15` 추가 — [[SpawnManager]]가 스폰 램프 계산에 사용(첫 15초는 램프 없이 baseRate 고정).
+
+### 검증
+Unity MCP 미연결, IDE 진단(mcp__ide__getDiagnostics)으로 컴파일 에러 0건만 확인 — Play Mode 실측 미완료.
+
+---
+
 ## 2026-07-24-2 — DamageTextPoolSize 20 → 50
 사용자 실측 피드백("데미지 텍스트 풀링 20개가 아니라 50개정도 해야할듯") — `DAMAGE_TEXT_POOL_SIZE` 코드 기본값 + CSV 20행 값 모두 50으로 변경. 상세는 [[DamageTextManager]] 2026-07-24-2 참고.
+
+---
+
+## 2026-07-27-3 — 초반 밸런스 2차 완화: TowerMaxHp 100→150, SpawnRampGraceSeconds 15→30
+
+### 개요
+qa-tester 실측(Normal 3판 전부 45~65초 사망, 목표 10~12분 대비 큰 격차) 원인 분석 결과 — 기본 타워 DPS(26.25) 대비 Normal 몹(HP20) 킬레이트(≈1.31/s)가 `SPAWN_BASE_RATE × (1+rampT/60)^1.3` 스폰레이트를 약 26~29초 지점부터 못 따라잡기 시작하고, 단일 타겟 + 좁은 사거리 체류 시간(웨이포인트 경로상 ~3.3초) 때문에 그 뒤로 밀린 몬스터가 기지에 그대로 도달 — 데미지가 눈덩이처럼 불어나는 구조적 병목으로 확인(상세 계산 근거는 `.claude/qa/design-issues.md` 2026-07-27-0). Range 확대([[TowerRecord]] 2026-07-27-2 참고)와 함께, 병목 발생 시점을 늦추고(그레이스 연장) 병목 발생 이후에도 카드/레벨로 따라잡을 시간을 벌어주는(MaxHp 확대) 용도로 이 두 값도 같이 조정.
+
+### 파일
+- Assets/Resources/Table/GameConfigTable.csv
+- Assets/Scripts/Table/GameConfigRecord.cs
+- Assets/Scripts/InGame/InGameScene.cs (TowerMaxHp `GetValue` 인라인 폴백 기본값)
+- Assets/Design/02_combat.html ("타워 기본 스탯" 표 + 신규 콜아웃)
+
+### 수정
+- `TowerMaxHp` CSV 12행 100→150, `InGameScene.OnSetup()`의 `GetValue("TowerMaxHp", 100f)` 폴백도 150f로 동기화.
+- `SPAWN_RAMP_GRACE_SECONDS` 코드 기본값 + CSV 54행 15→30 — 스폰레이트가 킬레이트를 앞지르는 실제 시점이 약 29초→44초로 늦춰짐(그레이스만큼 램프 시작이 밀리므로).
+
+### 검증
+IDE 진단 컴파일 에러 0건. **정밀 튜닝(정확히 10~12분에 맞추기) 아님** — 오늘 QA에서 드러난 "1분도 못 버팀" 수준의 구조적 문제를 우선 완화한 1차 조정. 다음 QA 세션에서 실제 생존 시간 재측정 필요.
+
+---
+
+## 2026-07-27-4 — ActorPlayer CONST 이관: 발사체 스프레드 각도, ChainCoil 고유 능력 수치
+
+### 개요
+사용자 요청("플레이어한테 있는 CONST 다 ConfigRecord로 이관해줘") — [[ActorPlayer]] 2026-07-27-9 참고. 요청은 "다"였지만, 2026-07-24-0에서 이미 확정한 "FK성 참조는 이관 제외" 원칙과 충돌하는 4개(`TOWER_RECORD_ID`/`MAGE_RECORD_ID`/`CHAIN_COIL_RECORD_ID`/`HOMING_POD_RECORD_ID`)는 코드에 남기고, 순수 밸런스 수치 3개만 이관.
+
+### 파일
+- Assets/Scripts/Table/GameConfigRecord.cs
+- Assets/Resources/Table/GameConfigTable.csv
+- Assets/Scripts/InGame/Actor/ActorPlayer.cs (호출부만 `GameConfigTable.XXX`로 교체, [[ActorPlayer]] 참고)
+
+### 수정
+`PROJECTILE_SPREAD_ANGLE_STEP`(12f)/`CHAIN_COIL_INNATE_CHAIN_JUMPS`(3)/`CHAIN_COIL_INNATE_CHAIN_RADIUS`(2f) 추가, CSV Id 56~58 로드.
+
+### 검증
+IDE 진단 컴파일 에러 0건.

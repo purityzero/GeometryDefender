@@ -79,6 +79,31 @@ if (currentHp == 0)
     return;
 ```
 
+### 튜플 대신 struct/class
+- 여러 값을 묶어서 반환/저장할 때 `(int, string)` 같은 익명 튜플을 만들지 않는다. 필드 이름이 있는 named tuple(`(int Id, string Name)`)도 마찬가지로 금지 — 대신 의미가 드러나는 `struct` 또는 `class`를 정의한다.
+- 이유: 튜플은 성능 문제(GC 등)가 아니라(ValueTuple은 struct라 그 자체론 힙 할당 없음) **가독성 문제** — 필드가 익명이라 호출부가 늘어날수록 "몇 번째 값이 뭐였는지"를 계속 되짚어야 한다. named struct는 그 의미가 타입에 고정되어 재확인이 필요 없다.
+- 예외: Unity ECS(`Unity.Entities`)의 `SystemAPI.Query<...>().WithEntityAccess()` 같은 `foreach (var (a, b, entity) in ...)` 패턴은 프레임워크가 소스제네레이터로 직접 만들어내는 계약이라 대상에서 제외한다 — `RefRW<T>`/`RefRO<T>`가 ref-like struct라 class 필드로 옮길 수도 없고, 억지로 피하려면 `EntityQuery` 수동 순회로 전체 구조를 바꿔야 해 배보다 배꼽이 커진다.
+
+```csharp
+// ✅ 올바른 사용
+private struct RarityWeight
+{
+    public eCardRarity Rarity;
+    public float Weight;
+}
+
+private static readonly RarityWeight[] RARITY_WEIGHTS = new[]
+{
+    new RarityWeight { Rarity = eCardRarity.Common, Weight = 60f },
+};
+
+// ❌ 잘못된 사용
+private static readonly (eCardRarity Rarity, float Weight)[] RARITY_WEIGHTS = new[]
+{
+    (eCardRarity.Common, 60f),
+};
+```
+
 ### 삼항 연산자
 ```csharp
 // 괄호로 조건을 감싸는 형태 사용

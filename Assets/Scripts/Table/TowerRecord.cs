@@ -13,6 +13,7 @@ public enum eTargetingType
 public class TowerRecord : Record
 {
     public string DisplayName;
+    public string NameKey;
     public string ColorHex;
     public int Cost;
     public int Damage;

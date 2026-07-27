@@ -84,6 +84,12 @@ public class TitleSquareEffect : UpdatableBehaviour
 
     private void CheckBounce()
     {
+        // 씬 전환(InGame→Title 등) 중 캐싱된 카메라가 파괴되면 == null이 되어 여기서 계속 조기 리턴하게 되는데,
+        // Move()는 카메라와 무관하게 계속 실행되므로 반사 판정만 영구히 멈춰 사각형이 경계 밖으로 계속 나가버린다.
+        // CullingObject.UpdateLogic()과 동일한 패턴으로 null이면 재조회해 다음 프레임부터 자연 복구되게 한다.
+        if (m_MainCamera == null)
+            m_MainCamera = Camera.main;
+
         if (m_MainCamera == null)
             return;
 

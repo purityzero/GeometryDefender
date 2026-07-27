@@ -57,8 +57,10 @@ public class SpawnManager : UpdatableBehaviour
         m_SpawnTimer += Time.deltaTime;
 
         // Assets/Design/08_balance.html "적 스폰 곡선": spawnRate(t) = baseRate × (1 + t/60)^exponent, 난이도 배율은 추가로 곱해짐
+        // 초반 유예(SPAWN_RAMP_GRACE_SECONDS)만큼은 램프를 시작하지 않고 baseRate로 고정 — 10~12분 사망 곡선 자체는 유지하되 시작만 완만하게(2026-07-27, 초반 밸런스 완화)
+        float rampElapsedTime = Mathf.Max(0f, m_ElapsedTime - GameConfigTable.SPAWN_RAMP_GRACE_SECONDS);
         float difficultyMultiplier = (InGameScene.Current.difficultyManager != null) ? InGameScene.Current.difficultyManager.GetDifficultyMultiplier() : 1f;
-        float spawnRate = GameConfigTable.SPAWN_BASE_RATE * Mathf.Pow(1f + m_ElapsedTime / 60f, GameConfigTable.SPAWN_RATE_EXPONENT) * difficultyMultiplier;
+        float spawnRate = GameConfigTable.SPAWN_BASE_RATE * Mathf.Pow(1f + rampElapsedTime / 60f, GameConfigTable.SPAWN_RATE_EXPONENT) * difficultyMultiplier;
         float spawnInterval = 1f / spawnRate;
 
         if (m_SpawnTimer < spawnInterval)

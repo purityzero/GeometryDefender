@@ -1,19 +1,78 @@
 # ActorMonster
 
 ## 연관 클래스
-- Actor — 베이스 클래스 (FactoryObject 계열)
-- MonsterManager — MemoryPoolFactory로 생성/반납
+- Actor — 베이스 클래스 (FactoryObject 계열, 2026-07-27부터 IUpdatable 추가)
+- MonsterManager — MemoryPoolFactory로 생성/반납, 매 프레임 `UpdateCullingLogic()` 호출
 - EnemyRecord — ColorHex를 SetColor로 적용
+- CullingObject — 같은 오브젝트에 부착, 직렬화 참조로 캐시(2026-07-27)
 
 ## 현재 상태
 - 경로: Assets/Scripts/InGame/Actor/ActorMonster.cs
 - 몬스터의 비주얼 GameObject 담당 (로직은 ECS 쪽, 위치 동기화는 VisualSyncSystem).
 - `[SerializeField] Renderer m_Renderer` — 프리팹에서 연결 필요.
-- `SetColor(Color)` — `m_Renderer.material.color` 변경 (material 인스턴스화 발생).
-- `Open()`/`Close()` 오버라이드는 현재 base 호출만 하는 빈 구현.
+- `[SerializeField] Renderer m_GlowRenderer`(2026-07-27) — 같은 프리팹의 halo 자식(`{Shape}Glow`)의 SpriteRenderer. null 체크 후 사용(순차 롤아웃 중 일부 프리팹에 아직 없을 수 있어 방어).
+- `[SerializeField] CullingObject m_CullingObject`(2026-07-27) — 같은 오브젝트의 CullingObject를 프리팹에서 미리 연결. `UpdateCullingLogic()`이 null 체크 후 `m_CullingObject.UpdateLogic()` 호출 — `MonsterManager.UpdateCulling()`이 활성 몬스터 전체를 순회하며 매 프레임 호출해준다.
+- `SetColor(Color)` — `m_Renderer.material.color` 변경(material 인스턴스화 발생) + `m_GlowRenderer != null`이면 halo 머테리얼 색도 동일하게 갱신(2026-07-27, halo가 코어와 같은 색으로 빛나도록).
+- `Open()`/`Close()` 오버라이드는 `base` 호출만 함 — 2026-07-27부터 `Actor.Open()/Close()`가 `BaseScene` IUpdatable 등록/해제를 겸하므로, 오버라이드 자체는 그대로 둬도 자동으로 등록/해제된다(이 클래스는 `UpdateLogic()`을 오버라이드 안 해서 동작 변화 없음).
 - Entity ↔ ActorMonster 연결 구조와 전체 생명주기는 MonsterManager.md의 "동작 구조 (내부)" 섹션 참고.
 
 ## 작업 내역
+
+### 2026-07-27-2 — TitleScene 헥사곤 halo 방식 Glow 추가
+
+#### 개요
+사용자 요청("일반 몬스터에도 Glow효과 맞게끔 넣어주고" — 확인 결과 TitleScene 헥사곤의 코어+halo 2계층 방식을 지칭). 몬스터 6종 프리팹 전부에 halo 자식 오브젝트 추가 + 이 클래스가 halo 색을 코어와 함께 갱신하도록 확장.
+
+#### 파일
+- Assets/Scripts/InGame/Actor/ActorMonster.cs
+
+#### 수정 (함수 단위)
+**필드 추가**: `[SerializeField] private Renderer m_GlowRenderer;`
+
+**SetColor(Color)**
+- 전: `m_Renderer.material.color = _color.linear;`
+- 후: 위 코드 뒤에 `if (m_GlowRenderer != null) m_GlowRenderer.material.color = _color.linear;` 추가.
+
+#### 프리팹 연동
+6개 프리팹(Triangle/Square/Star/Pentagon/Diamond/Circle) 전부 자식 `{Shape}Glow` 추가 후 `m_GlowRenderer` 필드를 그 자식의 SpriteRenderer로 연결. 상세는 `.claude/prefab/{Triangle,Square,Star,Pentagon,Diamond,Circle}.md` 참고.
+
+#### 검증
+컴파일 에러 0건. Play Mode 시각 확인은 사용자가 직접 진행 예정(이 세션에서는 스크린샷 검증 안 함).
+
+#### ⚠️ 2026-07-27-3에서 halo 배치 방식 정정
+사용자가 InGameScene `ActorPlayer`의 halo를 직접 수정한 기준(코어와 거의 동일한 크기 + 코어보다 위에 그려짐, TitleScene Hexagon/HexagonGlow와는 다른 방식)을 보고 "몬스터들도 저거 참조해서" 요청 — 6개 프리팹의 halo 자식 `localScale`을 1.4→1, `SpriteRenderer.m_SortingOrder`를 -1→3으로 정정. 상세는 `.claude/prefab/{Triangle,Square,Star,Pentagon,Diamond,Circle}.md` 2026-07-27-3 참고. 머테리얼은 도형별 전용 유지(Tower처럼 공유 머테리얼로 하면 다른 도형끼리 텍스처가 안 맞음).
+
+---
+
+### 2026-07-27-0
+
+#### 개요
+사용자 지적("CullingObject를 Pooling에서 관리할게 아니라 MonsterManager에서 관리해야하는거 아니야?") — 공용 풀링 클래스(`MemoryPooling<T>`)에 얹었던 컬링 구동 로직을, 몬스터를 실제로 아는 이 클래스와 `MonsterManager`로 이동. 상세 배경은 [[Pooling]]/[[Factory]]/[[MonsterManager]] 2026-07-27 항목, [[CullingObject]] 참고.
+
+#### 파일
+- Assets/Scripts/InGame/Actor/ActorMonster.cs
+
+#### 수정 (함수 단위)
+**클래스 선언**
+- 전: `[SerializeField] private Renderer m_Renderer;`만 존재
+- 후: `[SerializeField] private CullingObject m_CullingObject;` 필드 추가
+
+**신규 `UpdateCullingLogic()`**
+```csharp
+public void UpdateCullingLogic()
+{
+    if (m_CullingObject == null)
+        return;
+
+    m_CullingObject.UpdateLogic();
+}
+```
+- `MonsterManager.UpdateCulling()`이 활성 몬스터를 순회하며 호출 — GetComponent 없이 직렬화 캐시로 CullingObject.UpdateLogic()을 매 프레임 구동.
+
+#### 검증
+Unity 에디터 포커스 재부여로 실제 재컴파일 확인(`Tundra build success`, 에러 0건). 프리팹 6종(Triangle/Square/Star/Pentagon/Diamond/Circle) 모두 `m_CullingObject` 필드를 같은 오브젝트의 CullingObject로 연결 완료 — 상세는 .claude/prefab/{Triangle,Square,Star,Pentagon,Diamond,Circle}.md 2026-07-27-1 참고. **Play Mode 실측은 미검증** — qa-tester 에이전트로 확인 예정.
+
+---
 
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)

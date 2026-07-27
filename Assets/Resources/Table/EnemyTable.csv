@@ -1,16 +1,16 @@
 Id,DisplayName,Species,Variant,Shape,ColorHex,MaxHp,MoveSpeed,VisualSize,DamageToBase,XpReward,GoldReward,SplitCount,SplitChildId,FireRange,FireCooldown,PrefabPath
-1,Normal,Normal,Normal,Triangle,#ff3355,20,1.5,0.40625,5,1,5,0,0,0.0,0.0,Prefabs/Monster/Triangle
-2,Swift,Swift,Normal,Circle,#ff9500,10,3.0,0.325,3,2,10,0,0,0.0,0.0,Prefabs/Monster/Circle
-3,Heavy,Heavy,Normal,Square,#7c4dff,80,0.8,0.65,15,5,25,0,0,0.0,0.0,Prefabs/Monster/Square
-4,Splitter,Splitter,Normal,Diamond,#29cc66,25,1.2,0.4875,7,3,15,2,1,0.0,0.0,Prefabs/Monster/Diamond
-5,Ranged,Ranged,Normal,Pentagon,#3d8bff,15,1.0,0.40625,4,4,20,0,0,4.0,2.0,Prefabs/Monster/Pentagon
-6,Normal Elite,Normal,Elite,Triangle,#ff00aa,60,1.8,0.528125,8,4,20,0,0,0.0,0.0,Prefabs/Monster/Triangle
-7,Swift Elite,Swift,Elite,Circle,#ff00aa,30,3.6,0.4225,5,8,40,0,0,0.0,0.0,Prefabs/Monster/Circle
-8,Heavy Elite,Heavy,Elite,Square,#ff00aa,240,0.96,0.845,23,20,100,0,0,0.0,0.0,Prefabs/Monster/Square
-9,Splitter Elite,Splitter,Elite,Diamond,#ff00aa,75,1.44,0.63375,11,12,60,2,6,0.0,0.0,Prefabs/Monster/Diamond
-10,Ranged Elite,Ranged,Elite,Pentagon,#ff00aa,45,1.2,0.528125,6,16,80,0,0,4.0,2.0,Prefabs/Monster/Pentagon
-11,Normal Boss,Normal,Boss,Star,#ffd600,600,1.2,1.21875,15,50,250,0,0,0.0,0.0,Prefabs/Monster/Star
-12,Swift Boss,Swift,Boss,Star,#ffd600,300,2.4,0.975,9,100,500,0,0,0.0,0.0,Prefabs/Monster/Star
-13,Heavy Boss,Heavy,Boss,Star,#ffd600,2400,0.64,1.95,45,250,1250,0,0,0.0,0.0,Prefabs/Monster/Star
-14,Splitter Boss,Splitter,Boss,Star,#ffd600,750,0.96,1.4625,21,150,750,2,6,0.0,0.0,Prefabs/Monster/Star
-15,Ranged Boss,Ranged,Boss,Star,#ffd600,450,0.8,1.21875,12,200,1000,0,0,4.0,2.0,Prefabs/Monster/Star
+1,Normal,Normal,Normal,Triangle,#ff3355,20,1.5,0.203125,5,1,5,0,0,0.0,0.0,Prefabs/Monster/Triangle
+2,Swift,Swift,Normal,Circle,#ff9500,10,3.0,0.1625,3,2,10,0,0,0.0,0.0,Prefabs/Monster/Circle
+3,Heavy,Heavy,Normal,Square,#7c4dff,80,0.8,0.325,15,5,25,0,0,0.0,0.0,Prefabs/Monster/Square
+4,Splitter,Splitter,Normal,Diamond,#29cc66,25,1.2,0.24375,7,3,15,2,1,0.0,0.0,Prefabs/Monster/Diamond
+5,Ranged,Ranged,Normal,Pentagon,#3d8bff,15,1.0,0.203125,4,4,20,0,0,4.0,2.0,Prefabs/Monster/Pentagon
+6,Normal Elite,Normal,Elite,Triangle,#ff00aa,60,1.8,0.2640625,8,4,20,0,0,0.0,0.0,Prefabs/Monster/Triangle
+7,Swift Elite,Swift,Elite,Circle,#ff00aa,30,3.6,0.21125,5,8,40,0,0,0.0,0.0,Prefabs/Monster/Circle
+8,Heavy Elite,Heavy,Elite,Square,#ff00aa,240,0.96,0.4225,23,20,100,0,0,0.0,0.0,Prefabs/Monster/Square
+9,Splitter Elite,Splitter,Elite,Diamond,#ff00aa,75,1.44,0.316875,11,12,60,2,6,0.0,0.0,Prefabs/Monster/Diamond
+10,Ranged Elite,Ranged,Elite,Pentagon,#ff00aa,45,1.2,0.2640625,6,16,80,0,0,4.0,2.0,Prefabs/Monster/Pentagon
+11,Normal Boss,Normal,Boss,Star,#ffd600,600,1.2,0.609375,15,50,250,0,0,0.0,0.0,Prefabs/Monster/Star
+12,Swift Boss,Swift,Boss,Star,#ffd600,300,2.4,0.4875,9,100,500,0,0,0.0,0.0,Prefabs/Monster/Star
+13,Heavy Boss,Heavy,Boss,Star,#ffd600,2400,0.64,0.975,45,250,1250,0,0,0.0,0.0,Prefabs/Monster/Star
+14,Splitter Boss,Splitter,Boss,Star,#ffd600,750,0.96,0.73125,21,150,750,2,6,0.0,0.0,Prefabs/Monster/Star
+15,Ranged Boss,Ranged,Boss,Star,#ffd600,450,0.8,0.609375,12,200,1000,0,0,4.0,2.0,Prefabs/Monster/Star

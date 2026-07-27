@@ -33,6 +33,11 @@ public class UICheatWindow : UIPopup
     [SerializeField] private Transform m_CardListContainer;
     [SerializeField] private GameObject m_CardRowTemplate;
 
+    [Header("# 메타트리")]
+    [SerializeField] private Button m_AddShardButton;
+    [SerializeField] private Transform m_MetaTreeListContainer;
+    [SerializeField] private GameObject m_MetaTreeRowTemplate;
+
     [Header("# 닫기")]
     [SerializeField] private Button m_CloseButton;
 
@@ -46,8 +51,17 @@ public class UICheatWindow : UIPopup
     {
         base.Show();
 
+        InGameScene.Current?.SetPaused(true);
+
         BuildDynamicLists();
         WireStaticButtons();
+    }
+
+    public override void Close()
+    {
+        InGameScene.Current?.SetPaused(false);
+
+        base.Close();
     }
 
     public override void UpdateLogic()
@@ -95,6 +109,9 @@ public class UICheatWindow : UIPopup
             m_SpawnCountButtons[index].onClick.RemoveAllListeners();
             m_SpawnCountButtons[index].onClick.AddListener(() => SpawnMonsters(spawnCount));
         }
+
+        m_AddShardButton.onClick.RemoveAllListeners();
+        m_AddShardButton.onClick.AddListener(() => PlayerManager.instance.AddCurrency(eCurrencyType.Shard, 1000));
     }
 
     private void SkipTime(float _seconds)
@@ -159,6 +176,7 @@ public class UICheatWindow : UIPopup
 
         BuildWaveButtonList();
         BuildCardButtonList();
+        BuildMetaTreeButtonList();
     }
 
     private void BuildWaveButtonList()
@@ -205,6 +223,33 @@ public class UICheatWindow : UIPopup
 
             Button applyButton = cardRowObject.GetComponentInChildren<Button>();
             applyButton.onClick.AddListener(() => InGameScene.Current.cardManager.ApplyCard(record));
+        }
+    }
+
+    // 정상 해금 흐름(UIMetaTree.OnClickNode)의 선행조건/Shard 소모를 건너뛰고 즉시 해금 — 치트 전용.
+    private void BuildMetaTreeButtonList()
+    {
+        MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
+        if (metaTreeTable == null)
+        {
+            Logger.Error($"[UICheatWindow] BuildMetaTreeButtonList Failed! MetaTreeTable not loaded");
+            return;
+        }
+
+        StringTable stringTable = TableManager.instance.GetTable<StringTable>();
+
+        foreach (MetaTreeRecord record in metaTreeTable.list)
+        {
+            GameObject metaTreeRowObject = ResUtil.Create(m_MetaTreeRowTemplate, m_MetaTreeListContainer);
+            metaTreeRowObject.SetActive(true);
+
+            string nodeName = (stringTable != null) ? stringTable.GetString(record.DisplayName) : record.DisplayName;
+
+            TextMeshProUGUI nodeNameText = metaTreeRowObject.GetComponentInChildren<TextMeshProUGUI>();
+            nodeNameText.text = $"[{record.Id}] {nodeName} ({record.Cost} Shard)";
+
+            Button unlockButton = metaTreeRowObject.GetComponentInChildren<Button>();
+            unlockButton.onClick.AddListener(() => PlayerManager.instance.UnlockMetaNode(record.Id));
         }
     }
 }

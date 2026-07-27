@@ -203,4 +203,8 @@ public class UICardDraft : UIPopup
                 return "CardCategorySpecial";
         }
     }
+
+    public override void OnPressBackBtn()
+    {
+    }
 }

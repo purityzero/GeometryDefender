@@ -13,6 +13,7 @@ public class TowerColorEffect : UpdatableBehaviour
     private const string GLOW_AMOUNT_PROPERTY = "_GlowAmount";
 
     [SerializeField] private SpriteRenderer m_SpriteRenderer;
+    [SerializeField] private SpriteRenderer m_GlowSpriteRenderer;
 
     // 02_combat.html "타워 HP 시각 표현" 기준 (100~70% Cyan / 70~30% Dim Cyan / 30~0% Red)
     [SerializeField] private Color m_HighHpColor = new Color(0f, 0.8980392f, 1f);
@@ -27,7 +28,8 @@ public class TowerColorEffect : UpdatableBehaviour
 
     private ObservableVariable<int> m_RegisteredObservable;
     private eHpTier? m_CurrentTier;
-    private Tween m_GlowTween;
+    private Tween m_CoreGlowTween;
+    private Tween m_HaloGlowTween;
 
     private void Start()
     {
@@ -36,12 +38,21 @@ public class TowerColorEffect : UpdatableBehaviour
         m_SpriteRenderer.color = Color.white;
     }
 
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        m_GlowSpriteRenderer.gameObject.SetActive(true);
+        m_CoreGlowTween?.Restart();
+        m_HaloGlowTween?.Restart();
+    }
+
     private void OnDestroy()
     {
         if (m_RegisteredObservable != null)
             m_RegisteredObservable.UnregisterObserver(OnHpChanged);
 
-        m_GlowTween?.Kill();
+        m_CoreGlowTween?.Kill();
+        m_HaloGlowTween?.Kill();
     }
 
     public override void UpdateLogic()
@@ -64,6 +75,15 @@ public class TowerColorEffect : UpdatableBehaviour
         float hpRatio = (float)_newValue / InGameScene.Current.towerController.maxHp;
         eHpTier targetTier = GetTierForRatio(hpRatio);
 
+        if(targetTier == eHpTier.Low || targetTier == eHpTier.Mid)
+        {
+            m_GlowSpriteRenderer.gameObject.SetActive(false);
+        }
+        else
+        {
+            m_GlowSpriteRenderer.gameObject.SetActive(true);
+        }
+
         if (m_CurrentTier != null && m_CurrentTier.Value == targetTier)
             return;
 
@@ -72,7 +92,15 @@ public class TowerColorEffect : UpdatableBehaviour
         Material material = m_SpriteRenderer.material;
 
         TweenUtil.Color(material, GetColorForTier(targetTier), GameConfigTable.TOWER_COLOR_TWEEN_DURATION);
-        ApplyGlowForTier(material, targetTier);
+        ApplyGlowForTier(material, targetTier, ref m_CoreGlowTween);
+
+        if (m_GlowSpriteRenderer != null)
+        {
+            Material glowMaterial = m_GlowSpriteRenderer.material;
+
+            TweenUtil.Color(glowMaterial, GetColorForTier(targetTier), GameConfigTable.TOWER_COLOR_TWEEN_DURATION);
+            ApplyGlowForTier(glowMaterial, targetTier, ref m_HaloGlowTween);
+        }
     }
 
     private eHpTier GetTierForRatio(float _hpRatio)
@@ -98,19 +126,19 @@ public class TowerColorEffect : UpdatableBehaviour
     }
 
     // 30% 이하(Low)는 정적 글로우 대신 min~max 사이를 무한 반복하는 펄스 점멸로 표현(02_combat.html "적색 펄스가 점멸")
-    private void ApplyGlowForTier(Material _material, eHpTier _tier)
+    private void ApplyGlowForTier(Material _material, eHpTier _tier, ref Tween _glowTween)
     {
-        m_GlowTween?.Kill();
+        _glowTween?.Kill();
 
         if (_tier == eHpTier.Low)
         {
             _material.SetFloat(GLOW_AMOUNT_PROPERTY, m_LowPulseMinGlowAmount);
-            m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, m_LowPulseMaxGlowAmount, GameConfigTable.TOWER_LOW_PULSE_DURATION)
+            _glowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, m_LowPulseMaxGlowAmount, GameConfigTable.TOWER_LOW_PULSE_DURATION)
                 .SetLoops(-1, LoopType.Yoyo);
             return;
         }
 
         float targetGlowAmount = (_tier == eHpTier.Mid) ? m_MidGlowAmount : m_HighGlowAmount;
-        m_GlowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, targetGlowAmount, GameConfigTable.TOWER_GLOW_TWEEN_DURATION);
+        _glowTween = TweenUtil.Float(_material, GLOW_AMOUNT_PROPERTY, targetGlowAmount, GameConfigTable.TOWER_GLOW_TWEEN_DURATION);
     }
 }

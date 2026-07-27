@@ -22,6 +22,34 @@ InGame 화면 상단 HUD(HP/Timer/Kill 표시 + Pause 버튼). **2026-07-23-2부
 
 ## 작업 내역
 
+### 2026-07-27-0 — 무기 쿨다운 게이지 신규 (하단 Panel_Synergy 자리 재활용)
+
+#### 개요
+사용자 요청("인게임 하단 비어있는 곳에 내가 먹은 무기 쿨타임 나오게 exp 차는거처럼 구현해줘"). 하단에 이미 있던 `Panel_Synergy`(카테고리 시너지 게이지, [[card-draft]] 스펙에 있었으나 한 번도 실제로 인스턴스화된 적 없는 미구현 기능)를 확인 후, "그 자리를 그대로 재활용"으로 사용자 확정(AskUserQuestion) — 시너지 표시는 폐기.
+
+#### 파일
+- Assets/Scripts/UI/UIInGameHUD.cs
+- Assets/Scripts/InGame/Actor/ActorPlayer.cs (무기 조회 API 신설, [[ActorPlayer]] 참고)
+- Assets/Resources/Prefabs/UI/UIInGameHUD.prefab (`Panel_Synergy`→`Panel_WeaponCooldown`, `Item_Synergy`→`Item_WeaponCooldown` 리네임 + 비활성 템플릿화, [[UIInGameHUD]](prefab.md) 참고)
+
+#### 수정 (함수 단위)
+**신규 필드**: `m_WeaponCooldownContainer`(Transform, Panel_WeaponCooldown)/`m_WeaponCooldownTemplate`(GameObject, 비활성 템플릿) + `List<Image> m_WeaponCooldownFills`(런타임 생성된 행의 게이지 fill 참조 캐시).
+
+**`UpdateLogic()`**: `UpdateWeaponCooldowns()` 호출 추가.
+
+**신규 `UpdateWeaponCooldowns()`**: 무기는 카드로 계속 늘기만 하고 줄어들 일이 없다는 전제로, `m_WeaponCooldownFills.Count < ActorPlayer.weaponCount`인 동안 `ResUtil.Create(template, container)`로 부족한 행만 추가 생성(라벨=`StringTable.GetString(ActorPlayer.GetWeaponNameKey(index))`로 로컬라이즈, 게이지 색=무기 `ColorHex`) → 이후 매 프레임 전체 행의 `fillAmount`를 `ActorPlayer.GetWeaponCooldownRatio(index)`로 갱신. XP 게이지와 동일한 "0(방금 발사)→1(재장전 완료)" 방향.
+
+#### 설계 판단 — 폴링 vs Observable
+쿨다운은 매 프레임 값이 바뀌는 연속값이라 Observable로 감싸도 콜백이 매 프레임 호출되는 건 동일해 이득이 없음([[glory.md]] 판단 기준 그대로 적용) — HP/Kill/XP와 달리 매 프레임 폴링 유지.
+
+#### 로컬라이제이션 (사용자 지적으로 추가)
+처음엔 `ActorPlayer.GetWeaponDisplayName()`이 `TowerRecord.DisplayName`(원문 하드코딩)을 그대로 반환했는데, 사용자가 "UIText 써서 로컬라이징 해야하지 않아?"로 지적 — `TowerRecord`에 `NameKey` 컬럼을 신설하고 라벨 생성 시 `StringTable.GetString()`으로 해석하도록 수정. 상세는 [[TowerRecord]] 2026-07-27-4 참고. (참고: `UIText` 컴포넌트는 프리팹에 고정 키를 미리 박아두는 정적 라벨용이라, 행마다 다른 무기가 들어오는 이 동적 리스트엔 안 맞음 — `CardManager`/`UICheatWindow`의 카드 리스트와 동일하게 "코드에서 그때그때 키를 조회해 SetText" 패턴을 채택.)
+
+#### 검증
+IDE 진단 컴파일 에러 0건. `UIInGameHUD` 컴포넌트 리로드 후 `m_WeaponCooldownContainer`/`m_WeaponCooldownTemplate`가 각각 `Panel_WeaponCooldown`/`Item_WeaponCooldown`으로 정확히 연결된 것을 리소스 조회로 확인. **Play Mode 실측 미완료** — 무기 2개 이상 보유 시 행이 정확히 그만큼만 생기는지, 각 게이지가 해당 무기 쿨다운과 맞물려 차오르는지, 색이 무기별로 다르게 나오는지, 라벨이 언어 설정에 맞게 나오는지 확인 필요.
+
+---
+
 ### 2026-07-23-4 — FPS 표시 + 치트 창 열기 버튼 추가
 
 #### 개요

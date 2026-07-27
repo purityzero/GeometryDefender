@@ -6,7 +6,7 @@
 
 ## 현재 상태
 - 경로: Assets/Scripts/Glory/Optimization/Pooling.cs (Glory 라이브러리)
-- `MemoryPooling<T> where T : Component` — active/hide 두 리스트로 관리하는 단순 풀.
+- `MemoryPooling<T> where T : Component` — active/hide 두 리스트로 관리하는 단순 풀. CullingObject 등 특정 기능은 전혀 모르는 순수 제네릭 상태(2026-07-27-0에서 잠깐 CullingObject 캐싱을 얹었다가 같은 날 2026-07-27-1로 되돌림 — 아래 작업 내역 참고).
 - `m_MaxCount`는 상한이 아니라 Prewarm 개수 — 풀 소진 시 Pop이 무제한 동적 생성 (grow-only).
 - Push는 active 리스트에서 제거 성공 시에만 반납 (이중 반납 방어).
 - Prewarm은 멱등 — 이미 오브젝트가 있으면 재호출 무시.
@@ -81,3 +81,84 @@ MonsterManager.OnDestroy () (at Assets/Scripts/InGame/MonsterManager.cs:231)
 
 ### 검증
 Unity MCP 컴파일 확인(에러 0건). Play Mode 실측: InGameScene에서 몬스터 10마리 스폰(풀 active 상태로 채움) → `SceneManager.instance.NextScene("TitleScene")`으로 실제 씬 전환 → 콘솔 에러 0건(수정 전엔 동일 시나리오에서 `MissingReferenceException` 재현 확인).
+
+---
+
+## 2026-07-27-0 (도입 후 같은 날 되돌림 — 2026-07-27-1 참고)
+
+### 개요
+인게임 몬스터에 CullingObject(뷰포트 밖 SetActive(false)) 적용 요청. 몬스터는 WayPoint의 자동 반경 계산상 항상 화면 밖에서 스폰되어 컬링 실이득이 있음을 확인. 단, CullingObject 자신은 `UpdatableBehaviour` 등 `IUpdatable` 자동등록 패턴(OnEnable/OnDisable에서 Register/Unregister)을 상속하면 안 된다 — 화면 밖으로 나가 스스로 SetActive(false)하는 순간 OnDisable로 갱신 목록에서 영구 이탈해 다시 화면에 들어와도 안 켜지는 데드락이 생기기 때문. 대신 이미 매 프레임 호출되고 있던 `MemoryPooling<T>.UpdateLogic()`(기존엔 빈 가상 메서드)에서 구동하도록 구현.
+
+### 파일
+- Assets/Scripts/Glory/Optimization/Pooling.cs
+
+### 수정 (함수 단위)
+
+**필드 추가**
+- 전: `m_ActiveList`, `m_HideList`만 존재
+- 후: `private Dictionary<T, CullingObject> m_HashCullingObject = new Dictionary<T, CullingObject>();` 추가
+
+**Pop()**
+- 전: active 리스트에 추가 + SetActive(true) 후 반환
+- 후: 그 직후 `if (obj.TryGetComponent(out CullingObject cullingObject) == true) m_HashCullingObject[obj] = cullingObject;` 추가 — CullingObject가 없는 풀 대상(UIToastMessage/DamageText/CritExplosion/SplashExplosion/ChainLightning 등)은 TryGetComponent가 false라 캐시에 안 들어가고 조용히 스킵됨(부작용 없음).
+
+**Push()**
+- 전: active 리스트 제거 성공 시 SetActive(false) + hide 리스트 추가
+- 후: 같은 분기에 `m_HashCullingObject.Remove(_obj);` 추가.
+
+**Clear()**
+- 전: activeList/hideList만 Clear
+- 후: `m_HashCullingObject.Clear();` 추가.
+
+**UpdateLogic()**
+- 전: 빈 가상 메서드(`{ }`)
+- 후:
+  ```csharp
+  public virtual void UpdateLogic()
+  {
+      foreach (CullingObject cullingObject in m_HashCullingObject.Values)
+      {
+          cullingObject.UpdateLogic();
+      }
+  }
+  ```
+
+### 검증
+- Unity MCP 도구가 이번 세션에 잡히지 않아(연결 안 됨) YAML 직접 편집 경로로 프리팹 6개(Triangle/Square/Star/Pentagon/Diamond/Circle)에 CullingObject 부착.
+- `mcp__ide__getDiagnostics`로 Pooling.cs 확인 — 에러 0건(Hint성 메시지도 없음). 단 이건 IDE(Roslyn) 진단이며 Unity 에디터 자체 컴파일/Play Mode 실측은 못 함 — **미검증**으로 남김.
+
+---
+
+## 2026-07-27-1 — 컬링 결합 제거, 순수 제네릭 상태로 복원
+
+### 개요
+사용자 지적("CullingObject를 Pooling에서 관리할게 아니라 MonsterManager에서 관리해야하는거 아니야?") — `MemoryPooling<T>`는 `UIToastMessage`/`DamageText`/`CritExplosion`/`SplashExplosion`/`ChainLightning`/`ActorMonster` 6곳에서 재사용되는 공용 클래스인데, 그중 컬링이 필요한 건 몬스터뿐이었다. 공용 클래스에 특정 기능 로직을 얹기 전에 전체 사용처부터 확인했어야 하는 사례(루트 CLAUDE.md "재사용 우선 원칙"에 일반 규칙으로 추가됨). 몬스터 전용 지식은 [[ActorMonster]]/[[MonsterManager]] 쪽으로 이동.
+
+### 파일
+- Assets/Scripts/Glory/Optimization/Pooling.cs
+
+### 수정 (함수 단위)
+**클래스 선언**
+- 전(2026-07-27-0): `private Dictionary<T, CullingObject> m_HashCullingObject = new Dictionary<T, CullingObject>();` 필드 존재
+- 후: 해당 필드 제거 — 원래 상태로 복원
+
+**Pop()**
+- 전: 활성화 직후 `obj.TryGetComponent(out CullingObject cullingObject) == true`면 `m_HashCullingObject[obj] = cullingObject;`
+- 후: 해당 블록 제거
+
+**Push(T)**
+- 전: 반납 성공 시 `m_HashCullingObject.Remove(_obj);` 호출
+- 후: 해당 호출 제거
+
+**Clear()**
+- 전: `m_HashCullingObject.Clear();` 호출
+- 후: 해당 호출 제거
+
+**UpdateLogic()**
+- 전: `m_HashCullingObject.Values`를 순회하며 각 CullingObject의 `.UpdateLogic()` 호출
+- 후: 원래대로 빈 가상 메서드(`public virtual void UpdateLogic() { }`)로 복원
+
+결과적으로 이 파일은 CullingObject를 전혀 모르는 순수 제네릭 풀링 클래스로 되돌아감(2026-07-27-0 이전과 100% 동일).
+
+### 검증
+Unity 에디터 포커스 재부여로 실제 재컴파일 확인 — 편집 도중 과도기 상태에서 `CS0103: m_HashCullingObject` 에러가 한 번 잡혔으나(순차 편집 중 Unity가 끼어들어 잡은 스냅샷), 최종 저장 상태 기준으로는 이후 두 차례 `Tundra build success`로 에러 0건 확인. **Play Mode 실측은 미검증.**

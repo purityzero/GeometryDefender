@@ -47,7 +47,7 @@ public class ProjectileManager : UpdatableBehaviour
 
     /// <summary>타워가 호출 — _projectileId는 ProjectileTable의 Id(TowerRecord.ProjectileId로 지정). 크기/색/프리팹/관통 등은 전부 테이블에서 읽는다.
     /// _cardEffects: 카드로 해금된 관통/스플래시/체인/호밍 — 기본값(default)이면 전부 무효과.
-    /// _isCrit: TowerController가 발사 시점에 미리 판정한 치명타 여부 — 명중 시 데미지 텍스트 스타일에 사용.</summary>
+    /// _isCrit: ActorPlayer가 발사 시점에 미리 판정한 치명타 여부 — 명중 시 데미지 텍스트 스타일에 사용.</summary>
     public void Fire(Vector2 _from, Vector2 _to, int _baseDamage, float _speed, float _range, int _projectileId, ProjectileEffects _cardEffects = default, bool _isCrit = false)
     {
         if (m_isInitialized == false)

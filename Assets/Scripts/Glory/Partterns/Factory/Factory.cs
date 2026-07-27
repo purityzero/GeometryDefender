@@ -84,6 +84,12 @@ public class MemoryPoolFactory<T, TEnum> : IMemoryPoolFactory<T, TEnum>
         return true;
     }
 
+    // Create()로 내준 뒤 아직 Recycle()되지 않은 오브젝트 전부 — m_ObjectTypeDictionary는 이미 이 집합을 그대로 추적 중이라 별도 목록을 새로 만들지 않고 재사용
+    public IEnumerable<T> GetAllActive()
+    {
+        return m_ObjectTypeDictionary.Keys;
+    }
+
     public void Prewarm()
     {
         foreach (MemoryPooling<T> pool in m_MemoryPoolDictionary.Values)

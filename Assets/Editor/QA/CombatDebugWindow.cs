@@ -105,7 +105,7 @@ public class CombatDebugWindow : EditorWindow
 
     private void DrawCritSection()
     {
-        TowerController towerController = InGameScene.Current.towerController;
+        ActorPlayer towerController = InGameScene.Current.towerController;
 
         EditorGUILayout.LabelField("치명타", EditorStyles.boldLabel);
         EditorGUILayout.BeginHorizontal();

@@ -10,8 +10,14 @@ public abstract class BaseScene : SceneSingleton<BaseScene>
 
     private List<IUpdatable> m_UpdatableList = new List<IUpdatable>();
 
-    // OnEnable/OnDisable을 아무 것도 안 하게 오버라이드 — BaseScene 자신은 자기 자신의 갱신 리스트에 등록될 필요가 없음(등록해도 빈 UpdateLogic()이라 해는 없지만 의미 없는 자기 참조라 의도적으로 생략)
-    protected override void OnEnable() { }
+    // BaseScene 자신은 자기 자신의 갱신 리스트에 등록될 필요가 없어(등록해도 빈 UpdateLogic()이라 해는 없지만 의미 없는
+    // 자기 참조) base.OnEnable()의 Register 호출은 생략한다. 다만 Play 중 재컴파일로 static Current가 초기화된 뒤
+    // Awake()는 재호출되지 않으므로, Current 갱신 자체는 여기서 해줘야 한다(SceneSingleton 2026-07-27 참고).
+    protected override void OnEnable()
+    {
+        Current = this;
+    }
+
     protected override void OnDisable() { }
 
     private void Start()

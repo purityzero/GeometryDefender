@@ -50,16 +50,16 @@
 
     <div class="spec-table">
       <div class="spec-key">Max HP</div>
-      <div class="spec-val">100</div>
+      <div class="spec-val">150 (2026-07-27, 초반 밸런스 조정 — 아래 참고)</div>
 
       <div class="spec-key">Damage</div>
       <div class="spec-val">10</div>
 
       <div class="spec-key">Attack Speed</div>
-      <div class="spec-val">2.0 회/초 (Cooldown 0.5초)</div>
+      <div class="spec-val">2.5 회/초 (Cooldown 0.4초)</div>
 
       <div class="spec-key">Range</div>
-      <div class="spec-val">5.0 unit (화면 절반)</div>
+      <div class="spec-val">7.0 unit (2026-07-27, 초반 밸런스 조정 — 아래 참고)</div>
 
       <div class="spec-key">Projectile Speed</div>
       <div class="spec-val">12.0 unit/초</div>
@@ -72,6 +72,20 @@
 
       <div class="spec-key">Targeting</div>
       <div class="spec-val">Closest (가장 가까운 적)</div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">2026-07-27 초반 밸런스 조정 근거</div>
+      <p style="margin-bottom: 0;">
+        QA 실측(3판 모두 45~65초에 타워 사망, 목표 10~12분 대비 큰 격차) 후 원인 분석 —
+        단일 타겟 타워가 사거리(구 5.0) 안에 머무는 몬스터를 처치하는 속도가 스폰 속도를
+        약 26~29초 지점부터 못 따라잡기 시작하고(웨이포인트 경로 특성상 몬스터가 사거리
+        안에 머무는 시간이 원래 ~3.3초로 매우 짧았음), 단일 타겟이라 그 뒤로 밀린 몬스터가
+        그대로 기지에 도달해 데미지가 눈덩이처럼 불어나는 구조적 병목이 원인으로 확인됨.
+        Range 5.0→7.0(사거리 체류 시간 확대로 병목 완화), Max HP 100→150·
+        <code>SpawnRampGraceSeconds</code> 15→30(둘 다 초반 여유 확대)로 1차 대응 —
+        정확히 10~12분에 맞추는 정밀 튜닝은 추가 플레이테스트로 이어서 검증 필요.
+      </p>
     </div>
 
     <h3>타워 HP 시각 표현</h3>
@@ -112,7 +126,8 @@
 
     <p>
       타워는 매 공격 쿨다운마다 사거리 내 적 중 한 마리를 선택해 발사한다.
-      기본 타겟팅은 <code>Closest</code>이며, 카드로 변경 가능.
+      기본 타겟팅은 <code>Closest</code> 고정이다. 타겟팅을 바꾸는 카드(구 Card-306/307,
+      Target Strongest/Fastest)는 기획 검토로 카드 목록에서 제외되었다.
     </p>
 
     <div class="tbl-wrap">
@@ -122,9 +137,9 @@
         </thead>
         <tbody>
           <tr><td><code>Closest</code></td><td>타워에서 거리가 가장 짧은 적</td><td>기본</td></tr>
-          <tr><td><code>Strongest</code></td><td>현재 HP가 가장 높은 적</td><td>카드 (Card-306)</td></tr>
+          <tr><td><code>Strongest</code></td><td>현재 HP가 가장 높은 적</td><td>미사용 (카드 제거됨)</td></tr>
           <tr><td><code>Weakest</code></td><td>현재 HP가 가장 낮은 적</td><td>카드 해금 (v1.1)</td></tr>
-          <tr><td><code>Fastest</code></td><td>이동 속도가 가장 빠른 적</td><td>카드 (Card-307)</td></tr>
+          <tr><td><code>Fastest</code></td><td>이동 속도가 가장 빠른 적</td><td>미사용 (카드 제거됨)</td></tr>
           <tr><td><code>Random</code></td><td>사거리 내 무작위</td><td>디버프 카드 효과</td></tr>
         </tbody>
       </table>

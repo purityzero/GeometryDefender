@@ -45,7 +45,7 @@ public class InGameScene : BaseScene
     [SerializeField] private SpawnManager m_SpawnManager;
     [SerializeField] private TimerManager m_TimerManager;
     [SerializeField] private ProjectileManager m_ProjectileManager;
-    [SerializeField] private TowerController m_TowerController;
+    [SerializeField] private ActorPlayer m_TowerController;
     [SerializeField] private DifficultyManager m_DifficultyManager;
     [SerializeField] private XpManager m_XpManager;
     [SerializeField] private CardManager m_CardManager;
@@ -55,7 +55,7 @@ public class InGameScene : BaseScene
     public SpawnManager spawnManager => m_SpawnManager;
     public TimerManager timerManager => m_TimerManager;
     public ProjectileManager projectileManager => m_ProjectileManager;
-    public TowerController towerController => m_TowerController;
+    public ActorPlayer towerController => m_TowerController;
     public DifficultyManager difficultyManager => m_DifficultyManager;
     public XpManager xpManager => m_XpManager;
     public CardManager cardManager => m_CardManager;
@@ -102,7 +102,7 @@ public class InGameScene : BaseScene
             return;
         }
 
-        int towerMaxHp = (int)gameConfigTable.GetValue("TowerMaxHp", 100f);
+        int towerMaxHp = (int)gameConfigTable.GetValue("TowerMaxHp", 150f);
 
         // 05_meta.html "STARTING POWER" 줄기 — 해금된 영구 업그레이드를 시작 스탯에 반영
         MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();

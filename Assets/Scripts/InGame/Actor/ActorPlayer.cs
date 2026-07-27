@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -6,18 +7,31 @@ using UnityEngine;
 
 // 02_combat.html "중앙 타워" — MonoBehaviour(인스턴스 1개, ECS 이점 없음). 사격/타겟팅/치명타/데미지 계산 + 체력 관리 담당.
 // 2026-07-23 TowerHealth를 이 클래스로 병합 — 둘 다 같은 오브젝트(ActorPlayer)를 다루는 "타워" 하나의 개념이라 분리 실익이 없었음.
+// 2026-07-27 클래스명을 실제 오브젝트명(ActorPlayer)에 맞춰 리네임 + Actor 상속으로 전환(ActorMonster/ActorProjectile과 계열 통일).
 // InGameScene.Current.towerController로 접근(개별 SceneSingleton 대신 InGameScene이 매니저들을 한데 모아 노출).
-public class TowerController : UpdatableBehaviour
+public class ActorPlayer : Actor
 {
+    // TowerTable 특정 행을 가리키는 FK성 참조 — 밸런스 튜닝값이 아니라 데이터 스키마 연결점이라 GameConfigTable
+    // 이관 대상에서 제외(TOWER_RECORD_ID와 동일 기준, [[GameConfigRecord]] 2026-07-24-0 참고).
     private const int TOWER_RECORD_ID = 3;
+    private const int MAGE_RECORD_ID = 2;
+    private const int CHAIN_COIL_RECORD_ID = 4;
+    private const int HOMING_POD_RECORD_ID = 5;
+
+    // 2026-07-27 무기 다양화 — 무기마다 독립 쿨다운/타겟팅을 갖는 슬롯. m_WeaponList[0]이 항상 기본 무기(CentralTower, m_Record와 동일 레코드)이고
+    // 카드로 해금되는 추가 무기(AddWeapon)는 뒤에 이어붙는다. 데미지%/치명타%/공속% 등 전역 카드 효과는 전 무기 공통 적용, 기본 무기의 타겟팅 카드(SetTargetingStrategy)는 m_WeaponList[0]만 갈아끼운다.
+    private class TowerWeapon
+    {
+        public TowerRecord Record;
+        public ITargetingStrategy TargetingStrategy;
+        public float CooldownTimer;
+    }
 
     private TowerRecord m_Record;
-    private ITargetingStrategy m_TargetingStrategy;
+    private List<TowerWeapon> m_WeaponList = new List<TowerWeapon>();
 
     private EntityManager m_EntityManager;
     private EntityQuery m_AliveMonsterQuery;
-
-    private float m_CooldownTimer;
 
     // 05_meta.html "STARTING POWER" 줄기(DamagePercent/RangePercent) 해금분 — Init()에서 1회 계산해 고정
     private float m_MetaDamageMultiplier = 1f;
@@ -43,7 +57,6 @@ public class TowerController : UpdatableBehaviour
     private float m_BerserkerMaxBonusPercent;
 
     private float m_DamageMultiplier = 1f;
-    private float m_EffectiveRange;
 
     // 04_card.html 카드 효과(체력) — TowerHealth 병합분
     public event Action OnDie;
@@ -71,18 +84,26 @@ public class TowerController : UpdatableBehaviour
         TowerTable towerTable = TableManager.instance.GetTable<TowerTable>();
         if (towerTable == null)
         {
-            Logger.Error($"[TowerController] Init Failed! TowerTable not loaded - TableManager.init() 선행 필요");
+            Logger.Error($"[ActorPlayer] Init Failed! TowerTable not loaded - TableManager.init() 선행 필요");
             return;
         }
 
         m_Record = towerTable.GetRecordById(TOWER_RECORD_ID);
         if (m_Record == null)
         {
-            Logger.Error($"[TowerController] Init Failed! TowerRecord(Id={TOWER_RECORD_ID}) not found");
+            Logger.Error($"[ActorPlayer] Init Failed! TowerRecord(Id={TOWER_RECORD_ID}) not found");
             return;
         }
 
-        SetTargetingStrategy(m_Record.DefaultTargeting);
+        currentTargetingType = m_Record.DefaultTargeting;
+
+        m_WeaponList.Clear();
+        m_WeaponList.Add(new TowerWeapon
+        {
+            Record = m_Record,
+            TargetingStrategy = CreateTargetingStrategy(m_Record.DefaultTargeting),
+            CooldownTimer = 0f,
+        });
 
         MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
         int damagePercent = (metaTreeTable != null) ? metaTreeTable.GetTotalEffectValue(eMetaEffectType.DamagePercent, PlayerManager.instance.playerData.UnlockedMetaNodes) : 0;
@@ -99,51 +120,119 @@ public class TowerController : UpdatableBehaviour
             ComponentType.Exclude<DeadTag>(),
             ComponentType.Exclude<ReachedEndTag>());
 
-        m_CooldownTimer = 0f;
-
         m_BaseMaxHp = _maxHp;
         m_MaxHpPercentBonus = 0f;
         m_MaxHp = _maxHp;
         currentHp.Value = _maxHp;
 
         m_isInitialized = true;
+
+        Open();
     }
 
     // 07_ui.html "CURRENT BUILD" — 일시정지 화면에 현재 타겟팅 우선순위를 보여주기 위한 값
     public eTargetingType currentTargetingType { get; private set; }
 
-    // 향후 카드 시스템이 런타임에 전략을 갈아끼울 확장 지점
+    // 향후 카드 시스템이 런타임에 전략을 갈아끼울 확장 지점 — 기본 무기(m_WeaponList[0])만 대상으로 함
     public void SetTargetingStrategy(ITargetingStrategy _strategy)
     {
-        m_TargetingStrategy = _strategy;
+        if (m_WeaponList.Count == 0)
+            return;
+
+        m_WeaponList[0].TargetingStrategy = _strategy;
     }
 
     public void SetTargetingStrategy(eTargetingType _type)
     {
         currentTargetingType = _type;
+        SetTargetingStrategy(CreateTargetingStrategy(_type));
+    }
 
+    private ITargetingStrategy CreateTargetingStrategy(eTargetingType _type)
+    {
         switch (_type)
         {
             case eTargetingType.Strongest:
-                SetTargetingStrategy(new StrongestTargetingStrategy());
-                break;
+                return new StrongestTargetingStrategy();
 
             case eTargetingType.Weakest:
-                SetTargetingStrategy(new WeakestTargetingStrategy());
-                break;
+                return new WeakestTargetingStrategy();
 
             case eTargetingType.Fastest:
-                SetTargetingStrategy(new FastestTargetingStrategy());
-                break;
+                return new FastestTargetingStrategy();
 
             case eTargetingType.Random:
-                SetTargetingStrategy(new RandomTargetingStrategy());
-                break;
+                return new RandomTargetingStrategy();
 
             default:
-                SetTargetingStrategy(new ClosestTargetingStrategy());
-                break;
+                return new ClosestTargetingStrategy();
         }
+    }
+
+    // 04_card.html 무기 해금 카드(WeaponUnlock) — _towerRecordId(TowerTable)로 정의된 무기를 독립 쿨다운/타겟팅 슬롯으로 추가
+    public void AddWeapon(int _towerRecordId)
+    {
+        TowerTable towerTable = TableManager.instance.GetTable<TowerTable>();
+        if (towerTable == null)
+        {
+            Logger.Error($"[ActorPlayer] AddWeapon Failed! TowerTable not loaded");
+            return;
+        }
+
+        TowerRecord weaponRecord = towerTable.GetRecordById(_towerRecordId);
+        if (weaponRecord == null)
+        {
+            Logger.Error($"[ActorPlayer] AddWeapon Failed! TowerRecord(Id={_towerRecordId}) not found");
+            return;
+        }
+
+        m_WeaponList.Add(new TowerWeapon
+        {
+            Record = weaponRecord,
+            TargetingStrategy = CreateTargetingStrategy(weaponRecord.DefaultTargeting),
+            CooldownTimer = 0f,
+        });
+    }
+
+    // 이하 UIInGameHUD 하단 무기 쿨다운 게이지가 매 프레임 폴링(무기 목록은 씬 배치 오브젝트가 아니라 이 클래스 내부
+    // private 상태라 UI가 직접 들여다볼 수 없음 — 최소한의 조회용 API만 노출).
+    public int weaponCount => m_WeaponList.Count;
+
+    public float GetWeaponCooldownRatio(int _index)
+    {
+        if (_index < 0 || _index >= m_WeaponList.Count)
+            return 0f;
+
+        TowerWeapon weapon = m_WeaponList[_index];
+        float attackInterval = weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
+        if (attackInterval <= 0f)
+            return 1f;
+
+        return 1f - Mathf.Clamp01(weapon.CooldownTimer / attackInterval);
+    }
+
+    // StringTable 키를 반환 — 호출부(UIInGameHUD)가 로컬라이즈해서 표시한다(원문 그대로 쓰지 않음).
+    public string GetWeaponNameKey(int _index)
+    {
+        if (_index < 0 || _index >= m_WeaponList.Count)
+            return string.Empty;
+
+        return m_WeaponList[_index].Record.NameKey;
+    }
+
+    public string GetWeaponColorHex(int _index)
+    {
+        if (_index < 0 || _index >= m_WeaponList.Count)
+            return "#FFFFFF";
+
+        return m_WeaponList[_index].Record.ColorHex;
+    }
+
+    // CardManager가 카드 드래프트 풀 필터링에 사용 — Splash/Chain/Homing 카드(#303/#304/#305)는
+    // 해당 무기(Mage/ChainCoil/HomingPod)를 이미 보유했을 때만 드래프트에 나오게 하는 선행조건 체크.
+    public bool HasWeapon(int _towerRecordId)
+    {
+        return m_WeaponList.Exists(weapon => weapon.Record.Id == _towerRecordId);
     }
 
     // 이하 카드 효과 적용 API — CardManager.ApplyCard()가 호출
@@ -172,11 +261,13 @@ public class TowerController : UpdatableBehaviour
 
     private void RecalculateDerivedStats()
     {
-        if (m_Record == null)
-            return;
-
         m_DamageMultiplier = m_MetaDamageMultiplier * (1f + m_CardDamagePercent / 100f);
-        m_EffectiveRange = m_Record.Range * m_MetaRangeMultiplier * (1f + m_CardRangePercent / 100f);
+    }
+
+    // 무기마다 기본 사거리(Record.Range)가 다르므로 공통 배율(메타+카드)만 곱해 매 발사 시점에 계산
+    private float GetWeaponRange(TowerWeapon _weapon)
+    {
+        return _weapon.Record.Range * m_MetaRangeMultiplier * (1f + m_CardRangePercent / 100f);
     }
 
     public override void UpdateLogic()
@@ -188,25 +279,31 @@ public class TowerController : UpdatableBehaviour
         UpdateRegeneration();
     }
 
+    // 무기마다 독립 쿨다운/타겟팅으로 발사 — 카드로 무기가 늘어나면 이 리스트도 함께 늘어남(AddWeapon)
     private void UpdateFire()
     {
-        m_CooldownTimer -= Time.deltaTime;
-        if (m_CooldownTimer > 0f)
-            return;
-
         float3 towerPosition = new float3(transform.position.x, transform.position.y, 0f);
-        Entity target = m_TargetingStrategy.SelectTarget(m_EntityManager, m_AliveMonsterQuery, towerPosition, m_EffectiveRange);
 
-        if (target == Entity.Null)
-            return;
+        for (int i = 0; i < m_WeaponList.Count; ++i)
+        {
+            TowerWeapon weapon = m_WeaponList[i];
 
-        Fire(target);
+            weapon.CooldownTimer -= Time.deltaTime;
+            if (weapon.CooldownTimer > 0f)
+                continue;
 
-        float attackInterval = m_Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
-        m_CooldownTimer = attackInterval;
+            Entity target = weapon.TargetingStrategy.SelectTarget(m_EntityManager, m_AliveMonsterQuery, towerPosition, GetWeaponRange(weapon));
+
+            if (target == Entity.Null)
+                continue;
+
+            Fire(weapon, target);
+
+            weapon.CooldownTimer = weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
+        }
     }
 
-    private void Fire(Entity _target)
+    private void Fire(TowerWeapon _weapon, Entity _target)
     {
         LocalTransform targetTransform = m_EntityManager.GetComponentData<LocalTransform>(_target);
         Vector2 targetPosition = new Vector2(targetTransform.Position.x, targetTransform.Position.y);
@@ -228,35 +325,91 @@ public class TowerController : UpdatableBehaviour
             elementBonus += (m_BerserkerMaxBonusPercent / 100f) * missingHpRatio;
         }
 
-        bool isCrit = UnityEngine.Random.value < (m_Record.CritChance + m_CardCritChance);
-        float critMul = (isCrit == true) ? (m_Record.CritMultiplier + m_CardCritMultiplier) : 1f;
-        float finalDamage = (m_Record.Damage * m_DamageMultiplier) * critMul * (1f + elementBonus);
+        bool isCrit = UnityEngine.Random.value < (_weapon.Record.CritChance + m_CardCritChance);
+        float critMul = (isCrit == true) ? (_weapon.Record.CritMultiplier + m_CardCritMultiplier) : 1f;
+        float finalDamage = (_weapon.Record.Damage * m_DamageMultiplier) * critMul * (1f + elementBonus);
         int roundedDamage = Mathf.RoundToInt(finalDamage);
 
-        float finalProjectileSpeed = m_Record.ProjectileSpeed * (1f + m_CardProjectileSpeedPercent / 100f);
+        float finalProjectileSpeed = _weapon.Record.ProjectileSpeed * (1f + m_CardProjectileSpeedPercent / 100f);
 
+        // Splash/Chain/Homing은 더 이상 전역 적용이 아니라 무기 고유 특성 — ApplyInnateWeaponAbility()가
+        // 무기 Id로 분기해서 채운다(사용자 지적: "전부 호밍이 되더라, 각각 미사일에 맞게 해줘").
         ProjectileEffects cardEffects = new ProjectileEffects
         {
             Pierce = m_PierceStacks,
-            SplashRadius = (m_hasSplash == true) ? m_SplashRadius : 0f,
-            ChainJumps = (m_hasChain == true) ? m_ChainJumps : 0,
-            ChainRadius = (m_hasChain == true) ? m_ChainRadius : 0f,
-            IsHoming = m_hasHoming,
+            SplashRadius = 0f,
+            ChainJumps = 0,
+            ChainRadius = 0f,
+            IsHoming = false,
             HomingTarget = _target,
         };
 
-        // Double Shot(#107) — m_ProjectileCount만큼 동일 타겟에 동시 발사
+        ApplyInnateWeaponAbility(_weapon, ref cardEffects);
+
+        // Double Shot(#107) — m_ProjectileCount만큼 발사(무기별로 각자 적용). 전부 같은 궤적에 겹치지 않도록
+        // 조준 방향을 중심으로 부채꼴로 벌려서 발사 — 사용자 요청("더블샷 같은애들 부채꼴로 발사").
+        Vector2 firePosition = transform.position;
         for (int i = 0; i < m_ProjectileCount; ++i)
         {
+            Vector2 spreadTargetPosition = GetSpreadTargetPosition(firePosition, targetPosition, i, m_ProjectileCount);
+
             InGameScene.Current.projectileManager.Fire(
-                transform.position,
-                targetPosition,
+                firePosition,
+                spreadTargetPosition,
                 roundedDamage,
                 finalProjectileSpeed,
-                m_EffectiveRange,
-                m_Record.ProjectileId,
+                GetWeaponRange(_weapon),
+                _weapon.Record.ProjectileId,
                 cardEffects,
                 isCrit);
+        }
+    }
+
+    // 발사체 여러 발이 나갈 때 조준 방향을 중심으로 균등하게 벌린 가상의 조준점을 계산 — 실제 타겟 엔티티는 그대로 두고
+    // (호밍은 ProjectileEffects.HomingTarget으로 별도 추적되므로 초기 발사 방향만 벌어짐, 유도 중엔 다시 타겟으로 모여든다)
+    // 초기 방향 벡터만 회전시킨다.
+    private Vector2 GetSpreadTargetPosition(Vector2 _firePosition, Vector2 _targetPosition, int _index, int _count)
+    {
+        if (_count <= 1)
+            return _targetPosition;
+
+        float centeredIndex = _index - (_count - 1) / 2f;
+        float angleDegrees = centeredIndex * GameConfigTable.PROJECTILE_SPREAD_ANGLE_STEP;
+
+        Vector2 toTarget = _targetPosition - _firePosition;
+        Vector2 rotatedDirection = Quaternion.Euler(0f, 0f, angleDegrees) * toTarget;
+        return _firePosition + rotatedDirection;
+    }
+
+    // 테마 무기(Mage=스플래쉬/ChainCoil=체인/HomingPod=유도)만 자기 고유 효과를 갖는다 — 다른 무기(CentralTower/Archer 등)에는
+    // 절대 안 붙는다. 대응 카드(#303/#304/#305)는 이제 전역 인챈트가 아니라 "해당 무기를 이미 보유했을 때만" 그 무기의
+    // 수치를 더 강하게 만드는 업그레이드로 재정의(Max 비교) — 카드 자체는 CardManager가 무기 미보유 시 드래프트 풀에서 제외한다.
+    private void ApplyInnateWeaponAbility(TowerWeapon _weapon, ref ProjectileEffects _effects)
+    {
+        switch (_weapon.Record.Id)
+        {
+            case MAGE_RECORD_ID:
+                float splashRadius = _weapon.Record.SplashRadius;
+                if (m_hasSplash == true)
+                    splashRadius = Mathf.Max(splashRadius, m_SplashRadius);
+                _effects.SplashRadius = splashRadius;
+                break;
+
+            case CHAIN_COIL_RECORD_ID:
+                int chainJumps = GameConfigTable.CHAIN_COIL_INNATE_CHAIN_JUMPS;
+                float chainRadius = GameConfigTable.CHAIN_COIL_INNATE_CHAIN_RADIUS;
+                if (m_hasChain == true)
+                {
+                    chainJumps = Mathf.Max(chainJumps, m_ChainJumps);
+                    chainRadius = Mathf.Max(chainRadius, m_ChainRadius);
+                }
+                _effects.ChainJumps = chainJumps;
+                _effects.ChainRadius = chainRadius;
+                break;
+
+            case HOMING_POD_RECORD_ID:
+                _effects.IsHoming = true;
+                break;
         }
     }
 
@@ -279,7 +432,7 @@ public class TowerController : UpdatableBehaviour
                 newHp = Mathf.Max(1, Mathf.RoundToInt(m_MaxHp * (m_ReviveHpPercent / 100f)));
                 currentHp.Value = newHp;
 
-                Logger.Log($"[TowerController] Phoenix 발동 - HP {newHp}/{m_MaxHp}로 부활");
+                Logger.Log($"[ActorPlayer] Phoenix 발동 - HP {newHp}/{m_MaxHp}로 부활");
                 return;
             }
 
@@ -288,7 +441,7 @@ public class TowerController : UpdatableBehaviour
 
         currentHp.Value = newHp;
 
-        Logger.Log($"[TowerController] TakeDamage - amount:{_amount}, currentHp:{currentHp.Value}/{m_MaxHp}");
+        Logger.Log($"[ActorPlayer] TakeDamage - amount:{_amount}, currentHp:{currentHp.Value}/{m_MaxHp}");
 
         CheckShieldBurst();
 
@@ -399,6 +552,8 @@ public class TowerController : UpdatableBehaviour
     {
         if (m_isInitialized == false)
             return;
+
+        Close();
 
         if (World.DefaultGameObjectInjectionWorld != null && World.DefaultGameObjectInjectionWorld.IsCreated == true)
             m_AliveMonsterQuery.Dispose();

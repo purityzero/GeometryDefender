@@ -18,6 +18,7 @@ public class GameConfigTable : Table<GameConfigRecord>
     public static float SPAWN_RATE_EXPONENT = 1.3f;
     public static float HP_MULTIPLIER_GROWTH = 0.4f;
     public static float DAMAGE_MULTIPLIER_GROWTH = 0.25f;
+    public static float SPAWN_RAMP_GRACE_SECONDS = 30f;
 
     // Assets/Design/04_card.html "레벨업 곡선" 공식: requiredXp(level) = base + level×linear + level²×quadratic
     public static float XP_REQUIRED_BASE = 5f;
@@ -54,6 +55,12 @@ public class GameConfigTable : Table<GameConfigRecord>
     public static float PROJECTILE_PREFAB_NATIVE_DIAMETER = 2.22f;
     public static float ORBITAL_DAMAGE_TICK_INTERVAL = 0.5f;
     public static float PROJECTILE_HOMING_TURN_RATE = 6f;
+    public static float PROJECTILE_HOMING_MAX_LIFETIME = 25f;
+    public static float PROJECTILE_SPREAD_ANGLE_STEP = 12f;
+
+    // ChainCoil 고유 능력(카드 없이도 항상 적용) 기본값 — Chain Lightning 카드(#304)와 동일 수치
+    public static int CHAIN_COIL_INNATE_CHAIN_JUMPS = 3;
+    public static float CHAIN_COIL_INNATE_CHAIN_RADIUS = 2f;
 
     // 02_combat.html "투사체 종류" — Splash/Chain 명중 시각 이펙트(2026-07-24, 사용자 요청 "폭발이랑 연쇄 좀 보이게 해줘")
     public static int SPLASH_EXPLOSION_POOL_SIZE = 6;
@@ -73,6 +80,7 @@ public class GameConfigTable : Table<GameConfigRecord>
         SPAWN_RATE_EXPONENT = GetValue("SpawnRateExponent", SPAWN_RATE_EXPONENT);
         HP_MULTIPLIER_GROWTH = GetValue("HpMultiplierGrowth", HP_MULTIPLIER_GROWTH);
         DAMAGE_MULTIPLIER_GROWTH = GetValue("DamageMultiplierGrowth", DAMAGE_MULTIPLIER_GROWTH);
+        SPAWN_RAMP_GRACE_SECONDS = GetValue("SpawnRampGraceSeconds", SPAWN_RAMP_GRACE_SECONDS);
 
         XP_REQUIRED_BASE = GetValue("XpRequiredBase", XP_REQUIRED_BASE);
         XP_REQUIRED_LINEAR = GetValue("XpRequiredLinear", XP_REQUIRED_LINEAR);
@@ -106,6 +114,10 @@ public class GameConfigTable : Table<GameConfigRecord>
         PROJECTILE_PREFAB_NATIVE_DIAMETER = GetValue("ProjectilePrefabNativeDiameter", PROJECTILE_PREFAB_NATIVE_DIAMETER);
         ORBITAL_DAMAGE_TICK_INTERVAL = GetValue("OrbitalDamageTickInterval", ORBITAL_DAMAGE_TICK_INTERVAL);
         PROJECTILE_HOMING_TURN_RATE = GetValue("ProjectileHomingTurnRate", PROJECTILE_HOMING_TURN_RATE);
+        PROJECTILE_HOMING_MAX_LIFETIME = GetValue("ProjectileHomingMaxLifetime", PROJECTILE_HOMING_MAX_LIFETIME);
+        PROJECTILE_SPREAD_ANGLE_STEP = GetValue("ProjectileSpreadAngleStep", PROJECTILE_SPREAD_ANGLE_STEP);
+        CHAIN_COIL_INNATE_CHAIN_JUMPS = (int)GetValue("ChainCoilInnateChainJumps", CHAIN_COIL_INNATE_CHAIN_JUMPS);
+        CHAIN_COIL_INNATE_CHAIN_RADIUS = GetValue("ChainCoilInnateChainRadius", CHAIN_COIL_INNATE_CHAIN_RADIUS);
 
         SPLASH_EXPLOSION_POOL_SIZE = (int)GetValue("SplashExplosionPoolSize", SPLASH_EXPLOSION_POOL_SIZE);
         SPLASH_EXPLOSION_SCALE_POP_DURATION = GetValue("SplashExplosionScalePopDuration", SPLASH_EXPLOSION_SCALE_POP_DURATION);
