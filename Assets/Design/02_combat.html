@@ -120,6 +120,52 @@
       </div>
     </div>
 
+    <h2 id="weapons">무기 시스템 (2026-07-27 추가)</h2>
+
+    <p>
+      중앙 타워 외에 <strong>WEAPON 카테고리 카드</strong>(<a href="04_card.html">04 Card System</a>
+      참고)로 독립 쿨다운/타겟팅을 갖는 추가 무기 슬롯을 최대 5개까지 해금할 수 있다.
+      추가 무기는 전부 항상 발사되고(쿨다운 각자 독립), 데미지%/치명타%/공속% 같은 전역
+      카드 효과는 모든 무기에 공통 적용되지만, 기본 무기(중앙 타워)의 타겟팅 카드나
+      Double Shot은 추가 무기에는 영향을 주지 않는다.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>무기</th><th>색상</th><th>Damage</th><th>Cooldown</th><th>Range</th><th>Targeting</th><th>고유 능력</th><th>해금</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Central Tower</td><td><span class="swatch" style="background:#00e5ff"></span>#00e5ff</td><td class="num">10</td><td class="num">0.4s</td><td class="num">7.0u</td><td>Closest</td><td>Crit 5% / ×2.0</td><td>기본 장착</td></tr>
+          <tr><td>Archer (래피드 오토캐논)</td><td><span class="swatch" style="background:#FFD54F"></span>#FFD54F</td><td class="num">10</td><td class="num">0.6s</td><td class="num">5.0u</td><td>Random</td><td>—</td><td>#601</td></tr>
+          <tr><td>Mage (스플래시 모르타르)</td><td><span class="swatch" style="background:#BA68C8"></span>#BA68C8</td><td class="num">15</td><td class="num">1.2s</td><td class="num">4.5u</td><td>Strongest</td><td>적중 시 반경 1.5 폭발(항상)</td><td>#602</td></tr>
+          <tr><td>ChainCoil (체인 코일)</td><td><span class="swatch" style="background:#aeea00"></span>#aeea00</td><td class="num">8</td><td class="num">0.9s</td><td class="num">4.5u</td><td>Random</td><td>3체 연쇄, 반경 2.0(항상)</td><td>#603</td></tr>
+          <tr><td>HomingPod (호밍 포드)</td><td><span class="swatch" style="background:#3d5afe"></span>#3d5afe</td><td class="num">7</td><td class="num">1.1s</td><td class="num">5.5u</td><td>Weakest</td><td>발사체 유도(항상)</td><td>#604</td></tr>
+          <tr><td>Laser (레이저 스피너)</td><td><span class="swatch" style="background:#44FF33"></span>#44FF33</td><td class="num">4/틱</td><td class="num">5.0s</td><td class="num">무제한</td><td>없음(회전)</td><td>아래 "레이저 빔" 참고</td><td>#605</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Mage/ChainCoil/HomingPod의 스플래시/연쇄/유도는 <strong>무기 자체에 항상 내장된
+      고유 능력</strong>이다 — 대응 카드(#303/#304/#305)는 이 무기를 이미 보유했을 때만
+      드래프트에 등장하는 "강화형" 업그레이드(수치를 Max 비교로 더 세게 만듦)로, 카드가
+      없어도 무기만 있으면 기본 수치로 항상 작동한다. 다른 무기(중앙 타워/Archer)에는
+      이 고유 능력이 절대 붙지 않는다.
+    </p>
+
+    <h3>레이저 빔 (Laser)</h3>
+
+    <p>
+      Laser는 투사체를 발사하지 않는 유일한 무기다 — 쿨다운(5초)이 끝나면
+      <strong>2초간</strong>(업그레이드 카드 #308로 최대 3.5초까지 연장) 90도/초로
+      계속 회전하며, 0.2초마다 부채꼴(반각 8도) 범위 안의 <strong>모든</strong> 적에게
+      동시에 피해를 준 뒤 사라지고 다시 쿨다운에 들어간다. 사거리는 다른 무기와 달리
+      제한이 없다(맵 전체 커버). 시각적으로는 흰색 코어 라인 + 무기 고유색(#44FF33)
+      외곽 글로우 2겹 구조로, "얇고 밝은 중심 + 은은하게 번지는 색"이 레이저 빔의 느낌을
+      낸다.
+    </p>
+
     <h2>사격 시스템</h2>
 
     <h3>타겟팅 우선순위</h3>
@@ -216,25 +262,40 @@
       </div>
       <div class="mini-card">
         <div class="shape-box">
-          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ff00aa;"></div>
+          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ba68c8;"></div>
         </div>
         <div class="mini-card-name">Splash</div>
         <div class="mini-card-meta">적중 시 폭발</div>
       </div>
       <div class="mini-card">
         <div class="shape-box">
-          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #00ff88;"></div>
+          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #3d5afe;"></div>
         </div>
         <div class="mini-card-name">Homing</div>
         <div class="mini-card-meta">타겟 추적</div>
       </div>
       <div class="mini-card">
         <div class="shape-box">
-          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #ffd600;"></div>
+          <div class="shape-fill" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4='); --tint: #aeea00;"></div>
         </div>
         <div class="mini-card-name">Chain</div>
         <div class="mini-card-meta">3체 연쇄</div>
       </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">2026-07-27 투사체 색상 재조정 + 효과 아이콘 오버레이 제거</div>
+      <p style="margin-bottom: 0;">
+        기존 Splash(#ff00aa)/Chain(#ffd600)이 각각 Elite 등급/Boss 등급 몬스터 색상과
+        완전히 동일해 "정신 사납다"는 사용자 피드백의 핵심 원인으로 확인됨(QA 진단 상세는
+        <code>.claude/qa/client-issues.md</code> 2026-07-27-5 참고) — Splash → #ba68c8,
+        Chain → #aeea00로 변경. 이후 신설된 Laser(#44FF33)와도 겹치던 Homing(#00ff88 →
+        Splitter 몬스터 #29cc66와 근접)도 함께 #3d5afe로 재조정. 무기 쿨다운 게이지 색도
+        항상 발사체 색과 동일하게 동기화된다.<br><br>
+        또한 발사체 위에 카드 효과(관통/스플래시/체인/호밍)를 작은 점 아이콘으로 겹쳐
+        표시하던 오버레이 기능은 시각적으로 거슬린다는 사용자 판단으로 완전히 제거됨 —
+        현재는 발사체 색상만으로 효과를 구분한다.
+      </p>
     </div>
 
     <h3>투사체 스펙</h3>

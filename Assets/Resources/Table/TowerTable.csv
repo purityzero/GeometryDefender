@@ -1,6 +1,7 @@
-Id,DisplayName,NameKey,ColorHex,Cost,Damage,AttackInterval,Range,SplashRadius,ProjectileSpeed,DefaultTargeting,CritChance,CritMultiplier,ProjectileId
-1,Archer,Card601Name,#FFD54F,25,10,0.6,5.0,0.0,15,Random,0,0,1
-2,Mage,Card602Name,#BA68C8,50,15,1.2,4.5,1.5,10,Strongest,0,0,3
-3,CentralTower,TowerNameCentral,#00e5ff,0,10,0.4,7.0,0.0,12,Closest,0.05,2.0,1
-4,ChainCoil,Card603Name,#ffd600,0,8,0.9,4.5,0.0,13,Random,0,0,5
-5,HomingPod,Card604Name,#00ff88,0,7,1.1,5.5,0.0,9,Weakest,0,0,4
+Id,DisplayName,NameKey,ColorHex,Cost,Damage,AttackInterval,Range,SplashRadius,ProjectileSpeed,DefaultTargeting,CritChance,CritMultiplier,ProjectileId,PrefabPath
+1,Archer,Card601Name,#FFD54F,25,10,0.6,5.0,0.0,15,Random,0,0,1,
+2,Mage,Card602Name,#BA68C8,50,15,1.2,4.5,1.5,10,Strongest,0,0,3,
+3,CentralTower,TowerNameCentral,#00e5ff,0,10,0.4,7.0,0.0,12,Closest,0.05,2.0,1,
+4,ChainCoil,Card603Name,#aeea00,0,8,0.9,4.5,0.0,13,Random,0,0,5,
+5,HomingPod,Card604Name,#3d5afe,0,7,1.1,5.5,0.0,9,Weakest,0,0,4,
+6,LaserSpinner,Card605Name,#44FF33,0,4,5.0,0.0,0.0,0,Random,0,0,0,Prefabs/Effect/LaserBeam

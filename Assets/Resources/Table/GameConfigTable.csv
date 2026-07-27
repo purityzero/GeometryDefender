@@ -57,3 +57,8 @@ Id,DisplayName,Value
 56,ProjectileSpreadAngleStep,12
 57,ChainCoilInnateChainJumps,3
 58,ChainCoilInnateChainRadius,2
+59,LaserInnateRotateDuration,2
+60,LaserRotationSpeed,90
+61,LaserTickInterval,0.2
+62,LaserArcHalfWidthDegrees,8
+63,LaserRange,100

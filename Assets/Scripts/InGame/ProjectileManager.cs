@@ -84,7 +84,7 @@ public class ProjectileManager : UpdatableBehaviour
         m_EntityManager.AddComponentData(entity, _cardEffects);
         m_EntityManager.AddComponentData(entity, LocalTransform.FromPosition(spawnPosition));
 
-        SpawnVisual(entity, record, _cardEffects);
+        SpawnVisual(entity, record);
     }
 
     /// <summary>Orbital Ring(#503) 카드 — 타워 주위를 계속 회전하는 상시 투사체 _count개를 생성(만료 없음, 카드는 유니크라 중복 호출 안 됨 전제).</summary>
@@ -146,7 +146,7 @@ public class ProjectileManager : UpdatableBehaviour
         expiredEntities.Dispose();
     }
 
-    private void SpawnVisual(Entity _entity, ProjectileRecord _record, ProjectileEffects _cardEffects = default)
+    private void SpawnVisual(Entity _entity, ProjectileRecord _record)
     {
         ActorProjectile actorProjectile = m_ProjectileFactory.Create(_record.Type);
         if (actorProjectile == null)
@@ -160,13 +160,6 @@ public class ProjectileManager : UpdatableBehaviour
 
         if (ColorUtility.TryParseHtmlString(_record.ColorHex, out Color color) == true)
             actorProjectile.SetColor(color);
-
-        // 02_combat.html "투사체 종류" — 카드로 붙은 효과를 작은 아이콘으로 겹쳐 표시(오비탈은 카드 효과를 안 받으므로 전부 꺼짐)
-        actorProjectile.SetEffectIcons(
-            _cardEffects.Pierce > 0,
-            _cardEffects.SplashRadius > 0f,
-            _cardEffects.ChainJumps > 0,
-            _cardEffects.IsHoming);
 
         m_EntityManager.AddComponentObject(_entity, new VisualObject
         {

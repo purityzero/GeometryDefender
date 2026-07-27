@@ -22,6 +22,7 @@ public class CardManager : UpdatableBehaviour
         { 303, 2 }, // Splash I → Mage
         { 304, 4 }, // Chain Lightning → ChainCoil
         { 305, 5 }, // Homing Missile → HomingPod
+        { 308, 6 }, // Laser Overdrive → LaserSpinner
     };
 
     // Double Shot(#107)은 Legendary라 등급상 유니크 취급되지만, 사용자 요청("더블샷 계속 먹으면 탄수 한번에 늘어나게")대로
@@ -444,6 +445,10 @@ public class CardManager : UpdatableBehaviour
 
             case eCardEffectType.HomingEnable:
                 InGameScene.Current.towerController.SetHoming();
+                break;
+
+            case eCardEffectType.LaserDurationAdd:
+                InGameScene.Current.towerController.SetLaserDuration(_record.EffectValue);
                 break;
 
             // Fortify(#402) 전용 — MaxHp +50(EffectValue)에 더해 그만큼 즉시 회복(AddMaxHp가 이미 델타만큼 자동 회복하므로 별도 처리 불필요)

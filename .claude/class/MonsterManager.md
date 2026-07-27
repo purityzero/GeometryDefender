@@ -695,3 +695,22 @@ private void UpdateCulling()
 
 #### 검증
 Unity 에디터 포커스 재부여로 실제 재컴파일 확인(`Tundra build success`, 에러 0건). **Play Mode 실측(몬스터가 화면 밖/안에서 실제로 비활성화/재활성화되는지)은 미검증** — qa-tester 에이전트로 확인 예정.
+
+---
+
+## 2026-07-27-11 — Laser(#6) 무기 지원: `DamageEntitiesInArc` 신설
+
+### 개요
+사용자 요청("회전하면서 다수 공격하는 레이져")으로 [[ActorPlayer]] 2026-07-27-11에 Laser 무기 추가하면서, 회전하는 부채꼴 범위 안의 모든 적에게 동시에 피해를 주는 API가 필요해 신설. 기존 `DamageEntitiesInRadius`(Shield Burst #404용, 원형 범위)와 완전히 동일한 패턴에 각도(방향/반각) 판정만 추가.
+
+### 신규 함수
+```csharp
+public void DamageEntitiesInArc(Vector2 _origin, Vector2 _direction, float _range, float _halfAngleDegrees, int _damage)
+```
+`DamageEntitiesInRadius`처럼 매 호출마다 `EntityQuery`를 그때그때 생성/해제(ECS 시스템이 아니라 MonoBehaviour에서 호출되는 트리거라 상시 쿼리 불필요). 거리 판정(`distance <= _range`)에 더해 `math.dot(direction, toTargetDir) >= cos(halfAngleDegrees)`로 부채꼴 안쪽인지 확인 후 `DamageRequest` 버퍼에 추가.
+
+### 검증
+Play Mode에서 `execute_code`로 직접 호출 → 콘솔 에러 0건. HP 감소 자체는 별도 프레임(엔티티 인덱스 재사용 이슈로 동일 엔티티 추적이 어려움)에서 재확인은 못했으나, 로직이 이미 검증된 `DamageEntitiesInRadius`와 각도 필터 한 줄만 다르고 `DamageRequest`/`HealthSystem` 소비 경로는 완전히 동일 재사용이라 별도 대규모 검증은 생략.
+
+### 관련 클래스
+- [[ActorPlayer]] 2026-07-27-11 (호출부)

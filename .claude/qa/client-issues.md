@@ -519,3 +519,83 @@ MissingReferenceException: The object of type 'UnityEngine.Transform' has been d
 - [ProjectileManager.md](../class/ProjectileManager.md) 2026-07-23-1
 
 ---
+
+## 2026-07-27-5 — "게임이 정신 사납다"(투사체 지목) 진단: 투사체 색상이 몬스터 등급 색상과 완전히 동일(hex 충돌)
+
+### 개요
+사용자 피드백 "게임이 정신 사납다" → 후속 확인으로 "투사체"가 원인으로 지목됨. qa-tester 절차(Unity MCP → Play Mode → UICheatWindow로 무기 5종 전부 장착 + Double Shot/Pierce/Splash/Chain/Homing 카드 전부 적용 → QARecorder 녹화 → 프레임 추출 육안 확인 + ECS 쿼리로 실제 동시 투사체 수 실측)로 진단.
+
+### 근거 1 — 실측: 동시 투사체 개수 자체는 과도하지 않음
+`Unity.Entities.World.DefaultGameObjectInjectionWorld`에서 `ProjectileTag` 컴포넌트로 `EntityQuery.CalculateEntityCount()`를 0.5초 간격으로 8회 샘플링(무기 5개 전부 장착 + Double Shot(발사체 2)+Pierce III+Splash+Chain+Homing 전부 활성 상태, 자연 스폰으로 몬스터 12~19마리 동시 존재하는 실전투 구간): **12~19개** 사이에서 변동. 몬스터 동시 개체 수(같은 순간 17마리)와 비슷한 자릿수라 "투사체 개수 자체가 압도적으로 많다"고 보기는 어려움 — 즉 원인은 물량이 아니라 아래 근거 2.
+
+### 근거 2 — 코드 대조: 투사체 색상이 몬스터 등급(Variant) 색상과 완전히 동일한 hex
+`Assets/Resources/Table/ProjectileTable.csv`와 `Assets/Resources/Table/EnemyTable.csv`를 직접 대조:
+
+| 투사체(ProjectileTable) | ColorHex | 충돌 대상 |
+|---|---|---|
+| Splash(Id 3, Mage/스플래시 모르타르 발사) | `#ff00aa` | **EnemyTable의 Elite 등급 몬스터 전종(Id 6~10, Triangle/Circle/Square/Diamond/Pentagon Elite) 색상과 완전히 동일한 hex** |
+| Chain(Id 5, ChainCoil/체인 코일 발사) | `#ffd600` | **EnemyTable의 Boss 등급 몬스터 전종(Id 11~15, Star Boss) 색상과 완전히 동일한 hex** |
+
+즉 Splash Mortar가 쏘는 탄환은 화면에 뜨는 순간 Elite 몬스터(가장 자주 마주치는 상위 변종)와 정확히 같은 색이라 구분이 안 되고, Chain Lightning 탄환/빔은 Boss 몬스터와 완전히 같은 색이다. 실제 캡처한 프레임(`f_018`, HP 101/170, 킬 125 시점)에서 타워 바로 위에 초록/핑크 계열 색이 여러 겹 뭉쳐 하나의 발광 덩어리로 보이는 것도 이 색상 충돌 + 몬스터가 타워에 밀착해 싸우는 구도가 겹친 결과로 설명됨.
+
+### 근거 3 (부차) — Archer/Mage는 무기 UI 색상과 실제 발사체 색상이 불일치
+`TowerTable.csv` 대조: CentralTower(`#00e5ff`→Basic `#00e5ff`)와 ChainCoil(`#ffd600`→Chain `#ffd600`), HomingPod(`#00ff88`→Homing `#00ff88`)는 무기 고유색=발사체색으로 일관되지만, **Archer(래피드 오토캐논, UI색 `#FFD54F` 금색)가 실제로 쏘는 건 ProjectileId 1=Basic(`#00e5ff` 시안)**, **Mage(스플래시 모르타르, UI색 `#BA68C8` 보라)가 실제로 쏘는 건 ProjectileId 3=Splash(`#ff00aa` 핑크)**로 자기 자신의 무기 아이콘/HUD 게이지 색과 실제 발사체 색이 서로 다르다. "이 탄환이 어느 무기에서 나왔는지" 시각적으로 매칭이 안 돼 혼란을 더한다(우선순위는 낮음 — 근거 2가 핵심 원인).
+
+### 재현 조건
+InGameScene 정상 진입 → UICheatWindow로 Archer(601)/Mage(602)/ChainCoil(603)/HomingPod(604) 전부 해금 → 아무 판이나 진행해 Elite/Boss 몬스터가 등장하는 구간(Elite는 초반부터, Boss는 웨이브 조건 충족 시)까지만 가면 재현됨 — 카드 적용 여부와 무관하게 Splash/Chain 무기 2종만 있어도 발생하는 근본 원인.
+
+### 제안 (수정 지점, 결론 아님 — 사용자 확인 후 진행)
+- `ProjectileTable.csv`의 Splash(`#ff00aa`)와 Chain(`#ffd600`) ColorHex를 EnemyTable의 Elite(`#ff00aa`)/Boss(`#ffd600`) 색상과 겹치지 않는 값으로 변경. 예: Splash를 Mage 고유색 `#BA68C8` 계열로, Chain을 조금 더 노란기 없는 톤(예: `#ff8800` 주황 계열)으로 바꾸는 등 — 최종 팔레트는 EnemyTable 5개(Normal 5색) + Elite(`#ff00aa`) + Boss(`#ffd600`) + 배경 장식(별, 확인 안 함)까지 한 번에 놓고 재조정 필요.
+- 근거 3(Archer/Mage 무기색-발사체색 불일치)도 같이 정리하면 "어느 무기 탄환인지" 가독성이 개선됨.
+- 코드/데이터 직접 수정은 하지 않음(진단만) — 실제 반영은 사용자 확인 후 별도 작업.
+
+### 관련 테이블
+- `Assets/Resources/Table/ProjectileTable.csv`
+- `Assets/Resources/Table/EnemyTable.csv`
+- `Assets/Resources/Table/TowerTable.csv`
+
+### 관련 클래스
+- [[ActorPlayer]] (발사 로직, `GetSpreadTargetPosition` 부채꼴 각도는 `GameConfigTable.PROJECTILE_SPREAD_ANGLE_STEP=12도`로 Double Shot 2발 기준 ±6도라 확인 결과 과도하지 않음 — 부채꼴 스프레드는 "정신 사나움"의 원인에서 제외)
+- ProjectileManager, EnemyTable/ProjectileTable 대응 Record 클래스
+
+### 수정 완료 (같은 날, 후속) — 사용자 승인 후 색상 재조정 + 무기 쿨다운 게이지 동기화
+사용자 지시: "그 심볼 색을 무기 쿨타임에도 그대로 적용해야해" — 투사체 색과 해당 무기 쿨다운 게이지 색(`TowerTable.ColorHex`, `UIInGameHUD.UpdateWeaponCooldowns()`가 읽는 값)이 항상 같은 값을 쓰도록 맞춰서 수정.
+- `ProjectileTable.csv` Splash(Id 3): `#ff00aa`(Elite와 충돌) → `#ba68c8` — Mage의 기존 무기색(`TowerTable.csv` Mage ColorHex)과 동일한 값이라 이미 무기색=발사체색으로 자동 동기화됨(TowerTable 쪽은 변경 불필요).
+- `ProjectileTable.csv` Chain(Id 5): `#ffd600`(Boss와 충돌) → `#aeea00`(라임/차트리즈 계열, 기존 팔레트 5색+Elite+Boss 어느 hex와도 안 겹침).
+- `TowerTable.csv` ChainCoil ColorHex: `#ffd600` → `#aeea00`(위 Chain 발사체 색과 동일 값으로 동기화 — 쿨다운 게이지도 같은 색으로 표시됨).
+- Archer(무기UI `#FFD54F` 금색이지만 실제 발사체는 CentralTower와 공유하는 Basic `#00e5ff` 시안, 근거3)는 이번 수정 범위에서 제외 — 전용 ProjectileId를 새로 만들어야 하고, 후보로 검토했던 금색 발사체가 Boss 노랑(`#ffd600`, hue 차이 4도)과 오히려 더 가까워질 위험이 있어 사용자 확인 없이 임의로 진행하지 않음.
+- IDE 진단(컴파일/CSV 파싱 에러) 확인 완료, 0건. **Play Mode 실측(실제로 Splash/Chain 발사체가 몬스터와 구분되어 보이는지, 쿨다운 게이지 색이 바뀐 발사체 색과 일치해 보이는지)은 미완료 — 다음 세션에서 확인 필요.**
+
+### 추가 수정 (2026-07-27, Laser(#6) 무기 추가 이후) — HomingPod 색상도 초록 계열 과밀로 재조정
+Laser(#6) 무기가 연두색(`#44FF33`, [[LaserBeamVisual]] 참고)으로 확정되면서, 사용자가 "호밍쪽 색깔은 변경해할꺼같아"로 지적 — 대조해보니 HomingPod(`#00ff88`)가 Splitter Normal 몬스터(`#29cc66`, hue 145°)와 겨우 7° 차이(hue 152°)로 사실상 근접 충돌이었고, ChainCoil(`#aeea00`, 75°)/Laser(`#44FF33`, 115°)까지 더해지면 초록 계열만 4개가 몰려 있던 상태였음.
+- `ProjectileTable.csv` Homing(Id 4): `#00ff88` → `#3d5afe`(인디고/블루-바이올렛, hue 231° — 기존 팔레트 어느 것과도 15° 이상 떨어짐).
+- `TowerTable.csv` HomingPod ColorHex: `#00ff88` → `#3d5afe`(발사체 색과 동일 값 유지 — 사용자가 "그거 바꾸면 쿨타임쪽도 바꿔야하는거 당연히 알지?"로 재확인, 이미 동시 반영함).
+- **주의**: CSV를 직접 파일 편집한 뒤 Unity가 즉시 반영 안 하는 경우가 있었음(최초 Play Mode 진입 시 여전히 구버전 `#00ff88` 로드됨) — `refresh_unity(mode=force, scope=assets)`로 강제 리임포트 후 재진입하니 정상 반영. CSV를 코드 밖에서 직접 수정한 다음 바로 Play Mode로 검증할 때는 이 강제 리프레시를 우선 시도할 것.
+- 검증: Play Mode에서 `TableManager`로 TowerTable/ProjectileTable 양쪽 모두 `#3d5afe`로 로드됨을 직접 확인, 콘솔 에러 0건.
+
+### 녹화 파일 (참고용, 삭제 안 함)
+- `QA_Recordings/qa_20260727_231717.mp4` (150마리 버스트 스폰 — 초반 전투 + 급사망, 카드 드래프트 다수 포함)
+- `QA_Recordings/qa_20260727_232301.mp4` (자연 스폰 기반 지속 전투, 위 근거 1/2 스크린샷 출처)
+
+---
+
+## 2026-07-27-6 — (부차, 개발 편의성 이슈) Play 중 재컴파일 시 ActorPlayer.m_WeaponList가 조용히 초기화됨 + UICheatWindow 카드 적용 버튼이 NRE
+
+### 개요
+위 2026-07-27-5 진단 도중 `QARecorder.cs`를 수정(빌드 버그 수정)하면서 Play Mode 중 스크립트 재컴파일이 발생했는데, 그 직후 `ActorPlayer.m_WeaponList`(무기 5개가 들어있던 리스트)가 빈 리스트(count=0)로 조용히 초기화됨을 발견. 같은 시점 다른 필드(`m_ProjectileCount`, `m_hasSplash` 등 int/bool)는 정상 보존됐다 — 원시 타입은 Unity 도메인 리로드의 기본 직렬화로 살아남지만, `List<TowerWeapon>`(커스텀 struct/class 리스트)은 `[Serializable]`이 없으면 도메인 리로드 시 유실되는 것으로 추정(직접 소스 대조는 안 함, 정황상 결론). 이어서 `UICheatWindow`의 무기 해금 카드 버튼을 다시 누르니 콘솔에 `NullReferenceException`(`UICheatWindow.cs:225`, `BuildCardButtonList` 클릭 람다 내부)이 4회 반복 발생 — 재컴파일 전에 캐싱해둔 참조가 stale해진 것으로 추정.
+
+### 실사용자 영향
+**낮음.** 실제 플레이어는 게임 실행 중 스크립트를 재컴파일하는 경우가 없다(에디터에서 개발자가 Play 중 저장/컴파일할 때만 재현). 이번 발견은 QA 자동화가 Play 도중 도구를 수정하며 우연히 걸린 케이스.
+
+### 재현 조건
+Play Mode 진입 → `ActorPlayer.m_WeaponList`에 항목이 있는 상태(무기 카드 적용 등) → 아무 스크립트나 수정해 재컴파일 유발 → `m_WeaponList` count 확인(0으로 리셋됨) + 그 상태에서 무기 관련 UI 버튼 재사용 시 NRE 가능성.
+
+### 제안 (수정 안 함, 우선순위 낮음)
+- `TowerWeapon`(또는 해당 struct/class)에 `[System.Serializable]` 부여 검토 — 다만 이건 "에디터에서 Play 중 재컴파일해도 안 끊기게"라는 개발 편의 목적일 뿐, 실사용자 빌드 동작과는 무관.
+- `UICheatWindow`의 카드 버튼 클릭 람다가 참조하는 대상을 매 클릭마다 새로 조회(캐싱 대신)하도록 하면 이런 stale 참조 NRE 자체를 방지할 수 있음(치트 창은 에디터 전용 도구라 이 수정도 우선순위 낮음).
+
+### 관련 클래스
+- [[ActorPlayer]] — `m_WeaponList` 필드
+- `Assets/Scripts/UI/UICheatWindow.cs:225` (`BuildCardButtonList`)
+
+---

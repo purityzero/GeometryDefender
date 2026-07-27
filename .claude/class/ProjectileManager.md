@@ -1,5 +1,10 @@
 # ProjectileManager
 
+## 2026-07-27-2 — 효과 아이콘 오버레이 호출부 제거 (2026-07-23-4 되돌림)
+사용자 요청("아이콘 오버레이 없애줘") — [[ActorProjectile]] 2026-07-27-1과 세트. `SpawnVisual()`에서 `actorProjectile.SetEffectIcons(...)` 호출 삭제, 이제 이 메서드 안에서 `_cardEffects`를 전혀 안 쓰게 되어 매개변수 자체도 제거(`SpawnVisual(Entity, ProjectileRecord)`로 시그니처 축소). `Fire()`의 호출부도 `SpawnVisual(entity, record, _cardEffects)` → `SpawnVisual(entity, record)`로 인자 축소. `Fire()`가 `m_EntityManager.AddComponentData(entity, _cardEffects)`로 ECS 쪽에 카드 효과를 붙이는 부분은 그대로 유지(관통/스플래시/체인/호밍 실제 게임 로직은 무관 — 시각 아이콘만 제거).
+
+검증: 컴파일 에러 0건. Play Mode에서 CentralTower 자동 발사 중 콘솔 에러 0건 확인.
+
 ## 2026-07-24-0 — 카드 드래프트 시스템용 확장
 [[card-draft]] 스펙 구현. `Fire()` 시그니처에 `ProjectileEffects _cardEffects = default` 파라미터 추가 — 발사 엔티티에 `ProjectileEffects`(Pierce/SplashRadius/ChainJumps·Radius/IsHoming/HomingTarget) 컴포넌트를 그대로 부착, `ProjectileStats.Pierce = record.Pierce + _cardEffects.Pierce`(테이블 기본값 + 카드 누적).
 

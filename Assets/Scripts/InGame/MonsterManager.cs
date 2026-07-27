@@ -163,6 +163,47 @@ public class MonsterManager : UpdatableBehaviour
         aliveQuery.Dispose();
     }
 
+    // Laser(#6) 무기 — 회전하는 부채꼴 범위 안의 모든 적에게 동시에 피해(사용자 요청 "회전하면서 다수 공격하는 레이저").
+    // DamageEntitiesInRadius와 동일 패턴에 각도 판정만 추가.
+    public void DamageEntitiesInArc(Vector2 _origin, Vector2 _direction, float _range, float _halfAngleDegrees, int _damage)
+    {
+        if (m_isInitialized == false)
+            return;
+
+        if (_direction.sqrMagnitude <= 0f)
+            return;
+
+        float3 origin = new float3(_origin.x, _origin.y, 0f);
+        float2 direction = math.normalize(new float2(_direction.x, _direction.y));
+        float cosHalfAngle = math.cos(math.radians(_halfAngleDegrees));
+
+        EntityQuery aliveQuery = m_EntityManager.CreateEntityQuery(
+            ComponentType.ReadOnly<MonsterTag>(),
+            ComponentType.ReadOnly<LocalTransform>(),
+            ComponentType.Exclude<DeadTag>(),
+            ComponentType.Exclude<ReachedEndTag>());
+
+        NativeArray<Entity> entities = aliveQuery.ToEntityArray(Allocator.Temp);
+        NativeArray<LocalTransform> transforms = aliveQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
+        for (int i = 0; i < entities.Length; ++i)
+        {
+            float2 offset = ((float3)transforms[i].Position - origin).xy;
+            float distance = math.length(offset);
+            if (distance <= 0f || distance > _range)
+                continue;
+
+            if (math.dot(direction, offset / distance) < cosHalfAngle)
+                continue;
+
+            m_EntityManager.GetBuffer<DamageRequest>(entities[i]).Add(new DamageRequest { Amount = _damage });
+        }
+
+        entities.Dispose();
+        transforms.Dispose();
+        aliveQuery.Dispose();
+    }
+
     public void TakeDamage(Entity _entity, int _amount)
     {
         if (m_EntityManager.Exists(_entity) == false)

@@ -43,7 +43,8 @@ public enum eCardEffectType
     BerserkerCurve,
     OrbitalRing,
     TimeSlowAura,
-    WeaponUnlock
+    WeaponUnlock,
+    LaserDurationAdd
 }
 
 public class CardRecord : Record

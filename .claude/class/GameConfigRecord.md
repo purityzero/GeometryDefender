@@ -158,3 +158,6 @@ IDE 진단 컴파일 에러 0건. **정밀 튜닝(정확히 10~12분에 맞추�
 
 ### 검증
 IDE 진단 컴파일 에러 0건.
+
+### 2026-07-27-4 — Laser(#6) 튜닝 상수 5종 추가
+[[ActorPlayer]] 2026-07-27-11 Laser 무기 추가에 맞춰 CSV Id 59~63 신설: `LASER_INNATE_ROTATE_DURATION`(2), `LASER_ROTATION_SPEED`(180 — 사용자 요청으로 최초 360에서 완화), `LASER_TICK_INTERVAL`(0.2), `LASER_ARC_HALF_WIDTH_DEGREES`(8), `LASER_RANGE`(100 — 사용자 요청 "사정거리는 무한이야"에 대응하는 사실상 무제한 고정값, 다른 무기처럼 `TowerRecord.Range`를 안 씀). Play Mode 실측으로 회전 각도 누적량이 `속도×지속시간` 공식과 일치함을 확인.

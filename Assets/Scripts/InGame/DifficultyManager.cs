@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 // Assets/Design/08_balance.html "난이도 진행 (Normal → Hard → Hell → Infinite)"
@@ -13,6 +14,10 @@ public class DifficultyManager : UpdatableBehaviour
 {
     // 난이도 선택 UI가 아직 없어 기본값 Normal 고정 — 선택 화면이 생기면 InGameScene 진입 전 이 값만 설정해주면 된다
     public static eDifficultyLevel SelectedDifficulty = eDifficultyLevel.Normal;
+
+    // Infinite를 제외한 난이도는 마지막 웨이브 시각에 도달하면 런이 종료된다(사용자 요청: "인피니티 난이도 이전까지는
+    // 난이도 클리어 Popup 만들어서 정산해주고") — InGameScene이 구독해 UIRunOver를 띄우고 런을 정지시킨다.
+    public event Action OnCleared;
 
     private WaveTable m_WaveTable;
     private DifficultyTable m_DifficultyTable;
@@ -64,6 +69,12 @@ public class DifficultyManager : UpdatableBehaviour
 
         m_isCleared = true;
         UnlockNextDifficulty();
+
+        // Infinite는 클리어 개념이 없음 — 팝업 없이 계속 진행(난이도 배율은 GetInfiniteStepCount()로 계속 상승)
+        if (currentDifficulty == eDifficultyLevel.Infinite)
+            return;
+
+        OnCleared?.Invoke();
     }
 
     private void UnlockNextDifficulty()

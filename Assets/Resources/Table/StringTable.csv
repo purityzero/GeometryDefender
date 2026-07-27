@@ -138,3 +138,7 @@ Id,Key,Kr,En,Cn,Jp
 141,Card604Name,호밍 포드,Homing Pod,追踪导弹舱,ホーミングポッド
 142,Card604Effect,독립 쿨다운의 무기 슬롯 추가,Adds an independent weapon slot,增加一个独立冷却的武器槽,独立クールダウンの武器スロットを追加
 143,TowerNameCentral,중앙 타워,Central Tower,中央塔,中央タワー
+144,Card605Name,레이저 스피너,Laser Spinner,激光旋转炮,レーザースピナー
+145,Card605Effect,독립 쿨다운의 회전 빔 무기 슬롯 추가,Adds an independent spinning beam weapon slot,增加一个独立冷却的旋转光束武器槽,独立クールダウンの回転ビーム武器スロットを追加
+146,Card308Name,레이저 오버드라이브,Laser Overdrive,激光超载,レーザーオーバードライブ
+147,Card308Effect,레이저 회전 지속시간 증가,Increases laser spin duration,增加激光旋转持续时间,レーザーの回転持続時間が増加

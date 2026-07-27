@@ -22,6 +22,9 @@
 ## 미검증
 Unity MCP 미연결 — CSV 8컬럼 정합성은 `awk -F',' 'NF!=8'`로 전체 32행 검증 완료(로컬 스크립트 검증, 컴파일/런타임 로드는 미검증).
 
+## 2026-07-27-2 — Laser(#6) 카드 2장 추가: #605(WeaponUnlock) + #308(LaserDurationAdd)
+[[ActorPlayer]] 2026-07-27-11 Laser 무기 추가에 맞춰 카드 지원. `eCardEffectType`에 `LaserDurationAdd` 신설(기존 `WeaponUnlock`은 재사용, EffectValue=6). CardTable에 601~604와 같은 Weapon 카테고리로 605(WeaponUnlock,6), 303~305와 같은 Utility 카테고리로 308(LaserDurationAdd,3.5) 추가. 306/307은 이미 삭제된 번호라 혼동 방지 위해 재사용하지 않고 308부터 이어감. StringTable에 Card605Name/Effect, Card308Name/Effect 4행 추가(Id 144~147). 상세는 [[CardManager]] 2026-07-27-X 참고.
+
 ## 2026-07-27-1 — 타겟팅 변경 카드(#306/#307) 기획 제거
 기획 쪽 결정으로 타워 공격 우선순위(타겟팅)를 바꾸는 카드만 제거. 기본 타겟팅 시스템(`ITargetingStrategy`, Strongest/Weakest/Fastest/Random/Closest)과 기본 무기 타겟팅 자체는 그대로 유지 — 카드로 도달할 방법만 없어진 것.
 - `eCardEffectType.TargetingOverride` 제거(사용처가 이 카드 2장뿐이었음).

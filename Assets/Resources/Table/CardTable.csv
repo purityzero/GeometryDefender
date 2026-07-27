@@ -17,6 +17,7 @@ Id,NameKey,EffectKey,Category,Rarity,EffectType,EffectValue,EffectParam
 303,Card303Name,Card303Effect,Utility,Epic,SplashEnable,1.5,
 304,Card304Name,Card304Effect,Utility,Epic,ChainEnable,3,2.0
 305,Card305Name,Card305Effect,Utility,Epic,HomingEnable,1,
+308,Card308Name,Card308Effect,Utility,Epic,LaserDurationAdd,3.5,
 401,Card401Name,Card401Effect,Defense,Common,MaxHpAdd,20,
 402,Card402Name,Card402Effect,Defense,Rare,MaxHpAdd,50,
 403,Card403Name,Card403Effect,Defense,Rare,HealPerSecond,1,
@@ -31,3 +32,4 @@ Id,NameKey,EffectKey,Category,Rarity,EffectType,EffectValue,EffectParam
 602,Card602Name,Card602Effect,Weapon,Epic,WeaponUnlock,2,
 603,Card603Name,Card603Effect,Weapon,Epic,WeaponUnlock,4,
 604,Card604Name,Card604Effect,Weapon,Epic,WeaponUnlock,5,
+605,Card605Name,Card605Effect,Weapon,Epic,WeaponUnlock,6,

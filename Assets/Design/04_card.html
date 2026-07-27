@@ -109,19 +109,42 @@
     <h2>카드 카테고리</h2>
 
     <p>
-      카드는 5개 카테고리로 분류된다. 카테고리는 시너지 계산의 단위이며,
+      카드는 6개 카테고리로 분류된다(2026-07-27, 독립 쿨다운 무기 슬롯을 해금하는
+      WEAPON 카테고리 신설). 카테고리는 시너지 계산의 단위이며(WEAPON 제외),
       같은 카테고리 카드를 많이 모으면 보너스가 적용된다.
     </p>
 
     <div class="card-grid">
       <div class="card"><h4 style="margin-top: 0; color: var(--neon-cyan);">OFFENSE</h4><p style="margin: 0;">데미지·치명타·관통 — 8장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: var(--neon-yellow);">SPEED</h4><p style="margin: 0;">공격 속도·투사체 속도 — 5장</p></div>
-      <div class="card"><h4 style="margin-top: 0; color: var(--neon-magenta);">UTILITY</h4><p style="margin: 0;">사거리·관통·체인 — 5장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-magenta);">UTILITY</h4><p style="margin: 0;">사거리·관통·체인·레이저 지속시간 — 6장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: var(--neon-green);">DEFENSE</h4><p style="margin: 0;">HP·회복·실드 — 6장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: #ff6600;">SPECIAL</h4><p style="margin: 0;">빌드 정의 (Legendary) — 4장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: #FFD54F;">WEAPON</h4><p style="margin: 0;">독립 쿨다운 무기 슬롯 해금 — 5장</p></div>
     </div>
 
-    <h2>전체 카드 일람 (28장)</h2>
+    <div class="callout callout-info">
+      <div class="callout-title">무기 슬롯 시스템 (2026-07-27 추가)</div>
+      <p style="margin-bottom: 0;">
+        중앙 타워 외에 <strong>독립 쿨다운/타겟팅을 갖는 추가 무기</strong>를 WEAPON 카드로
+        해금할 수 있다(Archer/Mage/ChainCoil/HomingPod/Laser). 상세 스탯은
+        <a href="02_combat.html#weapons">02 Combat — 무기 시스템</a> 참고. Splash/Chain/Homing
+        Utility 카드(#303~305, #308)는 해당 무기를 아직 안 뽑았으면 드래프트 풀에서 제외된다
+        — 예를 들어 Mage를 안 뽑았으면 Splash I(#303)는 안 나온다.
+      </p>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">Double Shot(#107)은 기본 무기(중앙 타워)에만 적용</div>
+      <p style="margin-bottom: 0;">
+        무기 슬롯 시스템 도입 후, Double Shot이 모든 무기에 중복 적용되면 발사체 수가
+        무기 개수만큼 배로 불어나 화면이 과도하게 어지러워지는 문제가 있어 — 기본 무기
+        (중앙 타워)에만 적용되도록 제한. Archer/Mage/ChainCoil/HomingPod/Laser 같은
+        추가 무기는 Double Shot을 보유해도 항상 1발만 발사한다.
+      </p>
+    </div>
+
+    <h2>전체 카드 일람 (34장)</h2>
 
     <p>
       모든 카드는 다음과 같이 시각화된다. 인게임 카드 UI와 동일한 디자인.
@@ -197,7 +220,7 @@
         <div class="gcard-rarity-badge">Legend</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
         <div class="gcard-name">Double Shot</div>
-        <div class="gcard-effect">한 번에 투사체 2개 발사</div>
+        <div class="gcard-effect">기본 무기(중앙 타워) 투사체 +1 (스택 가능)</div>
         <div class="gcard-category">Offense</div>
       </div>
 
@@ -276,7 +299,7 @@
     <div class="cat-header">
       <span class="cat-header-icon" style="color: var(--neon-magenta); border-color: var(--neon-magenta);">UTILITY</span>
       <h3>유틸리티 카드</h3>
-      <span class="cat-header-count">5장</span>
+      <span class="cat-header-count">6장</span>
     </div>
 
     <div class="gcard-grid">
@@ -304,7 +327,7 @@
         <div class="gcard-rarity-badge">Epic</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjIzNiwxMjggMTgyLDIyMiA3NCwyMjIgMjAsMTI4IDc0LDM0IDE4MiwzNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
         <div class="gcard-name">Splash I</div>
-        <div class="gcard-effect">적중 시 반경 1.5 폭발</div>
+        <div class="gcard-effect">Mage 무기 스플래시 반경 강화 (보유 시에만 등장)</div>
         <div class="gcard-category">Utility</div>
       </div>
 
@@ -313,7 +336,7 @@
         <div class="gcard-rarity-badge">Epic</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzAsOTQgMTkxLDIxMyA2NSwyMTMgMjYsOTQiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
         <div class="gcard-name">Chain Lightning</div>
-        <div class="gcard-effect">3체 연쇄 (반경 2.0)</div>
+        <div class="gcard-effect">ChainCoil 무기 연쇄 강화 (보유 시에만 등장)</div>
         <div class="gcard-category">Utility</div>
       </div>
 
@@ -322,7 +345,16 @@
         <div class="gcard-rarity-badge">Epic</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
         <div class="gcard-name">Homing Missile</div>
-        <div class="gcard-effect">투사체 호밍 활성</div>
+        <div class="gcard-effect">HomingPod 무기 보유 확인용 (보유 시에만 등장, 강화 수치 없음)</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#308</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Laser Overdrive</div>
+        <div class="gcard-effect">Laser 무기 회전 지속시간 증가 (보유 시에만 등장)</div>
         <div class="gcard-category">Utility</div>
       </div>
 
@@ -440,6 +472,69 @@
         <div class="gcard-name">Time Slow</div>
         <div class="gcard-effect">모든 적 속도 -25%</div>
         <div class="gcard-category">Special</div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- WEAPON (2026-07-27 신설) -->
+    <!-- ============================================ -->
+    <div class="cat-header">
+      <span class="cat-header-icon" style="color: #FFD54F; border-color: #FFD54F;">WEAPON</span>
+      <h3>무기 슬롯 해금 카드</h3>
+      <span class="cat-header-count">5장 (전부 Epic, 시너지 대상 아님)</span>
+    </div>
+
+    <p>
+      독립 쿨다운/타겟팅을 갖는 추가 무기 슬롯을 하나 추가한다. 한 런에 한 번만 뽑을 수
+      있고(유니크), 이미 보유한 무기의 카드는 이후 드래프트 풀에서 제외된다.
+    </p>
+
+    <div class="gcard-grid">
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#601</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">래피드 오토캐논 (Archer)</div>
+        <div class="gcard-effect">독립 쿨다운의 연사 무기 슬롯 추가 <span class="swatch" style="background:#FFD54F"></span>#FFD54F</div>
+        <div class="gcard-category">Weapon</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#602</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div></div>
+        <div class="gcard-name">스플래시 모르타르 (Mage)</div>
+        <div class="gcard-effect">독립 쿨다운의 광역(스플래시) 무기 슬롯 추가 <span class="swatch" style="background:#BA68C8"></span>#BA68C8</div>
+        <div class="gcard-category">Weapon</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#603</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">체인 코일 (ChainCoil)</div>
+        <div class="gcard-effect">독립 쿨다운의 연쇄(체인) 무기 슬롯 추가 <span class="swatch" style="background:#aeea00"></span>#aeea00</div>
+        <div class="gcard-category">Weapon</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#604</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9Ijg2LDIwIDE3MCwyMCAyMzYsODYgMjM2LDE3MCAxNzAsMjM2IDg2LDIzNiAyMCwxNzAgMjAsODYiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">호밍 포드 (HomingPod)</div>
+        <div class="gcard-effect">독립 쿨다운의 유도(호밍) 무기 슬롯 추가 <span class="swatch" style="background:#3d5afe"></span>#3d5afe</div>
+        <div class="gcard-category">Weapon</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#605</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">레이저 스피너 (LaserSpinner)</div>
+        <div class="gcard-effect">독립 쿨다운의 회전 빔 무기 슬롯 추가 <span class="swatch" style="background:#44FF33"></span>#44FF33</div>
+        <div class="gcard-category">Weapon</div>
       </div>
 
     </div>

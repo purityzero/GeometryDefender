@@ -1,6 +1,59 @@
 # ActorPlayer (구 TowerController)
 
-연관 클래스: `Actor`(2026-07-27부터 베이스), `TowerRecord`/`TowerTable`(스탯), `ITargetingStrategy`와 5종 구현체(`Closest/Strongest/Weakest/Fastest/Random TargetingStrategy`), `ProjectileManager`(발사 위임), `ProjectileRecord`/`ProjectileTable`/`eProjectileType`(투사체 데이터, 2026-07-22 [[ProjectileManager]] 테이블화 참고), `TowerHealth`(피격, 별개, 병합됨), `TowerColorEffect`(HP 시각화, 별개), `MonsterTag`/`HealthData`/`MoveData`(ECS, 타겟 조회 대상)
+연관 클래스: `Actor`(2026-07-27부터 베이스), `TowerRecord`/`TowerTable`(스탯), `ITargetingStrategy`와 5종 구현체(`Closest/Strongest/Weakest/Fastest/Random TargetingStrategy`), `ProjectileManager`(발사 위임), `ProjectileRecord`/`ProjectileTable`/`eProjectileType`(투사체 데이터, 2026-07-22 [[ProjectileManager]] 테이블화 참고), `TowerHealth`(피격, 별개, 병합됨), `TowerColorEffect`(HP 시각화, 별개), `MonsterTag`/`HealthData`/`MoveData`(ECS, 타겟 조회 대상), [[LaserBeamVisual]](Laser 전용 시각), [[MonsterManager]](`DamageEntitiesInArc` 신설)
+
+## 2026-07-27-11 — Laser(#6) 신규 테마 무기: 회전하며 부채꼴 범위에 지속 피해
+
+### 개요
+사용자 요청("회전하면서 다수 공격하는 레이져 공격이 추가되었으면 좋겠어" + 유튜브 레퍼런스, 이후 "어느정도 돌다가 사라져야해, 업그레이드 카드로 도는 시간이 길어지는거지, 쿨타임도 존재해" + "레이저 좀 느리게 돌리는게 좋겠어" + "사정거리는 무한이야") — Mage/ChainCoil/HomingPod와 동일한 "신규 테마 무기" 패턴(무기 해금 카드로 드래프트에 등장, 독립 쿨다운 슬롯)으로 추가.
+
+### 동작
+쿨다운(`AttackInterval`=5초)이 끝나면 `GameConfigTable.LASER_INNATE_ROTATE_DURATION`(기본 2초, 업그레이드 카드 #308로 Max 연장) 동안 `LASER_ROTATION_SPEED`(180도/초)로 계속 회전하며, `LASER_TICK_INTERVAL`(0.2초)마다 부채꼴(`LASER_ARC_HALF_WIDTH_DEGREES`=8도 반각) 범위 안의 모든 살아있는 적에게 동시에 피해를 준다. 사거리는 다른 무기와 달리 `Record.Range`를 안 쓰고 `GameConfigTable.LASER_RANGE`(100, 사실상 맵 전체 커버)로 고정 — "사정거리는 무한" 요청 반영. 지속시간이 끝나면 사라지고 다시 쿨다운.
+
+### 다른 무기와 구조적으로 다른 점 — 왜 Fire() 흐름을 안 타는가
+다른 무기는 "쿨다운→타겟 탐색→즉시 발사(Fire, ProjectileManager 위임)" 흐름을 공유하지만, Laser는 "쿨다운→일정 시간 회전하며 지속 피해"라 이 흐름에 안 맞는다. `UpdateFire()`에서 `weapon.Record.Id == LASER_RECORD_ID`면 별도 `UpdateLaserWeapon()`으로 분기(타겟팅 전략도 사용 안 함 — `TowerWeapon.TargetingStrategy`는 채워지긴 하지만 참조되지 않음).
+
+### 함수 단위 변경
+- `TowerWeapon`(private nested class)에 필드 추가: `IsLaserActive`/`LaserActiveTimer`/`LaserRotationAngle`/`LaserTickTimer`/`LaserVisual`(LaserBeamVisual).
+- `AddWeapon(int)`: `weaponRecord.PrefabPath`가 비어있지 않으면 `ResUtil.Create<LaserBeamVisual>(path, transform)`으로 전용 시각 오브젝트를 자식으로 생성 + `SetColor(weaponRecord.ColorHex)` + 비활성화. `TowerRecord.PrefabPath`는 이번에 신설(아래 TowerRecord 참고) — 대부분 무기는 빈 문자열이라 아무것도 생성 안 함.
+- `UpdateFire()`: 루프 안에서 `weapon.Record.Id == LASER_RECORD_ID`면 `UpdateLaserWeapon(weapon)` 호출 후 `continue`(일반 쿨다운/Fire 로직 스킵).
+- `UpdateLaserWeapon(TowerWeapon)`(신규): 비활성 상태면 쿨다운 카운트다운 후 활성화(지속시간 계산은 innate 기본값과 카드 보너스 중 Max). 활성 상태면 매 프레임 회전각 갱신 + 비주얼 갱신(`LaserVisual.UpdateBeam`) + 틱 타이머 만료 시 `MonsterManager.DamageEntitiesInArc` 호출. 지속시간 만료 시 비활성화 + 쿨다운 재시작.
+- `SetLaserDuration(float)`(신규, public): Splash/Chain과 동일한 "무기 보유 시에만 카드가 Max 비교로 강화" 패턴(`m_hasLaserDurationBonus`/`m_LaserDurationBonus`) — `CardManager`의 `LaserDurationAdd`(#308)가 호출.
+- 상수 추가: `LASER_RECORD_ID = 6`.
+
+### 검증
+Unity MCP로 Play Mode 진입(TitleScene→Btn_Play→Item_Normal→InGameScene) 후 `execute_code`로 `AddWeapon(6)` 리플렉션 호출 → 활성화(회전 각도 누적)→지속시간 만료→비활성화→쿨다운 재시작까지 전체 사이클을 2회 반복 확인, 콘솔 에러 0건. `MonsterManager.DamageEntitiesInArc`는 기존에 검증된 `DamageEntitiesInRadius`(Shield Burst)와 동일 패턴이라 별도 대규모 재검증은 생략(각도 필터만 추가). 카드 draft를 통해 실제로 601~605 무기 카드가 뽑히는지, #308 업그레이드 카드가 정상 작동하는지는 아직 정상 플레이 경로로 미확인 — 다음 세션 확인 권장.
+
+### 개요
+사용자 지적("더블샷 스킬 같은경우는 기본무기에만 적용되어야해") — 기존엔 `m_ProjectileCount`(Double Shot 카드로 누적되는 발사 수)가 전역 카드 효과라 `Fire()`가 어느 무기(`_weapon`)를 쏘든 상관없이 그대로 적용됐음. Archer/Mage/ChainCoil/HomingPod 같은 추가 무기까지 전부 2발/3발씩 나가던 것을 CentralTower(`TOWER_RECORD_ID=3`, `m_WeaponList[0]`)에만 적용되도록 수정.
+
+### 수정 (함수 단위)
+`Fire(TowerWeapon _weapon, Entity _target)` — 전:
+```csharp
+Vector2 firePosition = transform.position;
+for (int i = 0; i < m_ProjectileCount; ++i)
+{
+    Vector2 spreadTargetPosition = GetSpreadTargetPosition(firePosition, targetPosition, i, m_ProjectileCount);
+    ...
+}
+```
+후:
+```csharp
+int projectileCount = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_ProjectileCount : 1;
+
+Vector2 firePosition = transform.position;
+for (int i = 0; i < projectileCount; ++i)
+{
+    Vector2 spreadTargetPosition = GetSpreadTargetPosition(firePosition, targetPosition, i, projectileCount);
+    ...
+}
+```
+추가 무기는 항상 1발만 발사(부채꼴 스프레드도 `_count<=1`이라 자동으로 안 걸림). [[CardManager]]의 Double Shot 카드 자체 로직(`m_ProjectileCount` 누적)은 변경 없음 — 적용 시점(Fire 내부)에서만 무기별로 분기.
+
+### 검증
+IDE 진단 컴파일 에러 0건 확인. **Play Mode 실측(추가 무기 장착 후 Double Shot을 뽑아도 CentralTower만 다발 사격하고 나머지 무기는 1발만 쏘는지) 미완료 — 다음 세션 확인 필요.**
+
+---
 
 ## 2026-07-27-3 — TowerController → ActorPlayer 리네임 + Actor 상속 전환
 

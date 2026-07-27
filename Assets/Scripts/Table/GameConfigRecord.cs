@@ -62,6 +62,14 @@ public class GameConfigTable : Table<GameConfigRecord>
     public static int CHAIN_COIL_INNATE_CHAIN_JUMPS = 3;
     public static float CHAIN_COIL_INNATE_CHAIN_RADIUS = 2f;
 
+    // Laser(#6) 고유 능력 — 회전하며 부채꼴 범위에 지속 피해를 주다가 사라짐(사용자 요청 "회전하면서 다수 공격하는 레이저", "어느정도 돌다가 사라져야해")
+    // 사용자 요청으로 회전 속도 완화(360→180) + 사거리는 다른 무기와 달리 무제한(사용자 요청 "사정거리는 무한이야") — 맵 전체를 항상 커버하는 값으로 고정.
+    public static float LASER_INNATE_ROTATE_DURATION = 2f;
+    public static float LASER_ROTATION_SPEED = 90f;
+    public static float LASER_TICK_INTERVAL = 0.2f;
+    public static float LASER_ARC_HALF_WIDTH_DEGREES = 8f;
+    public static float LASER_RANGE = 100f;
+
     // 02_combat.html "투사체 종류" — Splash/Chain 명중 시각 이펙트(2026-07-24, 사용자 요청 "폭발이랑 연쇄 좀 보이게 해줘")
     public static int SPLASH_EXPLOSION_POOL_SIZE = 6;
     public static float SPLASH_EXPLOSION_SCALE_POP_DURATION = 0.12f;
@@ -118,6 +126,12 @@ public class GameConfigTable : Table<GameConfigRecord>
         PROJECTILE_SPREAD_ANGLE_STEP = GetValue("ProjectileSpreadAngleStep", PROJECTILE_SPREAD_ANGLE_STEP);
         CHAIN_COIL_INNATE_CHAIN_JUMPS = (int)GetValue("ChainCoilInnateChainJumps", CHAIN_COIL_INNATE_CHAIN_JUMPS);
         CHAIN_COIL_INNATE_CHAIN_RADIUS = GetValue("ChainCoilInnateChainRadius", CHAIN_COIL_INNATE_CHAIN_RADIUS);
+
+        LASER_INNATE_ROTATE_DURATION = GetValue("LaserInnateRotateDuration", LASER_INNATE_ROTATE_DURATION);
+        LASER_ROTATION_SPEED = GetValue("LaserRotationSpeed", LASER_ROTATION_SPEED);
+        LASER_TICK_INTERVAL = GetValue("LaserTickInterval", LASER_TICK_INTERVAL);
+        LASER_ARC_HALF_WIDTH_DEGREES = GetValue("LaserArcHalfWidthDegrees", LASER_ARC_HALF_WIDTH_DEGREES);
+        LASER_RANGE = GetValue("LaserRange", LASER_RANGE);
 
         SPLASH_EXPLOSION_POOL_SIZE = (int)GetValue("SplashExplosionPoolSize", SPLASH_EXPLOSION_POOL_SIZE);
         SPLASH_EXPLOSION_SCALE_POP_DURATION = GetValue("SplashExplosionScalePopDuration", SPLASH_EXPLOSION_SCALE_POP_DURATION);

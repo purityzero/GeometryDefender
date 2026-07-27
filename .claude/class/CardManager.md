@@ -141,3 +141,20 @@ IDE 진단 컴파일 에러 0건. Play Mode 실측 미완료 — Mage/ChainCoil/
 
 ### 검증
 IDE 진단 컴파일 에러 0건. Play Mode 실측 미완료 — Double Shot을 같은 런에서 2번 이상 뽑을 수 있는지, 뽑을 때마다 발사체 수가 정확히 +1씩 늘어나는지 확인 필요.
+
+---
+
+## 2026-07-27-X — Laser(#6) 카드 2장 추가: 무기 해금(#605) + 지속시간 업그레이드(#308)
+
+### 개요
+[[ActorPlayer]] 2026-07-27-11 Laser 무기 추가에 맞춰 카드 지원. #605(`WeaponUnlock`, EffectValue=6)는 기존 601~604와 완전히 동일한 케이스라 코드 변경 없이 CSV만 추가. #308(`LaserDurationAdd`, 신규 EffectType)은 Splash/Chain/Homing(#303~305)과 동일한 "무기 보유 시에만 드래프트에 등장 + Max 비교로 강화" 패턴.
+
+### 변경
+- `WEAPON_REQUIRED_CARD_IDS`에 `{ 308, 6 }` 추가(LaserSpinner 미보유 시 #308 드래프트 풀 제외).
+- `ApplyCardEffect()`에 `case eCardEffectType.LaserDurationAdd: InGameScene.Current.towerController.SetLaserDuration(_record.EffectValue); break;` 추가.
+
+### 검증
+IDE/Unity 컴파일 에러 0건. Play Mode에서 카드 드래프트 풀에 #605/#308이 실제로 정상 등장하는지는 미확인(이번 세션은 `AddWeapon(6)`을 리플렉션으로 직접 호출해 무기 로직만 검증) — 다음 세션 확인 필요.
+
+### 관련 클래스
+- [[ActorPlayer]] 2026-07-27-11

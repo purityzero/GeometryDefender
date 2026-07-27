@@ -17,6 +17,7 @@ public class ActorPlayer : Actor
     private const int MAGE_RECORD_ID = 2;
     private const int CHAIN_COIL_RECORD_ID = 4;
     private const int HOMING_POD_RECORD_ID = 5;
+    private const int LASER_RECORD_ID = 6;
 
     // 2026-07-27 무기 다양화 — 무기마다 독립 쿨다운/타겟팅을 갖는 슬롯. m_WeaponList[0]이 항상 기본 무기(CentralTower, m_Record와 동일 레코드)이고
     // 카드로 해금되는 추가 무기(AddWeapon)는 뒤에 이어붙는다. 데미지%/치명타%/공속% 등 전역 카드 효과는 전 무기 공통 적용, 기본 무기의 타겟팅 카드(SetTargetingStrategy)는 m_WeaponList[0]만 갈아끼운다.
@@ -25,6 +26,14 @@ public class ActorPlayer : Actor
         public TowerRecord Record;
         public ITargetingStrategy TargetingStrategy;
         public float CooldownTimer;
+
+        // Laser(#6) 전용 상태 — 다른 무기와 달리 "쿨다운→즉시 발사"가 아니라 "쿨다운→일정 시간 회전하며 지속 피해"라
+        // 범용 Fire() 흐름을 안 타고 UpdateLaserWeapon()에서 별도로 관리(사용자 요청: "어느정도 돌다가 사라져야해").
+        public bool IsLaserActive;
+        public float LaserActiveTimer;
+        public float LaserRotationAngle;
+        public float LaserTickTimer;
+        public LaserBeamVisual LaserVisual;
     }
 
     private TowerRecord m_Record;
@@ -52,6 +61,8 @@ public class ActorPlayer : Actor
     private int m_ChainJumps;
     private float m_ChainRadius;
     private bool m_hasHoming;
+    private bool m_hasLaserDurationBonus;
+    private float m_LaserDurationBonus;
     private eEnemySpecies? m_BonusSpeciesTarget;
     private float m_BonusSpeciesDamagePercent;
     private float m_BerserkerMaxBonusPercent;
@@ -186,12 +197,26 @@ public class ActorPlayer : Actor
             return;
         }
 
-        m_WeaponList.Add(new TowerWeapon
+        TowerWeapon newWeapon = new TowerWeapon
         {
             Record = weaponRecord,
             TargetingStrategy = CreateTargetingStrategy(weaponRecord.DefaultTargeting),
             CooldownTimer = 0f,
-        });
+        };
+
+        if (string.IsNullOrEmpty(weaponRecord.PrefabPath) == false)
+        {
+            newWeapon.LaserVisual = ResUtil.Create<LaserBeamVisual>(weaponRecord.PrefabPath, transform);
+            if (newWeapon.LaserVisual != null)
+            {
+                if (ColorUtility.TryParseHtmlString(weaponRecord.ColorHex, out Color laserColor) == true)
+                    newWeapon.LaserVisual.SetColor(laserColor);
+
+                newWeapon.LaserVisual.SetBeamActive(false);
+            }
+        }
+
+        m_WeaponList.Add(newWeapon);
     }
 
     // 이하 UIInGameHUD 하단 무기 쿨다운 게이지가 매 프레임 폴링(무기 목록은 씬 배치 오브젝트가 아니라 이 클래스 내부
@@ -247,6 +272,7 @@ public class ActorPlayer : Actor
     public void SetSplash(float _radius) { m_hasSplash = true; m_SplashRadius = _radius; }
     public void SetChain(int _jumps, float _radius) { m_hasChain = true; m_ChainJumps = _jumps; m_ChainRadius = _radius; }
     public void SetHoming() { m_hasHoming = true; }
+    public void SetLaserDuration(float _duration) { m_hasLaserDurationBonus = true; m_LaserDurationBonus = _duration; }
     public void SetSpeciesBonusDamage(eEnemySpecies _species, float _percent) { m_BonusSpeciesTarget = _species; m_BonusSpeciesDamagePercent = _percent; }
     public void SetBerserker(float _maxBonusPercent) { m_BerserkerMaxBonusPercent = _maxBonusPercent; }
 
@@ -288,6 +314,12 @@ public class ActorPlayer : Actor
         {
             TowerWeapon weapon = m_WeaponList[i];
 
+            if (weapon.Record.Id == LASER_RECORD_ID)
+            {
+                UpdateLaserWeapon(weapon);
+                continue;
+            }
+
             weapon.CooldownTimer -= Time.deltaTime;
             if (weapon.CooldownTimer > 0f)
                 continue;
@@ -301,6 +333,56 @@ public class ActorPlayer : Actor
 
             weapon.CooldownTimer = weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
         }
+    }
+
+    // Laser(#6) — 쿨다운이 끝나면 일정 시간(GameConfigTable.LASER_INNATE_ROTATE_DURATION, 카드로 연장)
+    // 계속 회전하며 부채꼴 범위 안의 모든 적에게 주기적으로(LASER_TICK_INTERVAL) 피해를 준 뒤 사라지고 다시 쿨다운에 들어간다.
+    private void UpdateLaserWeapon(TowerWeapon _weapon)
+    {
+        if (_weapon.IsLaserActive == false)
+        {
+            _weapon.CooldownTimer -= Time.deltaTime;
+            if (_weapon.CooldownTimer > 0f)
+                return;
+
+            float duration = GameConfigTable.LASER_INNATE_ROTATE_DURATION;
+            if (m_hasLaserDurationBonus == true)
+                duration = Mathf.Max(duration, m_LaserDurationBonus);
+
+            _weapon.IsLaserActive = true;
+            _weapon.LaserActiveTimer = duration;
+            _weapon.LaserRotationAngle = 0f;
+            _weapon.LaserTickTimer = 0f;
+            _weapon.LaserVisual?.SetBeamActive(true);
+            return;
+        }
+
+        _weapon.LaserActiveTimer -= Time.deltaTime;
+        _weapon.LaserRotationAngle += GameConfigTable.LASER_ROTATION_SPEED * Time.deltaTime;
+
+        // 사용자 요청("사정거리는 무한이야") — 다른 무기와 달리 Record.Range를 안 쓰고 맵 전체를 항상 커버하는 고정값 사용.
+        Vector3 towerPosition = transform.position;
+        float laserRange = GameConfigTable.LASER_RANGE;
+        _weapon.LaserVisual?.UpdateBeam(towerPosition, _weapon.LaserRotationAngle, laserRange);
+
+        _weapon.LaserTickTimer -= Time.deltaTime;
+        if (_weapon.LaserTickTimer <= 0f)
+        {
+            _weapon.LaserTickTimer = GameConfigTable.LASER_TICK_INTERVAL;
+
+            float laserAngleRadian = _weapon.LaserRotationAngle * Mathf.Deg2Rad;
+            Vector2 beamDirection = new Vector2(Mathf.Cos(laserAngleRadian), Mathf.Sin(laserAngleRadian));
+            int tickDamage = Mathf.RoundToInt(_weapon.Record.Damage * m_DamageMultiplier);
+
+            InGameScene.Current.monsterManager.DamageEntitiesInArc(towerPosition, beamDirection, laserRange, GameConfigTable.LASER_ARC_HALF_WIDTH_DEGREES, tickDamage);
+        }
+
+        if (_weapon.LaserActiveTimer > 0f)
+            return;
+
+        _weapon.IsLaserActive = false;
+        _weapon.LaserVisual?.SetBeamActive(false);
+        _weapon.CooldownTimer = _weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
     }
 
     private void Fire(TowerWeapon _weapon, Entity _target)
@@ -346,12 +428,15 @@ public class ActorPlayer : Actor
 
         ApplyInnateWeaponAbility(_weapon, ref cardEffects);
 
-        // Double Shot(#107) — m_ProjectileCount만큼 발사(무기별로 각자 적용). 전부 같은 궤적에 겹치지 않도록
+        // Double Shot(#107) — 기본 무기(CentralTower)에만 적용(사용자 지적: "더블샷 스킬 같은경우는 기본무기에만 적용되어야해").
+        // 추가 무기(Archer/Mage/ChainCoil/HomingPod)는 항상 1발만 발사. 2발 이상일 때는 같은 궤적에 겹치지 않도록
         // 조준 방향을 중심으로 부채꼴로 벌려서 발사 — 사용자 요청("더블샷 같은애들 부채꼴로 발사").
+        int projectileCount = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_ProjectileCount : 1;
+
         Vector2 firePosition = transform.position;
-        for (int i = 0; i < m_ProjectileCount; ++i)
+        for (int i = 0; i < projectileCount; ++i)
         {
-            Vector2 spreadTargetPosition = GetSpreadTargetPosition(firePosition, targetPosition, i, m_ProjectileCount);
+            Vector2 spreadTargetPosition = GetSpreadTargetPosition(firePosition, targetPosition, i, projectileCount);
 
             InGameScene.Current.projectileManager.Fire(
                 firePosition,

@@ -15,7 +15,7 @@ Assets/Scripts/InGame/DifficultyManager.cs
 
 ## 흐름
 - `Init()`: `WaveTable`/`DifficultyTable` 로드, `currentDifficulty = SelectedDifficulty`(정적 필드, 아래 "선택 UI" 참고)로 확정 → `m_CurrentRecord = DifficultyTable.GetRecordByLevel(currentDifficulty)`를 **1회 캐싱**(핫패스 최적화, 아래 참고).
-- `UpdateLogic()`: 매 프레임 `TimerManager.Current.elapsedTime >= WaveTable.GetFinalPhaseStartTime()`(현재 480) 여부만 검사 — 최초로 조건을 만족하는 프레임에 1회 `UnlockNextDifficulty()` 호출(이후 `m_isCleared` 플래그로 재호출 방지).
+- `UpdateLogic()`: 매 프레임 `TimerManager.Current.elapsedTime >= WaveTable.GetFinalPhaseStartTime()`(현재 480) 여부만 검사 — 최초로 조건을 만족하는 프레임에 1회 `UnlockNextDifficulty()` 호출(이후 `m_isCleared` 플래그로 재호출 방지). `currentDifficulty != Infinite`면 이어서 `OnCleared` 이벤트를 발행(2026-07-28 추가, 아래 참고) — Infinite는 클리어 개념이 없어 팝업 없이 계속 진행.
 - `UnlockNextDifficulty()`: `DifficultyTable.GetNextLevel(currentDifficulty)`(`NextId` 체인 조회)로 다음 단계를 얻어 `PlayerManager.instance.UnlockDifficulty()`에 위임. 체인 끝(`NextId=0`)이면 아무것도 안 함.
 - `GetDifficultyMultiplier()` — 스폰 속도/적HP에 곱해지는 배율. `m_CurrentRecord.DifficultyMultiplier + GetInfiniteStepCount() × m_CurrentRecord.InfiniteStepAmount`.
 - `GetShardMultiplier()` — 샤드 정산에 곱해지는 배율. `m_CurrentRecord.ShardMultiplier + GetInfiniteStepCount() × m_CurrentRecord.InfiniteStepAmount`. **호출 시점의 경과 시간을 그대로 사용**하므로, 런 종료(사망) 시점에 호출해야 그 시점 기준 배율이 나온다(실제 소비처는 [[UIRunOver]]).
@@ -83,3 +83,24 @@ Title→Btn_Play→UIDifficultySelect(Normal 선택, 실제 UI 클릭)→InGame 
 
 ### 2026-07-23-1 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리, 위 미검증 항목 해소)
 사용자 지적("Manager가 너무 많지 않아?") — `SceneSingleton<DifficultyManager>` → `UpdatableBehaviour`로 전환하며 개별 `.Current`(및 그 리셋 버그 자체)가 사라짐. `InGameScene.Current.difficultyManager`로 접근. `OnDestroy()` override(순전히 Current 리셋용이었음) 전체 삭제 — 더 이상 필요 없음. `TimerManager.Current` 참조도 `InGameScene.Current.timerManager`로 교체. 상세 설계/검증은 [[InGameScene]] 2026-07-23-1 참고.
+
+## 2026-07-28-0 — 난이도 클리어 시 런 종료 + Infinite 배율 강화
+
+### 개요
+사용자 요청("Wave5 이상이면 더이상 몹이 강해지지않아?" 질의에서 시작 — "5분 이후는 인피니티 난이도 이전까지는 난이도 클리어 Popup 만들어서 정산해주고, 인피니티부터는 점점 쌔게 만들어야할꺼같은데" + "+0.10이 아니라 +0.30이 되게끔 해줘"). 기존엔 마지막 웨이브(480초) 도달 시 `UnlockNextDifficulty()`만 호출하고 **런은 계속 진행**돼, 그 이후로는 웨이브 구성(종족 비율/Elite 확률)이 Wave5 값으로 영원히 고정된 채 체감상 "더 안 강해지는" 것처럼 느껴지는 문제가 있었음.
+
+### 수정 (함수 단위)
+**신규**: `public event Action OnCleared;` — Infinite를 제외한 난이도가 클리어되는 프레임에 1회 발행. `using System;` 추가.
+
+**UpdateLogic()**
+- 전: `m_isCleared = true; UnlockNextDifficulty();`
+- 후: `UnlockNextDifficulty()` 다음에 `if (currentDifficulty == eDifficultyLevel.Infinite) return; OnCleared?.Invoke();` 추가.
+
+### 연동 — [[InGameScene]]
+`InGameScene.OnSetup()`에서 `m_DifficultyManager.OnCleared += OnRunEnd;`(신규 구독). `OnTowerDie` 메서드를 `OnRunEnd`로 리네임해 타워 사망/난이도 클리어 양쪽에서 재사용(둘 다 "런 종료" 취급 — `m_isGameOver=true` + `ApplyFreezeState()` + `UIManager.instance.Get<UIRunOver>()`, [[UIRunOver]]는 그대로 재사용). 상세는 [[InGameScene]] 2026-07-28-0 참고.
+
+### DifficultyTable.csv — Infinite 배율 증가폭 3배
+`InfiniteStepAmount`(Infinite 행) `0.10` → `0.30` — 120초마다 난이도 배율이 +0.30씩 오르도록 강화(사용자 명시적 수치 지정).
+
+### 검증
+Unity MCP Play Mode: TitleScene→Btn_Play→Item_Normal→InGameScene 진입 후 `TimerManager.AddElapsedTime(500f)`+`SpawnManager.AddElapsedTime(500f)`로 480초 임계값을 실측 통과시킴 — 리플렉션으로 `m_isCleared=True`/`InGameScene.m_isGameOver=True` 확인, `GameObject.Find("UIRunOver(Clone)")`로 팝업 생성 확인, 콘솔 에러 0건. (중간에 우연히 뜬 카드 드래프트 팝업이 전체 시뮬레이션을 일시정지시켜 첫 시도에서 반응이 없었던 것뿐 — 드래프트 카드 선택 후 정상 트리거됨, 실제 버그 아님.) Infinite 난이도 경로(팝업 없이 계속 진행)는 조건문이 단순해 별도 Play Mode 재검증 없이 코드 검토로 충분하다고 판단.

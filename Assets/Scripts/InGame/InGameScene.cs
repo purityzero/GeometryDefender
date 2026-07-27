@@ -111,7 +111,8 @@ public class InGameScene : BaseScene
 
         m_TowerController.Init(towerMaxHp);
         m_MonsterManager.OnMonsterReachEnd += m_TowerController.OnEnemyReachTower;
-        m_TowerController.OnDie += OnTowerDie;
+        m_TowerController.OnDie += OnRunEnd;
+        m_DifficultyManager.OnCleared += OnRunEnd;
 
         m_ProjectileManager.Init();
 
@@ -120,7 +121,8 @@ public class InGameScene : BaseScene
         m_CardManager.Init();
     }
 
-    private void OnTowerDie()
+    // 타워 사망 또는 난이도 클리어(Infinite 제외) 둘 다 "런 종료"로 취급 — 동일하게 정지 + 결과 팝업.
+    private void OnRunEnd()
     {
         m_isGameOver = true;
         ApplyFreezeState();

@@ -96,6 +96,26 @@ public static class QARecorder
             return null;
         }
 
+        // ScreenCapture.CaptureScreenshot는 end-of-frame 비동기 캡처라 이 자동화 환경에서는
+        // 상당수가 조용히 실패한다(파일이 아예 안 생김, m_FrameCount는 그래도 증가) — 그 결과
+        // frame_00000, frame_00083, frame_00084... 처럼 번호에 구멍이 생긴다. ffmpeg의 %05d
+        // 패턴은 연속된 번호를 요구해서 구멍을 만나면 그 직전까지만 읽고 멈춰버리므로(첫 실패 지점
+        // 이후 프레임 전부 유실), 실제로 저장된 파일만 골라 0부터 다시 순번을 매긴다.
+        string[] capturedFiles = Directory.GetFiles(m_FrameFolder, "frame_*.png");
+        Array.Sort(capturedFiles, StringComparer.Ordinal);
+
+        if (capturedFiles.Length == 0)
+        {
+            Debug.LogWarning($"[QARecorder] StitchFrames Skipped! 캡처 시도 {m_FrameCount}회 중 실제로 저장된 스크린샷이 없습니다.");
+            return null;
+        }
+
+        for (int index = 0; index < capturedFiles.Length; index++)
+        {
+            string sequencedPath = Path.Combine(m_FrameFolder, $"seq_{index:D5}.png");
+            File.Move(capturedFiles[index], sequencedPath);
+        }
+
         string ffmpegPath = ResolveFFmpegPath();
         if (ffmpegPath == null)
         {
@@ -104,7 +124,7 @@ public static class QARecorder
         }
 
         string mp4Path = Path.Combine(GetOutputFolder(), m_SessionName + ".mp4");
-        string framePattern = Path.Combine(m_FrameFolder, "frame_%05d.png");
+        string framePattern = Path.Combine(m_FrameFolder, "seq_%05d.png");
         string fpsArg = _fps.ToString("F3", CultureInfo.InvariantCulture);
         string arguments = $"-y -framerate {fpsArg} -i \"{framePattern}\" -pix_fmt yuv420p \"{mp4Path}\"";
 

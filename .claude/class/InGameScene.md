@@ -458,3 +458,8 @@ protected override void OnDestroy() { base.OnDestroy(); if (Current == this) Cur
 ### 관련 클래스
 - [[BaseScene]] 2026-07-24-0 — `isPaused` 게이트 신설
 - [[UICardDraft]] 2026-07-24-0, [[UIPause]] 2026-07-24-0 — `Time.timeScale` 대신 `SetPaused()` 호출로 전환
+
+## 2026-07-28-0 — 난이도 클리어도 "런 종료"로 취급 (OnTowerDie → OnRunEnd 리네임)
+사용자 요청("인피니티 난이도 이전까지는 난이도 클리어 Popup 만들어서 정산해주고") — [[DifficultyManager]] 2026-07-28-0과 세트. `DifficultyManager.OnCleared`(신규 이벤트) 구독 추가: `m_DifficultyManager.OnCleared += OnRunEnd;`. 기존 `OnTowerDie()`는 타워 사망 전용 이름이었으나 이제 "타워 사망 OR 난이도 클리어(Infinite 제외)" 양쪽에서 호출되므로 `OnRunEnd()`로 리네임(로직은 완전히 동일 — `m_isGameOver=true` + `ApplyFreezeState()` + `UIManager.instance.Get<UIRunOver>()`, [[UIRunOver]] 그대로 재사용). `m_TowerController.OnDie += OnRunEnd;`도 같은 줄에서 리네임 반영.
+
+검증: Play Mode에서 `TimerManager`/`SpawnManager.AddElapsedTime()`으로 480초 임계값을 실측 통과시켜 `m_isGameOver=True` + `UIRunOver(Clone)` 생성 확인, 콘솔 에러 0건. 상세는 [[DifficultyManager]] 2026-07-28-0 참고.

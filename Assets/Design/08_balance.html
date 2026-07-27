@@ -224,9 +224,20 @@ damageMultiplier(t) = 1.0 + (t / 60) × 0.25
       Normal을 클리어해야 Hard가, Hard를 클리어해야 Hell이, Hell을 클리어해야
       Infinite가 열린다. <strong>클리어 조건은 동일</strong>: 마지막으로 정의된
       웨이브(WaveTable 기준 480초, Wave 5)에 도달한 시점까지 타워가 생존해 있으면
-      해당 난이도는 클리어로 간주하고 다음 난이도를 해금한다(생존 자체는 그 이후로도
-      계속— 클리어는 "언락 조건"이지 런의 끝이 아니다).
+      해당 난이도는 클리어로 간주하고 다음 난이도를 해금한다.
     </p>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">2026-07-28 변경 — 클리어 시 런도 함께 종료</div>
+      <p style="margin-bottom: 0;">
+        기존엔 클리어가 "언락 조건"일 뿐 런은 계속 진행됐으나, 480초 이후로는 WaveTable에
+        Wave 6 이상이 정의돼 있지 않아 웨이브 구성(종족 비율/Elite 확률)이 Wave 5 값으로
+        영원히 고정된 채 체감상 더 안 강해지는 문제가 있었음. 이제 <strong>Infinite를
+        제외한 난이도</strong>는 클리어 판정과 동시에 런이 종료되고, "클리어" 정산 팝업
+        (사망 시와 동일한 결과 화면 재사용)이 뜬다. Infinite는 원래대로 클리어 개념 없이
+        계속 진행된다.
+      </p>
+    </div>
 
     <div class="tbl-wrap">
       <table>
@@ -247,20 +258,21 @@ damageMultiplier(t) = 1.0 + (t / 60) × 0.25
 
     <h3>Infinite 배율 증가 공식</h3>
 
-    <pre><code>difficultyMultiplier(t) = hellMultiplier + floor((t - 480) / 120) × 0.10   // t초, 480초(Wave 5) 이후부터 2분마다 +10%p, 상한 없음
-shardMultiplier(t)      = 2.5 + floor((t - 480) / 120) × 0.10              // 스폰/적HP 배율과 동일한 주기로 같이 상승
+    <pre><code>difficultyMultiplier(t) = hellMultiplier + floor((t - 480) / 120) × 0.30   // t초, 480초(Wave 5) 이후부터 2분마다 +30%p, 상한 없음 (2026-07-28: 0.10→0.30 강화)
+shardMultiplier(t)      = 2.5 + floor((t - 480) / 120) × 0.30              // 스폰/적HP 배율과 동일한 주기로 같이 상승
 
 예시 (t = 경과 초):
   t = 480  (Hell 시작)      → 배율 ×1.60(스폰/HP), Shards ×2.5
-  t = 600  (10분, +2분)     → 배율 ×1.70, Shards ×2.6
-  t = 840  (14분, +6분)     → 배율 ×1.90, Shards ×2.8
-  t = 1200 (20분, +12분)    → 배율 ×2.20, Shards ×3.1</code></pre>
+  t = 600  (10분, +2분)     → 배율 ×1.90, Shards ×2.8
+  t = 840  (14분, +6분)     → 배율 ×2.50, Shards ×3.4
+  t = 1200 (20분, +12분)    → 배율 ×3.40, Shards ×4.3</code></pre>
 
     <div class="callout callout-info">
       <div class="callout-title">Infinite는 "클리어"가 없다</div>
       <p style="margin-bottom: 0;">
-        Hell까지는 순차 언락용 클리어 조건(480초 생존)이 있지만, Infinite는
-        죽을 때까지 계속하는 모드라 별도 클리어/종료 조건이 없다. Shards는
+        Normal/Hard/Hell은 480초 생존 시 클리어 판정과 함께 런이 종료(정산 팝업)되지만,
+        Infinite는 죽을 때까지 계속하는 모드라 별도 클리어/종료 조건이 없다 — 480초를
+        지나도 팝업 없이 계속 진행되며, 대신 위 공식으로 배율이 끝없이 오른다. Shards는
         런이 끝날 때(타워 사망) <code>05_meta.html</code>의 정산 공식대로
         한 번에 계산되며, 이때 <code>shardMultiplier(t)</code>(t = 사망 시점 경과초)를
         곱해 최종 획득량을 정한다.

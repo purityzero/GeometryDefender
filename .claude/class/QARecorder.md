@@ -7,7 +7,7 @@
 ## 개요
 Unity MCP가 "메뉴 아이템 실행"만으로 Game 뷰 녹화를 시작/종료할 수 있게 만든 에디터 전용 정적 클래스. `Tools/QA/Start Recording` / `Tools/QA/Stop Recording` 두 메뉴 아이템만 호출하면 된다.
 
-**동작 방식(2026-07-21-6~)**: `EditorApplication.update`마다 `UnityEngine.ScreenCapture.CaptureScreenshot()`로 PNG를 저장(최대 30fps로 스로틀, 그 이상 자주 불려도 그냥 스킵 — Sleep/대기 없음)하다가, Stop 시 ffmpeg로 PNG 시퀀스를 mp4 하나로 스티칭하고 PNG는 삭제한다. **Play Mode 실시간 재생 속도에 전혀 영향을 주지 않는다** — Unity Recorder의 `RecorderController`/`MovieRecorderSettings` 세션은 정확한 프레임 페이싱을 보장하려고 녹화 중 실시간 재생 자체를 강제로 늦추는 구조라서(소스 대조로 확정, `RecordingSession.cs`/`Recorder.cs`) 완전히 폐기했다.
+**동작 방식(2026-07-21-6~)**: `EditorApplication.update`마다 `UnityEngine.ScreenCapture.CaptureScreenshot()`로 PNG를 저장(최대 60fps로 스로틀 — 코드 상 `CAPTURE_FRAME_RATE = 60f`, 그 이상 자주 불려도 그냥 스킵 — Sleep/대기 없음)하다가, Stop 시 ffmpeg로 PNG 시퀀스를 mp4 하나로 스티칭하고 PNG는 삭제한다. **Play Mode 실시간 재생 속도에 전혀 영향을 주지 않는다** — Unity Recorder의 `RecorderController`/`MovieRecorderSettings` 세션은 정확한 프레임 페이싱을 보장하려고 녹화 중 실시간 재생 자체를 강제로 늦추는 구조라서(소스 대조로 확정, `RecordingSession.cs`/`Recorder.cs`) 완전히 폐기했다.
 
 - 경로: Assets/Editor/QA/QARecorder.cs (guid: 46703dba093d44e987137517f2c3561e) — Assets/Editor 하위라 빌드에서 자동 제외
 - 출력 위치: 프로젝트 루트(Assets 상위)의 `QA_Recordings/` 폴더 (Assets 밖이라 임포트 안 됨) — `.gitignore`에 등록됨
@@ -25,7 +25,7 @@ public static class QARecorder
 
     private static void CaptureFrame() { ... }    // Application.isPlaying일 때만, 30fps 스로틀로 ScreenCapture.CaptureScreenshot
 
-    private static string StitchFrames(float _fps) { ... }  // ffmpeg -framerate {fps} -i frame_%05d.png ... .mp4, 성공 시 PNG 폴더 삭제
+    private static string StitchFrames(float _fps) { ... }  // 실제 저장된 frame_*.png만 seq_%05d.png로 재넘버링 후 ffmpeg -framerate {fps} -i seq_%05d.png ... .mp4, 성공 시 PNG 폴더 삭제
 
     private static string ResolveFFmpegPath() { ... }  // PATH 전체 탐색 → 없으면 %LOCALAPPDATA%\ffmpeg\*\bin\ffmpeg.exe 탐색
 }
@@ -248,3 +248,26 @@ settings.FrameRatePlayback == FrameRatePlayback.Variable
 2. `Tools/QA/Stop Recording` 후 ffmpeg 스티칭이 실제로 성공해 mp4가 나오는지, `ResolveFFmpegPath()`가 이 세션의 PATH 미반영 상태에서도 `%LOCALAPPDATA%\ffmpeg` 보조 탐색으로 정상 동작하는지.
 3. `ScreenCapture.CaptureScreenshot()`가 Editor Play Mode의 Game 뷰를 의도대로 캡처하는지(해상도가 Game 뷰 패널 크기에 좌우되므로, 세로 게임이 실제로 세로로 나오는지도 함께 확인).
 4. 예전 "Step() 300회 → 9분 응답 없음" 문제가 실제로 재발하지 않는지.
+
+---
+
+## 2026-07-27-11 (프레임 번호 구멍 → ffmpeg가 1프레임만 스티칭하는 버그 수정)
+
+### 개요
+qa-tester 에이전트로 "투사체가 정신 사납다" 진단용 녹화 중 발견: `Tools/QA/Stop Recording` 후 `last_recording.json`은 `path`가 정상 채워지고 `status:"recording_stopped"`로 "성공"처럼 보였지만, ffprobe로 실제 mp4를 열어보니 **매번 프레임이 정확히 1개뿐**(`nb_read_frames=1`, `duration≈0.03~0.08s`)이었다. 이 자동화 환경(Unity MCP `execute_code`로 `EditorApplication.Step()`을 반복 호출해 Play Mode 프레임을 강제 진행 — 이 md 상단 "개요"의 전제)에서는 `ScreenCapture.CaptureScreenshot()`가 대부분(체감 90%+) 조용히 실패한다는 걸 실측으로 확인(콘솔에 간헐적으로 `Failed to store screen shot (...)` 경고가 실제로 찍힘). 문제는 실패해도 `CaptureFrame()`의 `m_FrameCount`는 그대로 증가해서, 저장된 파일 이름이 `frame_00000.png, frame_00083.png, frame_00084.png, frame_00097.png...`처럼 **번호에 구멍이 숭숭 뚫린 채** 남는다. `StitchFrames()`가 ffmpeg에 넘기는 패턴이 `frame_%05d.png`(연속 번호 강제)라서, ffmpeg는 `frame_00000.png`까지만 읽고 `frame_00001.png`이 없으면 그 지점에서 **그냥 조용히 멈춰버린다**(에러 종료 코드 없음 — exit 0) — 그 결과 실제로 저장된 프레임이 30~40개가 있어도 mp4엔 첫 프레임 1개만 들어가는 버그였다.
+
+### 파일
+- `Assets/Editor/QA/QARecorder.cs`
+
+### 수정 (함수 단위)
+**`StitchFrames(float _fps)`**
+- 전: `m_FrameCount == 0`만 체크하고 바로 `frame_%05d.png` 패턴으로 ffmpeg 호출.
+- 후: ffmpeg 호출 전에 `Directory.GetFiles(m_FrameFolder, "frame_*.png")`로 **실제로 저장에 성공한 파일만** 사전순 정렬해 수집하고, `seq_00000.png`부터 다시 연속 번호로 `File.Move` 재넘버링한 뒤 `seq_%05d.png` 패턴으로 ffmpeg 호출. 저장된 파일이 0개면(전부 실패) 별도 경고 로그 후 `null` 반환(기존엔 이 케이스 자체를 구분 못 했음).
+
+### 검증 완료 (라이브)
+- 수정 전: 재현 2회 모두 `nb_read_frames=1`.
+- 수정 후: 40개 PNG가 저장된 세션에서 `ffprobe`로 `nb_read_frames=40`, `duration=1.169044s` 확인 — 저장된 프레임 전부가 mp4에 포함됨.
+- 재컴파일이 Play Mode 도중 발생했으나(Editor 스크립트 변경) `BaseScene.Current` 등 기존에 알려진 재컴파일 영향 버그([[SceneSingleton]]/[[BaseScene]] 2026-07-27-0에서 이미 수정됨) 재발 없이 Play Mode 상태(씬, `Time.frameCount`) 그대로 보존됨 확인.
+
+### 남은 근본 원인 (수정 안 함, 범위 밖)
+`ScreenCapture.CaptureScreenshot()`의 실제 실패율이 왜 이렇게 높은지(포커스 없는 Game 뷰가 실제로 매 프레임 리페인트되지 않아서로 추정되지만 미확정)는 이번에 손대지 않았다 — 위 재넘버링 수정만으로 "저장된 프레임은 전부 영상에 반영된다"가 보장되므로 당장의 블로커는 해소됐지만, 캡처 성공률 자체가 낮아 동일 real-time 대비 얻는 프레임 수는 여전히 적다(체감 300 Step()당 대략 1개 저장). 넉넉한 영상 확보가 필요하면 Step() 총량을 그만큼 크게 잡을 것 — 실시간 `sleep`으로 대기하는 방식은 이번 세션에서 시도했으나 **전혀 효과 없었다**(Bash `sleep`으로 실제 벽시계 시간이 흘러도 `EditorApplication.update` 자체가 거의 안 불리는지 캡처가 사실상 0에 수렴 — MCP `execute_code` 왕복 자체가 에디터 업데이트 틱을 유발하는 주요 트리거로 보임). 즉 프레임 확보는 "실시간 대기"가 아니라 "`execute_code` 왕복 횟수"에 비례한다는 뜻이므로, 다음에도 대기 대신 `Step()` 배치 호출을 촘촘히 반복하는 방식을 유지할 것.

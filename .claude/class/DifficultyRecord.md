@@ -34,8 +34,10 @@ Id,DisplayName,Level,DifficultyMultiplier,ShardMultiplier,InfiniteStepSeconds,In
 1,Normal,Normal,1.0,1.0,0,0,2
 2,Hard,Hard,1.3,1.5,0,0,3
 3,Hell,Hell,1.6,2.5,0,0,4
-4,Infinite,Infinite,1.6,2.5,120,0.10,0
+4,Infinite,Infinite,1.6,2.5,120,0.30,0
 ```
+
+(2026-07-28: `InfiniteStepAmount` 0.10→0.30, 사용자 요청 "+0.10이 아니라 +0.30이 되게끔 해줘" — [[DifficultyManager]] 2026-07-28-0 참고. 참고로 위 예시의 `Normal` 행 `DifficultyMultiplier=1.0`은 이후 다른 세션에서 0.8로 밸런스 조정됐으나 이 문서에는 반영 안 돼 있었음 — 이번 변경과 무관해 손대지 않았고, 실제 값은 CSV 원본을 신뢰할 것.)
 
 ## 설계 판단 근거 (design-planner 스펙에서 확정)
 - `Level` 필드로 enum을 직접 두는 이유: 4개 값이 고정이고 레코드와 1:1 대응이라 `EnemyRecord.Species`(1:N)보다는 `TowerRecord.GetRecordById()`에 가까움 — 다만 `DifficultyManager.currentDifficulty`가 이미 enum 값을 들고 있어 Id 변환 없이 바로 조회 가능해야 하므로 `Level` 필드 + `GetRecordByLevel()` 채택.

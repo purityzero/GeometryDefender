@@ -42,3 +42,10 @@
 qa-tester 실측(3판 모두 45~65초 사망) 원인 분석 결과 — 단일 타겟 타워가 사거리 안에 몬스터가 머무는 시간이 웨이포인트 경로 특성상 ~3.3초로 매우 짧아, 스폰레이트가 킬레이트를 앞지르는 시점(약 26~29초)부터 밀린 몬스터가 사거리 진입도 못 하고 그대로 기지에 도달하는 구조적 병목이 원인. Range를 넓혀 사거리 체류 시간을 ~6.4초로 늘려 병목 완화(상세 계산은 `.claude/qa/design-issues.md` 2026-07-27-0 및 GameConfigRecord.md 2026-07-27-3 참고). `Assets/Design/02_combat.html` "타워 기본 스탯"/신규 콜아웃도 함께 갱신.
 
 **검증**: IDE 진단 컴파일 에러 0건. Play Mode 재검증 필요(다음 QA 세션에서 실제 생존 시간 재측정).
+
+### 2026-07-27-4 — `PrefabPath` 필드 신설 + Laser(#6) 행 추가
+사용자 지적("레이저 이펙트 프리팹 csv에서 가지고 있어야할꺼같은데") — `ProjectileTable.PrefabPath`와 동일 개념으로, 무기 하나당 지속되는 전용 시각 오브젝트가 필요한 경우에만 채우는 컬럼 신설(기존 5행은 전부 빈 문자열). Laser(#6, LaserSpinner)행 추가: `Prefabs/Effect/LaserBeam`(→ [[LaserBeamVisual]] 프리팹). [[ActorPlayer]]의 `AddWeapon()`이 하드코딩 상수 대신 이 필드를 읽도록 수정(2026-07-27-11 참고) — 향후 다른 무기도 전용 비주얼이 필요하면 이 컬럼만 채우면 됨.
+
+ColorHex(`#44FF33`, 연두색)는 무기 쿨다운 게이지(`GetWeaponColorHex`)와 [[LaserBeamVisual]]의 외곽 글로우 색이 항상 같은 값을 쓰도록 동기화(사용자 요청 "그 심볼 색을 무기 쿨타임에도 그대로 적용해야해"). Range 컬럼은 `0.0`(미사용 표시) — Laser는 `Record.Range` 대신 `GameConfigTable.LASER_RANGE`(무제한급 고정값)를 쓴다(사용자 요청 "사정거리는 무한이야").
+
+**검증**: Play Mode에서 `AddWeapon(6)` 호출 후 `GetWeaponColorHex(1)`이 `#44FF33` 반환 확인. `PrefabPath` 경로로 `ResUtil.Create<LaserBeamVisual>` 정상 동작(콘솔 에러 0건) 확인.

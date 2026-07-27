@@ -25,6 +25,10 @@ public class TowerRecord : Record
     public float CritChance;
     public float CritMultiplier;
     public int ProjectileId;
+
+    // ProjectileTable.PrefabPath와 동일 개념 — 대부분 무기는 ProjectileId로 발사체만 쏘면 끝이라 비어있고,
+    // Laser처럼 무기 하나당 지속되는 전용 시각 오브젝트가 필요한 경우에만 채운다(빈 문자열이면 생성 안 함).
+    public string PrefabPath;
 }
 
 public class TowerTable : Table<TowerRecord>
