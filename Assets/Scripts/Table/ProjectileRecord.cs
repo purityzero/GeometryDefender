@@ -13,6 +13,7 @@ public class ProjectileRecord : Record
 {
     public eProjectileType Type;
     public string ColorHex;
+    public float Alpha;
     public float Size;
     public float TrailDuration;
     public float DamageMultiplier;

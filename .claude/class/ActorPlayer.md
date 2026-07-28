@@ -2,6 +2,21 @@
 
 연관 클래스: `Actor`(2026-07-27부터 베이스), `TowerRecord`/`TowerTable`(스탯), `ITargetingStrategy`와 5종 구현체(`Closest/Strongest/Weakest/Fastest/Random TargetingStrategy`), `ProjectileManager`(발사 위임), `ProjectileRecord`/`ProjectileTable`/`eProjectileType`(투사체 데이터, 2026-07-22 [[ProjectileManager]] 테이블화 참고), `TowerHealth`(피격, 별개, 병합됨), `TowerColorEffect`(HP 시각화, 별개), `MonsterTag`/`HealthData`/`MoveData`(ECS, 타겟 조회 대상), [[LaserBeamVisual]](Laser 전용 시각), [[MonsterManager]](`DamageEntitiesInArc` 신설)
 
+## 2026-07-28-0 — TowerRecord.Alpha 반영 (무기 색상 다운톤)
+
+### 개요
+[[TowerRecord]] 2026-07-28-0 참고 — 무기 색상(ColorHex)이 항상 알파 1로 렌더링돼 너무 쨍하다는 사용자 지적으로 `Alpha` 컬럼이 신설됨. 이 클래스는 그 값을 실제로 소비하는 두 지점 중 하나(Laser 비주얼)와, UIInGameHUD가 조회하는 신규 API를 추가.
+
+### 수정 (함수 단위)
+**AddWeapon(int)** — Laser 비주얼 색 설정 직후 `laserColor.a = weaponRecord.Alpha;` 추가(`SetColor()` 호출 전).
+
+**신규 `GetWeaponAlpha(int _index)`**: `GetWeaponColorHex(int)`와 동일한 인덱스/가드 패턴으로 `m_WeaponList[_index].Record.Alpha` 반환 — UIInGameHUD.UpdateWeaponCooldowns()가 게이지 fill 색의 알파를 이 값으로 덮어쓰는 데 사용([[UIInGameHUD]] 참고).
+
+### 검증
+`mcp__ide__getDiagnostics` 컴파일 에러 0건. Play Mode 미검증.
+
+---
+
 ## 2026-07-27-11 — Laser(#6) 신규 테마 무기: 회전하며 부채꼴 범위에 지속 피해
 
 ### 개요

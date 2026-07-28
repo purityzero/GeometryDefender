@@ -84,6 +84,23 @@ Title→Btn_Play→UIDifficultySelect(Normal 선택, 실제 UI 클릭)→InGame 
 ### 2026-07-23-1 — SceneSingleton → UpdatableBehaviour 전환(싱글톤 난립 정리, 위 미검증 항목 해소)
 사용자 지적("Manager가 너무 많지 않아?") — `SceneSingleton<DifficultyManager>` → `UpdatableBehaviour`로 전환하며 개별 `.Current`(및 그 리셋 버그 자체)가 사라짐. `InGameScene.Current.difficultyManager`로 접근. `OnDestroy()` override(순전히 Current 리셋용이었음) 전체 삭제 — 더 이상 필요 없음. `TimerManager.Current` 참조도 `InGameScene.Current.timerManager`로 교체. 상세 설계/검증은 [[InGameScene]] 2026-07-23-1 참고.
 
+## 2026-07-28-1 — 클리어 판정: 웨이브 시작 시각 → 웨이브 종료 시각
+
+### 개요
+사용자 요청("5웨이브를 가면 바로 끝내지말고 5웨이브가 끝나야 게임 종료되는걸로") — 2026-07-28-0에서 "클리어=런 종료"까지는 확정됐지만, 판정 기준이 `GetFinalPhaseStartTime()`(480, Wave5 **시작** 시각)이라 Wave5가 시작하자마자 바로 클리어되는 문제가 있었음. [[WaveRecord]] 2026-07-28-0에서 신설한 `GetFinalPhaseEndTime()`(시작+Duration=600)으로 교체.
+
+### 수정 (함수 단위)
+**UpdateLogic()**
+- 전: `if (InGameScene.Current.timerManager.elapsedTime < m_WaveTable.GetFinalPhaseStartTime()) return;`
+- 후: `if (InGameScene.Current.timerManager.elapsedTime < m_WaveTable.GetFinalPhaseEndTime()) return;`
+
+**GetInfiniteStepCount()는 변경하지 않음** — `08_balance.html` 공식(`t=480`부터 2분마다 배율 증가)이 웨이브5 시작 시각을 기준점으로 명시하고 있어, 이 계산은 `GetFinalPhaseStartTime()`을 그대로 유지.
+
+### 검증
+`mcp__ide__getDiagnostics` 컴파일 에러 0건. Play Mode 미검증(Unity MCP 미연결) — 480~600초 구간엔 클리어 안 되고, 600초부터 클리어되는지 확인 필요.
+
+---
+
 ## 2026-07-28-0 — 난이도 클리어 시 런 종료 + Infinite 배율 강화
 
 ### 개요

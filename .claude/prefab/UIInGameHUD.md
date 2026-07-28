@@ -32,6 +32,11 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 └─ Btn_Cheat (...1100)               — Btn_Pause 왼쪽(anchoredPosition -108,-140) 72×72, 투명 Image + Button / Text_Cheat "CHEAT" — OnClick → UIInGameHUD.OnClickCheatButton() → UICheatWindow 팝업
 ```
 
+추가(2026-07-28-0, 루트 직속 자식으로 append):
+```
+└─ Text_Wave (...1110)               — 상단 중앙 anchor(0.5,1) pos(0,-16) size(200,30), "WAVE 1" #A0A0B8 18pt, Text_Fps와 동일 라인(Panel_Top보다 위)
+```
+
 ## 씬 배치 (2026-07-23-2부터)
 - InGameScene.unity의 `Canvas`(fileID 655750134/RectTransform 655750138) 직속 자식. PrefabInstance fileID 1786891867, stripped RectTransform 1786891868.
 - RectTransform 오버라이드는 `m_Name` 하나뿐 — 나머지는 prefab 기본값(풀스트레치) 그대로 상속.
@@ -43,6 +48,22 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 - XP/시너지 게이지는 Image Filled 타입 — 코드에서 `fillAmount`로 갱신할 예정이었으나 아직 미구현(이번 작업 범위 밖).
 - Btn_Pause 좌/우 반전(왼손 모드)은 코드에서 anchoredPosition.x 부호 전환으로 처리 예정(미구현).
 - **멀티 스프라이트 텍스처 참조 시 주의(참고용, 현재는 미사용)**: `frame_capsule.png`/`icon_*.png`류는 TextureImporter가 `spriteMode: 2`(Multiple)라, `m_Sprite`의 `fileID`는 관용적인 `21300000`이 아니라 각 텍스처 `.meta`의 `internalIDToNameTable`(classID 213) 값을 그대로 써야 한다 — 이번엔 되돌려져서 실제로 화면에 뜨는지 검증되지 않은 채 남음. 나중에 다시 이 방식으로 아이콘/스프라이트를 붙이게 되면 이 패턴을 재사용하되, 에디터에서 실제로 렌더링되는지 먼저 확인할 것.
+
+---
+
+## 2026-07-28-0 — Text_Wave 신규 (현재 웨이브 번호 표시)
+
+### 개요
+[[UIInGameHUD]](class.md) 2026-07-28-0 참고. Unity MCP 미연결로 YAML append 방식.
+
+### 수정 (오브젝트 단위)
+루트(...1001) `m_Children`에 `{fileID: 9002000000000001111}` 추가. **Text_Wave**(...1110) 신규: RectTransform(...1111)+CanvasRenderer(...1112)+TextMeshProUGUI(...1113), Text_Fps 패턴 그대로(단순 텍스트, Pill 배경 없음) 상단 중앙 배치. 루트 컴포넌트(...1900)에 `m_WaveText: {fileID: 9002000000000001113}` 연결.
+
+### 검증
+grep으로 파일 전체 fileID 중복 0건 확인(마커 문자열로 유일 컨텍스트 확보 후 append, 작업 완료 후 마커 제거).
+
+### 미검증
+Unity MCP 미연결, 컴파일/Play Mode 확인 안 됨 — Text_Wave가 Text_Fps/Panel_Top과 겹치지 않는지, 웨이브 전환 시 텍스트가 정확히 갱신되는지 확인 필요.
 
 ---
 

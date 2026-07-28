@@ -210,7 +210,10 @@ public class ActorPlayer : Actor
             if (newWeapon.LaserVisual != null)
             {
                 if (ColorUtility.TryParseHtmlString(weaponRecord.ColorHex, out Color laserColor) == true)
+                {
+                    laserColor.a = weaponRecord.Alpha;
                     newWeapon.LaserVisual.SetColor(laserColor);
+                }
 
                 newWeapon.LaserVisual.SetBeamActive(false);
             }
@@ -251,6 +254,14 @@ public class ActorPlayer : Actor
             return "#FFFFFF";
 
         return m_WeaponList[_index].Record.ColorHex;
+    }
+
+    public float GetWeaponAlpha(int _index)
+    {
+        if (_index < 0 || _index >= m_WeaponList.Count)
+            return 1f;
+
+        return m_WeaponList[_index].Record.Alpha;
     }
 
     // CardManager가 카드 드래프트 풀 필터링에 사용 — Splash/Chain/Homing 카드(#303/#304/#305)는

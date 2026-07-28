@@ -15,8 +15,8 @@ public class DifficultyManager : UpdatableBehaviour
     // 난이도 선택 UI가 아직 없어 기본값 Normal 고정 — 선택 화면이 생기면 InGameScene 진입 전 이 값만 설정해주면 된다
     public static eDifficultyLevel SelectedDifficulty = eDifficultyLevel.Normal;
 
-    // Infinite를 제외한 난이도는 마지막 웨이브 시각에 도달하면 런이 종료된다(사용자 요청: "인피니티 난이도 이전까지는
-    // 난이도 클리어 Popup 만들어서 정산해주고") — InGameScene이 구독해 UIRunOver를 띄우고 런을 정지시킨다.
+    // Infinite를 제외한 난이도는 마지막 웨이브가 끝나면(시작 시각 + Duration) 런이 종료된다(사용자 요청: "인피니티 난이도 이전까지는
+    // 난이도 클리어 Popup 만들어서 정산해주고" + "5웨이브가 끝나야 게임 종료되는걸로") — InGameScene이 구독해 UIRunOver를 띄우고 런을 정지시킨다.
     public event Action OnCleared;
 
     private WaveTable m_WaveTable;
@@ -64,7 +64,7 @@ public class DifficultyManager : UpdatableBehaviour
         if (InGameScene.Current.timerManager == null)
             return;
 
-        if (InGameScene.Current.timerManager.elapsedTime < m_WaveTable.GetFinalPhaseStartTime())
+        if (InGameScene.Current.timerManager.elapsedTime < m_WaveTable.GetFinalPhaseEndTime())
             return;
 
         m_isCleared = true;

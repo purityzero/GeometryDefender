@@ -159,7 +159,10 @@ public class ProjectileManager : UpdatableBehaviour
         actorProjectile.transform.localScale = Vector3.one * visualScale;
 
         if (ColorUtility.TryParseHtmlString(_record.ColorHex, out Color color) == true)
+        {
+            color.a = _record.Alpha;
             actorProjectile.SetColor(color);
+        }
 
         m_EntityManager.AddComponentObject(_entity, new VisualObject
         {

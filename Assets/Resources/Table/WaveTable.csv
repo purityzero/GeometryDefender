@@ -1,6 +1,6 @@
-Id,StartTime,NormalWeight,SwiftWeight,HeavyWeight,SplitterWeight,RangedWeight,EliteChance
-1,0,100,0,0,0,0,0.0
-2,120,60,40,0,0,0,0.05
-3,240,40,30,20,10,0,0.1
-4,360,30,25,20,15,10,0.15
-5,480,20,25,20,20,15,0.2
+Id,StartTime,Duration,NormalWeight,SwiftWeight,HeavyWeight,SplitterWeight,RangedWeight,EliteChance
+1,0,120,100,0,0,0,0,0.0
+2,120,120,60,40,0,0,0,0.05
+3,240,120,40,30,20,10,0,0.1
+4,360,120,30,25,20,15,10,0.15
+5,480,120,20,25,20,20,15,0.2

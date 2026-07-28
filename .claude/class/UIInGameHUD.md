@@ -22,6 +22,31 @@ InGame 화면 상단 HUD(HP/Timer/Kill 표시 + Pause 버튼). **2026-07-23-2부
 
 ## 작업 내역
 
+### 2026-07-28-1 — 무기 쿨다운 게이지 색에 Alpha 반영
+[[TowerRecord]]/[[ActorPlayer]] 2026-07-28-0 참고 — `UpdateWeaponCooldowns()`의 `Image_GaugeFill` 색 설정 직후 `weaponColor.a = towerController.GetWeaponAlpha(index);` 추가(기존엔 `ColorUtility.TryParseHtmlString()` 결과 그대로라 항상 알파 1). 검증: 컴파일 에러 0건, Play Mode 미검증.
+
+### 2026-07-28-0 — 현재 웨이브 번호 표시 (Text_Wave 신규)
+
+#### 개요
+사용자 요청("게임에 현재 몇 웨이브인지 InGameHUD에 표기해주는것도 좋을꺼같아"). Panel_Top(Hp/Time/Kill 3개 Pill로 이미 꽉 참)엔 자리가 없어, Text_Fps와 같은 "루트 직속 단순 텍스트"(Pill 배경/아이콘 없음) 패턴으로 상단 중앙에 추가.
+
+#### 파일
+- Assets/Scripts/UI/UIInGameHUD.cs
+- Assets/Resources/Prefabs/UI/UIInGameHUD.prefab
+
+#### 수정 (함수 단위)
+**필드**: `[SerializeField] private TextMeshProUGUI m_WaveText;`, `private WaveTable m_WaveTable;`(지연 캐싱).
+**`UpdateLogic()`**: `UpdateWaveText()` 호출 추가.
+**신규 `UpdateWaveText()`**: `m_WaveTable`이 비어있으면 1회 `TableManager.instance.GetTable<WaveTable>()`로 캐싱 → `InGameScene.Current.timerManager.elapsedTime` 기준 `WaveTable.GetActivePhase()`(기존 [[SpawnManager]]가 쓰던 것과 동일 메서드, `WaveRecord.Id`가 곧 웨이브 번호)로 현재 페이즈 조회 → `m_WaveText.text = $"WAVE {activePhase.Id}"`. HP/Kill/Xp처럼 Observable로 감싸지 않고 Timer와 동일하게 매 프레임 폴링(값이 자주 안 바뀌긴 하지만, 이 프로젝트의 폴링 vs Observable 판단 기준상 "웨이브 산출 자체가 매 프레임 가벼운 조회"라 굳이 이벤트 배선을 새로 안 만듦).
+
+#### 프리팹 (오브젝트 단위)
+루트(...1001) `m_Children`에 `{fileID: 9002000000000001111}` 추가. 신규 **Text_Wave**(GO ...1110, RectTransform ...1111, CanvasRenderer ...1112, TextMeshProUGUI ...1113) — anchor(0.5,1) pivot(0.5,1) anchoredPosition(0,-16) size(200,30), Text_Fps와 동일한 상단 라인에 중앙 정렬(fontSize 18, 가운데 정렬, Text_Time과 동일 회색 `#A0A0B8`), 초기 텍스트 "WAVE 1". 루트 컴포넌트(...1900)에 `m_WaveText: {fileID: 9002000000000001113}` 연결.
+
+#### 검증
+`mcp__ide__getDiagnostics` 컴파일 에러 0건, 파일 전체 fileID 중복 0건(grep 대조). **Play Mode 미검증**(Unity MCP 미연결, YAML 직접 편집) — 실제로 Text_Wave가 다른 요소와 안 겹치는지, 웨이브 전환 시 숫자가 정확히 갱신되는지 확인 필요.
+
+---
+
 ### 2026-07-27-0 — 무기 쿨다운 게이지 신규 (하단 Panel_Synergy 자리 재활용)
 
 #### 개요

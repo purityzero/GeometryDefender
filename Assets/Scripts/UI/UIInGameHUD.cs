@@ -8,6 +8,7 @@ public class UIInGameHUD : UIBase
     [SerializeField] private TextMeshProUGUI m_HpText;
     [SerializeField] private TextMeshProUGUI m_TimeText;
     [SerializeField] private TextMeshProUGUI m_KillText;
+    [SerializeField] private TextMeshProUGUI m_WaveText;
     [SerializeField] private Image m_XpFillImage;
     [SerializeField] private Image m_HpFillImage;
 
@@ -18,6 +19,8 @@ public class UIInGameHUD : UIBase
     private ObservableVariable<int> m_HpObservable;
     private ObservableVariable<int> m_KillObservable;
     private ObservableVariable<int> m_XpObservable;
+
+    private WaveTable m_WaveTable;
 
     private List<Image> m_WeaponCooldownFills = new List<Image>();
 
@@ -36,6 +39,7 @@ public class UIInGameHUD : UIBase
     public override void UpdateLogic()
     {
         UpdateTimeText();
+        UpdateWaveText();
         TryRegisterHpObservable();
         TryRegisterKillObservable();
         TryRegisterXpObservable();
@@ -52,6 +56,25 @@ public class UIInGameHUD : UIBase
         int seconds = totalSeconds % 60;
 
         m_TimeText.text = $"{minutes:00}:{seconds:00}";
+    }
+
+    private void UpdateWaveText()
+    {
+        if (InGameScene.Current == null || InGameScene.Current.timerManager == null)
+            return;
+
+        if (m_WaveTable == null)
+            m_WaveTable = TableManager.instance.GetTable<WaveTable>();
+
+        if (m_WaveTable == null)
+            return;
+
+        int elapsedSeconds = (int)InGameScene.Current.timerManager.elapsedTime;
+        WaveRecord activePhase = m_WaveTable.GetActivePhase(elapsedSeconds);
+        if (activePhase == null)
+            return;
+
+        m_WaveText.text = $"WAVE {activePhase.Id}";
     }
 
     private void TryRegisterHpObservable()
@@ -140,7 +163,10 @@ public class UIInGameHUD : UIBase
 
             Image fill = row.transform.Find("Image_GaugeBG/Image_GaugeFill").GetComponent<Image>();
             if (ColorUtility.TryParseHtmlString(towerController.GetWeaponColorHex(index), out Color weaponColor) == true)
+            {
+                weaponColor.a = towerController.GetWeaponAlpha(index);
                 fill.color = weaponColor;
+            }
 
             m_WeaponCooldownFills.Add(fill);
         }

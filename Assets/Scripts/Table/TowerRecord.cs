@@ -15,6 +15,7 @@ public class TowerRecord : Record
     public string DisplayName;
     public string NameKey;
     public string ColorHex;
+    public float Alpha;
     public int Cost;
     public int Damage;
     public float AttackInterval;

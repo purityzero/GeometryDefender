@@ -7,7 +7,7 @@
 ## 현재 상태
 - 경로: Assets/Scripts/Table/TowerRecord.cs
 - `eTargetingType` enum: First, Strongest, Closest, Weakest, Fastest, Random.
-- `TowerRecord : Record` 필드: DisplayName(string, 원문 표기용 — 실제 UI 표시엔 안 씀), **NameKey(string, 2026-07-27 신설 — StringTable 키, UIInGameHUD 무기 쿨다운 라벨이 로컬라이즈해서 읽음, 아래 2026-07-27-4 참고)**, ColorHex, Cost(int, 현재 미사용 — 옛 배치형 컨셉 잔재), Damage(int), AttackInterval(float), Range(float), SplashRadius(float, **2026-07-27부터 실사용** — Mage(Id=2)의 고유 능력 기본값으로 `ActorPlayer.ApplyInnateWeaponAbility()`가 읽음, [[ActorPlayer]] 2026-07-27-7 참고), ProjectileSpeed(float), DefaultTargeting(eTargetingType), CritChance(float), CritMultiplier(float), ProjectileId(int).
+- `TowerRecord : Record` 필드: DisplayName(string, 원문 표기용 — 실제 UI 표시엔 안 씀), **NameKey(string, 2026-07-27 신설 — StringTable 키, UIInGameHUD 무기 쿨다운 라벨이 로컬라이즈해서 읽음, 아래 2026-07-27-4 참고)**, ColorHex, **Alpha(float, 2026-07-28 신설 — 아래 참고)**, Cost(int, 현재 미사용 — 옛 배치형 컨셉 잔재), Damage(int), AttackInterval(float), Range(float), SplashRadius(float, **2026-07-27부터 실사용** — Mage(Id=2)의 고유 능력 기본값으로 `ActorPlayer.ApplyInnateWeaponAbility()`가 읽음, [[ActorPlayer]] 2026-07-27-7 참고), ProjectileSpeed(float), DefaultTargeting(eTargetingType), CritChance(float), CritMultiplier(float), ProjectileId(int).
 - `TowerTable : Table<TowerRecord>`.
 - 데이터: Assets/Resources/Table/TowerTable.csv
 
@@ -15,6 +15,13 @@
 
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)
+
+### 2026-07-28-0 — Alpha 컬럼 신설 (무기 색상 알파를 테이블에서 관리)
+사용자 요청("중앙타워 무기에 알파를 좀 낮추는게 좋을듯" → "알파값 낮추는건, 그 무기테이블쪽에서 관리해줬으면" → "무기 전체적으로 alpha를 다운톤 시켜줘 그냥"). 기존엔 `ColorHex`를 `ColorUtility.TryParseHtmlString()`으로 파싱하면 항상 알파 1(불투명)이라, 무기별 색이 화면(무기 쿨다운 게이지/Laser 비주얼)에서 너무 쨍하게 보이는 문제가 있었음 — 값을 코드에 하드코딩하지 않고 이 테이블에서 관리하도록 `Alpha`(float) 컬럼 신설.
+- CSV: 전 행(Archer/Mage/CentralTower/ChainCoil/HomingPod/LaserSpinner) `Alpha=0.4`로 통일(사용자 확정 — 처음엔 CentralTower 한 행만 낮추는 것으로 확인했다가, 곧이어 "전체적으로" 다운톤 요청으로 전 행 동일 적용).
+- 소비처: [[ActorPlayer]].AddWeapon()(Laser 비주얼 색), UIInGameHUD.UpdateWeaponCooldowns()(무기 쿨다운 게이지 fill 색) — 둘 다 `ColorUtility.TryParseHtmlString()`으로 얻은 Color의 `.a`를 이 필드 값으로 덮어씀. 상세는 [[ActorPlayer]] 2026-07-28-0 참고.
+- **주의 — 실제 발사되는 투사체 스프라이트 색은 이 필드가 아니다**: 화면에 날아가는 투사체는 `ProjectileTable.ColorHex`(별개 테이블, `ProjectileManager.SpawnVisual()`이 소비)를 쓴다 — 처음엔 이 테이블(TowerTable)에만 Alpha를 추가했다가 사용자가 "ActorProjectile alpha 조정하는게 없는데?"로 지적해 `ProjectileRecord.Alpha`를 별도로 추가함([[ProjectileManager]] 2026-07-28-0 참고). 무기 색 관련 Alpha를 만질 땐 이 두 테이블이 서로 다른 시각 요소(쿨다운 게이지/Laser vs 실제 투사체)를 담당한다는 점을 놓치지 말 것.
+- 검증: `mcp__ide__getDiagnostics` 컴파일 에러 0건. Play Mode 미검증(Unity MCP 미연결) — 실제로 게이지/Laser/투사체 색이 흐려 보이는지 확인 필요.
 
 ### 2026-07-27-1 — 무기 다양화: Archer/Mage 재활용 + 신규 2종 추가
 사용자 요청("타워가 여러 무기를 동시에 갖고 싶다" + "The Tower" 모바일 게임 레퍼런스) — 상세 설계는 [[ActorPlayer]] 참고. 이 테이블의 각 행이 이제 "보조 무기 정의"로 실제 소비된다(과거엔 Archer/Mage 2행이 아무도 참조 안 하는 잔재였음).

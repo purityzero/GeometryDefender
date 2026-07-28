@@ -44,9 +44,15 @@ Unity MCP 미연결, 컴파일/Play 확인 안 됨 — Burst 컴파일 오류 �
 - class 대신 struct 선택 이유: 필드 2개(enum+참조)뿐인 순수 데이터, `Dictionary<Entity, T>` 값으로 인라인 저장되어 class보다 힙 할당이 없음 — 동작/생명주기 없는 값 홀더라 struct가 더 적합.
 - `m_DicVisual[_entity] = new ProjectileVisualEntry { Type = ..., Actor = ... }`, `RecycleVisual()`의 `visual.type`/`visual.actor` → `visual.Type`/`visual.Actor`로 변경.
 
+## 2026-07-28-0 — ProjectileRecord.Alpha 신설 (투사체 색상 다운톤)
+사용자 지적("무기 알파값 적용 안된거 같아 ActorProjectile alpha 조정하는게 없는데?") — [[TowerRecord]]/[[ActorPlayer]] 2026-07-28-0에서 무기 색(TowerTable.ColorHex, 무기 쿨다운 게이지/Laser 비주얼용)에만 Alpha를 적용했는데, 실제로 화면에 날아가는 투사체 스프라이트 색은 별개 테이블(`ProjectileTable.ColorHex`, `SpawnVisual()`이 소비)이라 놓치고 있었던 지점 — 사용자가 발견.
+- `ProjectileRecord`에 `Alpha`(float) 컬럼 신설, `ProjectileTable.csv` 5행 전부 `Alpha=0.4`(TowerTable과 동일 다운톤 값, "무기 전체적으로 alpha를 다운톤 시켜줘" 요청 연장선).
+- `SpawnVisual(Entity, ProjectileRecord)` — `ColorUtility.TryParseHtmlString()` 결과의 `.a`를 `_record.Alpha`로 덮어쓴 뒤 `actorProjectile.SetColor()` 호출(기존엔 항상 알파 1).
+- 검증: `mcp__ide__getDiagnostics` 컴파일 에러 0건(기존 스타일 힌트만 존재, 이번 변경과 무관). Play Mode 미검증(Unity MCP 미연결).
+
 ## 2026-07-22 업데이트 — ProjectileTable 도입
 사용자 요청("무기(Projectile)도 테이블로 관리할 수 있게 해줘 — 크기, 데미지, 타입, 모형 등")로 하드코딩돼 있던 투사체 스펙(반지름 상수, 프리팹 경로 상수)을 `Assets/Resources/Table/ProjectileTable.csv`로 이전.
-- 컬럼: `Id,Type(eProjectileType),ColorHex,Size,TrailDuration,DamageMultiplier,Pierce,SplashRadius,ChainJumps,ChainRadius,PrefabPath`. Splash/Chain 관련 컬럼은 값만 채워두고 실제 로직은 아직 없음(`ProjectileCollisionSystem`이 Pierce=0 고정 처리만 함) — [[TowerController]]의 "이번 패스 범위" 참고, 5종 데이터는 다 있지만 동작은 Basic만 구현됨.
+- 컬럼: `Id,Type(eProjectileType),ColorHex,Alpha(2026-07-28 신설),Size,TrailDuration,DamageMultiplier,Pierce,SplashRadius,ChainJumps,ChainRadius,PrefabPath`. Splash/Chain 관련 컬럼은 값만 채워두고 실제 로직은 아직 없음(`ProjectileCollisionSystem`이 Pierce=0 고정 처리만 함) — [[TowerController]]의 "이번 패스 범위" 참고, 5종 데이터는 다 있지만 동작은 Basic만 구현됨.
 - `TowerRecord.ProjectileId`(신규 필드)로 어느 타워가 어느 투사체 레코드를 쓸지 지정 — 카드 시스템이 나중에 이 값을 갈아끼울 확장 지점(`ITargetingStrategy`와 동일 설계 사상).
 - `Fire()` 시그니처 변경: `_radius`(float 직접 전달) → `_projectileId`(int, 테이블 조회)로 교체. 데미지는 `_baseDamage × record.DamageMultiplier`로 계산(현재 전부 1.0 — 카드 시스템 확장 지점).
 - 풀링을 `MemoryPooling<ActorProjectile>`(단일 풀) → `MemoryPoolFactory<ActorProjectile, eProjectileType>`(타입별 풀, `MonsterManager`와 동일 패턴)로 교체 — 지금은 5종 레코드가 전부 같은 `Prefabs/Projectile/Basic.prefab`을 가리키지만, 나중에 타입별 실제 프리팹이 생겨도 코드 변경 없이 바로 대응 가능.
