@@ -8,7 +8,7 @@
 ## 현재 상태
 - 데이터 3분할 (2026-07-19-3, 각각 별도 PlayerPrefs 키에 JSON 저장):
   - `PlayerData` (키 "PlayerData"): Version, UnlockedMetaNodes(List&lt;int&gt;), BestScore, RecentRuns(List&lt;RunRecord&gt; 최근 10개), LastPlayedAt(ISO 8601 문자열)
-  - `OptionData` (키 "OptionData"): isSoundOn, isHapticOn, isLeftHandMode, FpsOption(eFpsOption)
+  - `OptionData` (키 "OptionData"): BgmVolume(float, 0~1), SfxVolume(float, 0~1), isHapticOn, FpsOption(eFpsOption) — isSoundOn/isLeftHandMode는 2026-07-29부터 제거(아래 changelog 참고)
   - `AssetData` (키 "AssetData"): Shards(int)만 가진 순수 데이터 클래스
 - PlayerManager 보유 필드: m_PlayerData / m_OptionData / m_AssetData + `m_ShardsObservable`(ObservableVariable&lt;int&gt;). 공개 접근자: playerData / optionData (AssetData는 비공개 — 재화 접근은 반드시 Currency API 경유)
 - 재화 변경 통지: Load 끝(모든 분기 공통) + SpendCurrency에서 `m_AssetData.Shards` 값으로 m_ShardsObservable 동기화. 싱글톤 필드라 Load로 데이터가 교체돼도 옵저버 유지
@@ -354,3 +354,36 @@ Sound/Haptic/LeftHand와 달리 FPS는 실제 시스템(`Application.targetFrame
 ### 2026-07-24-0 — const 일부 GameConfigTable로 이관
 [[GameConfigRecord]] 2026-07-24-0 참고. `MAX_RECENT_RUN_COUNT` 제거 → `GameConfigTable.MAX_RECENT_RUN_COUNT` 참조. `SAVE_KEY`/`OPTION_SAVE_KEY`/`ASSET_SAVE_KEY`(PlayerPrefs 문자열 키)는 튜닝값이 아니라 그대로 유지.
 검증: 컴파일 에러 0건. Play Mode 재검증 미완료.
+
+---
+
+### 2026-07-29-0 — isSoundOn(bool) → BgmVolume/SfxVolume(float) 분리, isLeftHandMode 제거
+사용자 요청("SoundOption SFX, BGM으로 분리해주고 사운드 조절 할 수 있는거 만들어줘 bar형식으로") + "그리고 LeftHandMode는 없어져도 되겠지?"(실제 소비 코드가 없는 죽은 옵션이라 확인 후 제거 — [[UISetting]] 참고, 좌우 반전 UI 자체가 아직 없음).
+
+**OptionData**
+- 제거: `isSoundOn`(bool), `isLeftHandMode`(bool)
+- 추가: `public float BgmVolume = 1f;`, `public float SfxVolume = 1f;`
+
+**제거**: `SetSoundOn(bool)`, `SetLeftHandMode(bool)`
+**신규**:
+```csharp
+public void SetBgmVolume(float _volume)
+{
+    m_OptionData.BgmVolume = _volume;
+    Save();
+    SoundManager.instance.SetCategoryVolume(eSoundCategory.Bgm, _volume);
+}
+
+public void SetSfxVolume(float _volume)
+{
+    m_OptionData.SfxVolume = _volume;
+    Save();
+    SoundManager.instance.SetCategoryVolume(eSoundCategory.Sfx, _volume);
+}
+```
+[[GameManager]]의 부팅 시점 반영도 `SetMute(isSoundOn==false)` → `SetCategoryVolume(Bgm/Sfx, 저장값)` 2줄로 교체.
+
+**연쇄 수정(컴파일 에러로 발견)**: `isSoundOn`/`isLeftHandMode`를 참조하던 다른 소비자들 — [[UIPause]].OnClickSoundButton/RefreshSoundText(2026-07-29-0 참고, Bgm+Sfx를 함께 0/1로 토글하는 방식으로 대체), `Assets/Editor/QA/PlayerDataResetWindow.cs`(디버그 인스펙터 라벨 문구만 교체).
+
+### 미검증
+UISetting 프리팹 슬라이더 연결은 Unity MCP로 실시간 편집 후 저장까지 완료, 컴파일 에러 0건 확인. 실제 Play Mode 조작(슬라이더 드래그 시 볼륨이 실시간 반영되는지)은 사용자 지시("MCP 연결하지말고 나 불러")에 따라 미검증 상태로 남겨둠.

@@ -1,6 +1,10 @@
 # ProjectileMoveSystem
 
-연관 클래스: `ProjectileMotion`/`ProjectileEffects`/`ProjectileTag`/`ProjectileExpiredTag`(ECS 컴포넌트), `MonsterTag`/`DeadTag`/`ReachedEndTag`(ECS 태그), `ActorPlayer`(발사 시 `HomingTarget` 최초 대입), `ProjectileCollisionSystem`(이 시스템 다음 순서로 충돌 판정), `GameConfigRecord`(`PROJECTILE_HOMING_TURN_RATE`)
+연관 클래스: `ProjectileMotion`/`ProjectileEffects`/`ProjectileTag`/`ProjectileExpiredTag`(ECS 컴포넌트), `MonsterTag`/`DeadTag`/`ReachedEndTag`(ECS 태그), `ActorPlayer`(발사 시 `HomingTarget` 최초 대입, `ProjectileEffects.HomingTurnRateBonus` 채움), `ProjectileCollisionSystem`(이 시스템 다음 순서로 충돌 판정), `GameConfigRecord`(`PROJECTILE_HOMING_TURN_RATE`)
+
+## 2026-07-29-1 — Homing Overdrive 카드(#310) 지원: 회전율 가산치 반영
+사용자 요청("각 무기 특징으로 업그레이드... HomingPod")으로 죽어있던 Homing Missile 카드(#305) 대신 실제로 기능하는 HomingPod 전용 강화 카드 신설. `ProjectileEffects.HomingTurnRateBonus`(신규 필드) 추가 — `ActorPlayer.Fire()`가 `ApplyInnateWeaponAbility()`에서 채운 값을 `OnUpdate()`의 회전 계산에 가산: `turnRate = GameConfigTable.PROJECTILE_HOMING_TURN_RATE + effects.ValueRO.HomingTurnRateBonus`. 카드 미보유 시 기본값 0이라 기존 동작과 동일.
+검증: 컴파일 에러 0건. 카드 자체의 End-to-End 재생/조준 궤적 시각 확인은 다음 세션 권장(이번 세션은 크리/변종 데미지 검증에 집중).
 
 ## 개요
 매 프레임 투사체를 이동시키는 ECS `ISystem`. Homing Missile(#305) 카드가 적용된 투사체는 `ProjectileEffects.HomingTarget`을 향해 매 프레임 조금씩 방향을 트는(lerp) 방식으로 유도 이동을 구현한다.
@@ -75,3 +79,22 @@ IDE 진단 컴파일 에러 0건. **격리 ECS 테스트로 검증 완료** — 
 
 #### 검증
 IDE 진단 컴파일 에러 0건. **격리 ECS 테스트로 검증 완료** — 위와 같은 방식으로 `MaxDistance=999`(거리 판정으로는 절대 안 걸리게) 설정한 호밍 투사체를 만든 뒤, 약 25초 경과 후 재조회 → `ElapsedTime≈25.0`, `ProjectileExpiredTag` 정상 부착 확인(거리와 무관하게 시간 기준으로만 만료됨을 순수하게 격리 검증).
+
+---
+
+### 2026-07-29-0 — 터널링 버그 수정: 이동 전 위치(`PreviousPosition`) 기록 추가
+
+#### 개요
+사용자 보고("5배속 6분 vs 1배속 60분+ 생존") 조사 결과 — 고배속에서 프레임당 이동거리가 커져 투사체가 몬스터를 지나쳐도(터널링) `ProjectileCollisionSystem`의 스냅샷 판정이 못 잡는 문제 확인. 이 시스템은 그 스윕(선분) 판정에 필요한 "이번 프레임 이동 전 위치"를 제공하는 쪽 — 실제 스윕 계산/명중 판정은 [[ProjectileCollisionSystem]] 2026-07-29-0 참고.
+
+#### 파일
+- Assets/Scripts/InGame/ECS/ProjectileMotion.cs — `public float3 PreviousPosition;` 필드 추가.
+- Assets/Scripts/InGame/ECS/ProjectileMoveSystem.cs
+
+#### 수정 (함수 단위)
+**OnUpdate()**
+- 전: `localTransform.ValueRW.Position += direction * motion.ValueRO.Speed * deltaTime;`만 수행(이동 전 위치를 별도로 남기지 않음).
+- 후: 이동 직전에 `motion.ValueRW.PreviousPosition = localTransform.ValueRO.Position;`을 먼저 기록한 뒤 이동 — `ProjectileCollisionSystem`이 "직전 위치→현재 위치" 선분 전체를 스윕 판정하는 데 사용.
+
+#### 검증 (Play Mode, QA 5회 반복)
+[[ProjectileCollisionSystem]] 2026-07-29-0에 상세 기록 — TitleScene→실제 클릭→InGameScene 진입 후 5배속에서 Play 진입~종료 5회 반복, 매회 `PreviousPosition`이 실제로 남아 스윕 판정이 정상 작동함을 확인(합성 몬스터 HP가 투사체 Damage만큼 정확히 감소: 100→63/59/47/71/33). 실 게임플레이 킬카운트 정상 상승, 타워 HP 5회 전부 무손상, 콘솔 에러 0건.

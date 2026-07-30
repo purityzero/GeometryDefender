@@ -1,5 +1,47 @@
 # GameConfigRecord (GameConfigTable)
 
+## 2026-07-30-4 — 카메라 자동 줌아웃 튜닝값 신설
+[[ActorPlayer]] 2026-07-30-5 참고. `CAMERA_BASE_ORTHO_SIZE`(10, 씬 기본값과 동일), `CAMERA_MAX_ZOOM_OUT_AMOUNT`(4), `CAMERA_ZOOM_FULL_MONSTER_COUNT`(20 — 사용자 확정치, 초안 8에서 상향), `CAMERA_ZOOM_CHECK_INTERVAL`(0.5초), `CAMERA_ZOOM_TWEEN_DURATION`(1.5초).
+
+---
+
+## 2026-07-30-3 — Frost Orb Turret 비주얼 튜닝값 신설 + 회전 속도 추가 완화
+[[ActorPlayer]] 2026-07-30-4 참고. 신규: `ORBITAL_SLOW_VISUAL_SCALE`(1.8, 기본 크기 확대), `ORBITAL_SLOW_GLOW_MIN`/`MAX`(1/2.5, 글로우 펄스 범위), `ORBITAL_SLOW_GLOW_PULSE_DURATION`(1.2초, 펄스 왕복 주기), `ORBITAL_SLOW_COLOR_TWEEN_DURATION`(2.5초, 흰색↔지정색 왕복 주기). `ORBITAL_SLOW_ROTATION_SPEED` 30→15(약한 데미지 틱 추가에 대한 트레이드오프).
+
+---
+
+## 2026-07-30-2 — ORBITAL_SLOW_ROTATION_SPEED 신설
+[[ActorPlayer]] 2026-07-30-3(Frost Orb Turret) 참고 — "천천히 공전"이라는 사용자 요청대로 Laser 회전 속도(60도/초)보다 훨씬 느린 30도/초로 설정. `Assets/Resources/Table/GameConfigTable.csv`의 `OrbitalSlowRotationSpeed` 행에서 로드.
+
+---
+
+## 2026-07-30-1 — PROJECTILE_SPREAD_ANGLE_STEP 제거 (사용처 소멸)
+[[ActorPlayer]] 2026-07-30-0 참고 — 발사체 다중 타겟 구조로 바뀌며 부채꼴 각도 분산(`GetSpreadTargetPosition()`)이 완전히 불필요해져 그 함수와 함께 이 상수(static 필드 + GetValue 로드 줄)/`GameConfigTable.csv`의 `ProjectileSpreadAngleStep` 행을 제거.
+
+---
+
+## 2026-07-30-0 — SKIP_SHARD_REWARD 제거 (스킵 기능 자체를 폐지)
+사용자 피드백("메타 트리 스킵기능이 오히려 스킵함으로서 안좋아지는거 같음") — 처음엔 보상값(5)만 올리는 걸로 대응했으나(런 전체 정산 Shards 대비 지나치게 작아 "카드 1장 포기"의 대가가 거의 없던 문제), 사용자가 곧이어 "스킵자체는 없어져야할듯 대신 리롤을 좀 많이주는걸로 변경해줘"로 방향을 바꿔 **스킵 기능 자체를 폐지**하기로 확정. `SKIP_SHARD_REWARD` static 필드 + `GetValue("SkipShardReward", ...)` 로드 줄 + `GameConfigTable.csv`의 `SkipShardReward` 행 전부 제거(더 이상 참조하는 코드가 없음). 대체 내용은 [[MetaTreeRecord]]/[[CardManager]]/[[UICardDraft]] 2026-07-30-0 참고 — M-403이 스킵 대신 리롤 다량 지급 노드로 교체됨.
+
+---
+
+## 2026-07-29-4 — Laser 강화 튜닝값 (사용자 피드백 "레이저가 너무 약해서 볼품이 없어")
+- `LASER_TICK_INTERVAL`: 0.2 → **0.12**(틱 더 자주)
+- `LASER_ROTATION_SPEED`: 90 → **60**(회전을 늦춰 타겟 하나당 빔이 머무는 시간 증가 — 기존엔 타겟이 빔 폭(16도)을 0.178초 만에 스쳐 지나가 틱 간격(0.2초)보다 짧아서 대부분 0~1틱만 맞고 지나갔음)
+- `LASER_ARC_HALF_WIDTH_DEGREES`: 8 → **10**(호 폭 소폭 확대)
+- `LASER_INNATE_ROTATE_DURATION`: 2 → **3**(활성 지속시간 연장)
+- 함께 [[TowerRecord]] 2026-07-29-1에서 LaserSpinner `Damage`/`AttackInterval`도 조정, [[ActorPlayer]]에서 "항상 같은 각도에서 시작" 사각지대 버그 수정.
+
+---
+
+## 2026-07-29-3 — Normal 난이도 구조적 밸런스 완화 + WEAPON_PITY_THRESHOLD 신설
+사용자 요청("이 구조적 문제를 지금 수정해줘") — qa-tester 실측(메타 트리 전부 해금 상태에서도 Normal 114~176초 사망, 목표 600초 대비 20~30%, `design-issues.md` 2026-07-29-0)에 대한 대응.
+- `SPAWN_RATE_EXPONENT`: 1.3 → **1.0**(초선형 성장 → 선형 성장으로 완화).
+- `HP_MULTIPLIER_GROWTH`: 0.4 → **0.2**(적 HP 시간 증가율 절반).
+- `SPAWN_RAMP_GRACE_SECONDS`: 30 → **60**(램프 시작 유예 2배).
+- 신규 `WEAPON_PITY_THRESHOLD`(int, 기본 3) — [[CardManager]]가 소비하는 카테고리 천장(등급 천장 `PITY_THRESHOLD`와 별개, 아래 참고).
+- **주의**: 정적 수식으로 재계산해보면(스폰레이트×적HP = 메타 풀해금 최대 DPS 43.96 되는 시점) 크로스오버가 100.5초→118초 정도로만 이동한다 — 이 수식은 "실제 플레이 중 카드로 DPS가 계속 성장한다"는 걸 반영 못하는 정적 근사치라 완전한 답은 아니다. 실질적인 개선은 이 수치 조정 + 아래 무기 천장(두 번째 무기를 훨씬 일찍 확보)이 함께 작용한 실제 플레이 결과로 판단해야 함(재QA 권장/진행 중).
+
 ## 연관 클래스
 - Table, Record, TableManager (Glory)
 

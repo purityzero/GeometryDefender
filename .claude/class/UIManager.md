@@ -234,3 +234,25 @@ private void OnPressBackButton()
 
 ### 미검증
 컴파일/에디터 미실행 상태 편집. UIInGameHUD 표시가 계속 정상 갱신되는지, 다른 UIPopup 파생 화면들(현재 UpdateLogic을 안 쓰지만)이 Show/Close를 반복해도 문제없는지 확인 필요.
+
+---
+
+## 2026-07-29-0 — ShowToast()가 sibling index를 안 올려서 나중에 연 팝업 뒤에 가려짐
+
+### 개요
+사용자 리포트("UIRunOver가 열렸을때 후 UIMetaTree가 열리면, ToastMessage가 뒤에서 열려서 안보이는 부분이 있어") — 2026-07-22-0에서 `Get<T>()`는 매번 `SetAsLastSibling()`으로 최상단으로 올리는데, `ShowToast()`는 풀에서 `Pop()`한 토스트에 대해 이 처리가 빠져 있었다. 토스트가 처음 Prewarm될 때의(또는 마지막으로 Push됐을 때의) sibling index에 그대로 남아있어서, 이후 `Get<T>()`로 새로 연 팝업(UIMetaTree 등)이 항상 그 앞으로 옴 — 같은 PopupCanvas를 공유하는 구조(2026-07-18-1 참고)라 발생.
+
+### 파일
+- Assets/Scripts/Glory/UI/UIManager.cs
+
+### 수정 (함수 단위)
+**`ShowToast(string)`**
+- 전: `UIToastMessage toast = m_ToastPool.Pop(); if (toast == null) return; toast.Open(); ...`
+- 후: `Pop()` 직후, `Open()` 호출 전에 `toast.transform.SetAsLastSibling();` 추가.
+
+### 검증
+`refresh_unity(compile: request)` 컴파일 에러 0건. Play Mode 실측(재현 시나리오: RunOver → MetaTree 순서로 연 상태에서 Shard 부족 토스트 유발)은 qa-tester 에이전트에 위임 진행 중.
+
+### 관련 클래스
+- [UIToastMessage.md](./UIToastMessage.md) — 개별 토스트 아이템, 이번 변경 없음
+- [UIPopup.md](./UIPopup.md) — `Get<T>()`의 SetAsLastSibling과 동일한 이유

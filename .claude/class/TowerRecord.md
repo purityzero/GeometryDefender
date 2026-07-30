@@ -6,12 +6,51 @@
 
 ## 현재 상태
 - 경로: Assets/Scripts/Table/TowerRecord.cs
-- `eTargetingType` enum: First, Strongest, Closest, Weakest, Fastest, Random.
-- `TowerRecord : Record` 필드: DisplayName(string, 원문 표기용 — 실제 UI 표시엔 안 씀), **NameKey(string, 2026-07-27 신설 — StringTable 키, UIInGameHUD 무기 쿨다운 라벨이 로컬라이즈해서 읽음, 아래 2026-07-27-4 참고)**, ColorHex, **Alpha(float, 2026-07-28 신설 — 아래 참고)**, Cost(int, 현재 미사용 — 옛 배치형 컨셉 잔재), Damage(int), AttackInterval(float), Range(float), SplashRadius(float, **2026-07-27부터 실사용** — Mage(Id=2)의 고유 능력 기본값으로 `ActorPlayer.ApplyInnateWeaponAbility()`가 읽음, [[ActorPlayer]] 2026-07-27-7 참고), ProjectileSpeed(float), DefaultTargeting(eTargetingType), CritChance(float), CritMultiplier(float), ProjectileId(int).
+- `eTargetingType` enum: First, Strongest, Closest, Weakest, Fastest, Random, **Farthest(2026-07-30 신설 — Mortar(#8) 전용, [[ActorPlayer]] 2026-07-30-3/[[FarthestTargetingStrategy]] 참고)**.
+- `TowerRecord : Record` 필드: DisplayName(string, 원문 표기용 — 실제 UI 표시엔 안 씀), **NameKey(string, 2026-07-27 신설 — StringTable 키, UIInGameHUD 무기 쿨다운 라벨이 로컬라이즈해서 읽음, 아래 2026-07-27-4 참고)**, ColorHex, **Alpha(float, 2026-07-28 신설 — 아래 참고)**, Cost(int, 현재 미사용 — 옛 배치형 컨셉 잔재), Damage(int), AttackInterval(float), Range(float), SplashRadius(float, **2026-07-27부터 실사용** — Mage(Id=2)의 고유 능력 기본값으로 `ActorPlayer.ApplyInnateWeaponAbility()`가 읽음, [[ActorPlayer]] 2026-07-27-7 참고), ProjectileSpeed(float), DefaultTargeting(eTargetingType), CritChance(float), CritMultiplier(float), ProjectileId(int), **SlowPercent(float, 2026-07-30 신설 — Frost Orb Turret(#7) 전용, 다른 무기는 전부 0)**.
 - `TowerTable : Table<TowerRecord>`.
-- 데이터: Assets/Resources/Table/TowerTable.csv
+- 데이터: Assets/Resources/Table/TowerTable.csv — **2026-07-30부터 8행**(6종 기존 무기 + Frost Orb Turret(#7)/Mortar(#8) 신규, [[ActorPlayer]] 2026-07-30-3 참고). Frost Orb Turret은 `Range`를 "공전 반지름", `SplashRadius`를 "슬로우 판정 반경"으로 재사용(새 컬럼 안 늘림).
+
+## 2026-07-30-2 — Frost Orb Turret 공전 반경 확대 (Orbital Ring과 겹침 방지)
+사용자 요청("냉기오브 오비탈링이랑 겹치니까 조금 더 멀리 떨어졌으면 해"). `Range`(공전 반지름 용도로 재사용 중) 3.0→**4.5** — Orbital Ring 카드의 공전 거리(2.5, 같은 날 확장됨)와 명확히 분리되도록.
 
 ## 작업 내역
+
+### 2026-07-29-1 — Laser 강화 + Archer 색상/투사체 교체
+
+#### 개요
+사용자 피드백 2건: (1) "그 레이져가 너무 약해서 볼품이 없어" (2) "래피드 무기는 색상 변경해야할듯?"
+
+#### 변경 (TowerTable.csv)
+- **LaserSpinner(Id6)**: Damage 4→8(2배), AttackInterval(쿨다운) 5.0→4.0(더 자주 발동). 회전/틱 관련 세부 수치는 [[GameConfigRecord]] 2026-07-29-4, 항상 같은 각도에서 시작하던 문제 수정은 [[ActorPlayer]] 참고.
+- **Archer(Id1)**: `ColorHex` #FFD54F→#FF5E3A(주황빛 레드 — "연사/속도" 느낌), `ProjectileId` 1→6(전용 Rapid 투사체 신설, [[ProjectileManager]] 2026-07-29-0 참고 — 기존엔 CentralTower와 같은 투사체 색을 공유해 게이지 색만 바꾸면 실제 총알과 안 맞는 불일치가 있었음).
+
+#### 검증
+컴파일 에러 0건. Play Mode(execute_code로 Laser 강제 발동 2회 연속 관찰) — 활성화마다 시작 각도가 다름을 확인(346.0°→69.5°, [[ActorPlayer]] 참고). Archer 색상/투사체 연결은 [[ProjectileManager]] 2026-07-29-0에서 검증.
+
+---
+
+### 2026-07-29-0 — 무기별 정체성 재조정 (Archer 등 4종 수치 조정)
+
+#### 개요
+사용자 요청("무기별 특색 반영" — 기존 6종 무기 수치/정체성 재조정, Card/MetaTree 전수 검사에 이어진 작업). 각 무기의 DPS/사거리/타겟팅을 점검한 결과, Archer("래피드 오토캐논")가 기본 무기(CentralTower, AttackInterval 0.4s)보다도 느린 0.6s 공속을 갖고 있어 "연사" 컨셉이 실제 수치에 전혀 반영되지 않던 것을 발견 — 이름만 있고 실제로는 정체성이 없는 무기였음.
+
+#### 변경 (TowerTable.csv)
+| 무기 | 필드 | 전 | 후 | 근거 |
+|---|---|---|---|---|
+| Archer(Id1) | Damage | 10 | 4 | 진짜 연사 무기로 재설계 |
+| Archer(Id1) | AttackInterval | 0.6 | 0.2 | 초당 5발(기존 대비 3배) — DPS 16.7→20 |
+| Mage(Id2) | Range | 4.5 | 5.5 | "안전 거리 포격" 컨셉을 사거리에도 반영(스플래시/공속/데미지는 그대로) |
+| ChainCoil(Id4) | AttackInterval | 0.9 | 0.8 | 최하위권 단일 타겟 DPS 완화(8.9→10), 정체성(약한 단일 DPS·강한 군중 제어)은 유지 |
+| HomingPod(Id5) | AttackInterval | 1.1 | 0.85 | 최하위 DPS 완화(6.4→8.2), "확정 처치" 정체성은 유지 |
+| CentralTower(Id3)/LaserSpinner(Id6) | - | - | 변경 없음 | 이미 정체성이 명확하다고 판단(크리 전용 제너럴리스트 / 회전 다중타격) |
+
+상세 수치 근거는 `Assets/Design/02_combat.html` "2026-07-29 무기별 정체성 재조정" 콜아웃 참고.
+
+#### 검증
+컴파일 에러 0건. Play Mode 재검증 필요(실제 체감 DPS/정체성 차이는 다음 QA 세션에서 확인 권장 — 이번엔 수치 계산 기반 1차 조정).
+
+---
 
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)

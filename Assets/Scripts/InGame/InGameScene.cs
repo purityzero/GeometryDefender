@@ -62,19 +62,34 @@ public class InGameScene : BaseScene
     public DamageTextManager damageTextManager => m_DamageTextManager;
 
     // Time.timeScale 대신 이 상태로 정지를 표현(2026-07-24, "TimeScale 건드는건 좀 위험해" 사용자 지시).
-    // m_isPaused(팝업이 여닫는 일시정지)와 m_isGameOver(타워 사망, 영구)는 독립적이며 둘 중 하나라도 true면 정지.
-    private bool m_isPaused;
+    // m_PauseRequestCount(팝업이 여닫는 일시정지)와 m_isGameOver(타워 사망, 영구)는 독립적이며 둘 중 하나라도 true면 정지.
+    //
+    // 단일 bool이 아니라 참조 카운터인 이유(2026-07-29 수정, .claude/qa/client-issues.md 2026-07-29-0):
+    // UICardDraft/UICheatWindow/UIPause 3개 팝업이 서로의 존재를 모른 채 각자 Show()/Close()에서 SetPaused(true/false)를 호출한다.
+    // 단일 bool로 "마지막 호출값"만 저장하면, 두 팝업이 겹쳐 열린 상태에서 하나만 먼저 닫혀도
+    // 아직 열려있는 다른 팝업의 의도(계속 정지)와 무관하게 게임이 조용히 재개돼버린다(실제 재현됨).
+    private int m_PauseRequestCount;
     private bool m_isGameOver;
 
     public void SetPaused(bool _isPaused)
     {
-        m_isPaused = _isPaused;
+        if (_isPaused == true)
+        {
+            m_PauseRequestCount++;
+        }
+        else
+        {
+            // 이미 0인데 SetPaused(false)가 또 호출되는 경우(팝업이 겹쳐 열렸다 닫히는 조합에서 실제로 일어날 수 있음) 음수로 안 내려가게 방어
+            if (m_PauseRequestCount > 0)
+                m_PauseRequestCount--;
+        }
+
         ApplyFreezeState();
     }
 
     private void ApplyFreezeState()
     {
-        bool shouldFreeze = (m_isPaused == true || m_isGameOver == true);
+        bool shouldFreeze = (m_PauseRequestCount > 0 || m_isGameOver == true);
 
         isPaused = shouldFreeze;
 
@@ -119,6 +134,25 @@ public class InGameScene : BaseScene
         // Assets/Design/04_card.html — MonsterManager.Init() 이후여야 함(둘 다 InGameScene.Current.monsterManager.OnMonsterDie를 구독)
         m_XpManager.Init();
         m_CardManager.Init();
+
+        PlayBgm();
+    }
+
+    private void PlayBgm()
+    {
+        SoundTable soundTable = TableManager.instance.GetTable<SoundTable>();
+        SoundRecord record = soundTable?.GetRecordByKey("BattleTheme");
+        if (record == null)
+        {
+            Logger.Error($"[InGameScene] PlayBgm Failed! SoundRecord not found - BattleTheme");
+            return;
+        }
+
+        AudioClip clip = ResUtil.Load<AudioClip>(record.ClipPath);
+        if (clip == null)
+            return;
+
+        SoundManager.instance.PlayBgm(clip);
     }
 
     // 타워 사망 또는 난이도 클리어(Infinite 제외) 둘 다 "런 종료"로 취급 — 동일하게 정지 + 결과 팝업.

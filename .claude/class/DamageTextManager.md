@@ -1,5 +1,70 @@
 # DamageTextManager
 
+## 2026-07-29-1 — 무기별 발사음 분화 (RapidFire/HomingFire/LaserSizzle 추가)
+
+### 개요
+사용자 추가 요청 3건: "호밍은 좀 날라가니까 삐슈우웅 하는 좀 2~3초음", "래피드는 두두두두두 연속적으로", "레이저는 불에 지지는 소리 같은걸로". 2026-07-29-0에서 전 무기 공용이던 `WeaponFire` 한 종류를 무기 정체성별로 분화.
+
+### 신규 사운드 에셋
+- `RapidFire.wav`(0.05s) — Archer 전용. 노이즈 트랜지언트 + 260→180Hz 저음 스퀘어 블립, 5발/초로 연사해도 뭉개지지 않게 아주 짧고 타격감 있는 "두" 소리.
+- `HomingFire.wav`(2.2s) — HomingPod 전용. 1400→200Hz 하강 스윕에 6.5Hz 비브라토(흔들림)를 얹고 바람 노이즈를 살짝 섞은 "삐슈우웅" 발사 웨일.
+- `LaserSizzle.wav`(3.2s) — Laser 전용. 레이저 기본 활성시간(3초)을 커버.
+  - **2026-07-29 재작업**: 최초 버전(연속 화이트노이즈 크래클 + 지터 섞인 스퀘어 버즈)이 사용자 피드백("레이저 소리 너무 지저분해")으로 반려 — 노이즈가 매 샘플 계속 섞여있어 지저분하게 들렸던 것으로 판단. **깨끗한 저듀티(25%) 펄스웨이브 톤(200Hz, 지터 없음) + 0.1~0.28초 간격으로 드문드문 튀는 8ms 크래클 팝**으로 재작업 — 베이스는 항상 안정적인 얇은 칩튠 톤이고, "치직" 질감은 연속이 아니라 산발적 포인트 이벤트로만 얹음(불규칙성을 노이즈 자체가 아니라 팝 타이밍에만 부여).
+
+### 코드 (함수 단위)
+**`DamageTextManager.PlayWeaponFireSound(string _key = "WeaponFire")`**: 기존 무인자 메서드에 Key 매개변수 추가(기본값은 기존 동작과 동일하게 유지 — 호출부 하위 호환).
+
+**`ActorPlayer` 신규 `GetWeaponFireSoundKey(TowerWeapon)`**: 무기 Id로 분기해 Archer→"RapidFire", HomingPod→"HomingFire", 나머지(CentralTower/Mage/ChainCoil)→"WeaponFire"(기본값). `Fire()`의 발사음 호출부가 이 메서드로 Key를 골라서 전달하도록 수정.
+
+**`UpdateLaserWeapon()`**: 레이저 활성화 진입 블록(쿨다운 끝나는 시점)에 `damageTextManager?.PlayWeaponFireSound("LaserSizzle")` 추가 — 레이저는 `Fire()`를 안 타는 별도 로직이라 여기 직접 연결. 활성화 1회당 1번만 재생(틱마다 X).
+
+### 데이터
+`Assets/Resources/Table/SoundTable.csv`에 3행 추가(Id 5~7): RapidFire(MaxConcurrent 8, 연사 특성상 여유있게)/HomingFire(3)/LaserSizzle(1, 레이저는 동시에 여러 대 보유해도 한 번에 하나만 나면 충분).
+
+### 검증
+컴파일 에러 0건. Play Mode(execute_code) — `GetWeaponFireSoundKey()`를 리플렉션으로 직접 호출해 Archer→RapidFire, HomingPod→HomingFire, CentralTower→WeaponFire 정확히 매핑됨을 확인. Laser 무기 쿨다운을 강제로 0으로 만들어 활성화시킨 뒤 `SoundManager` 활성 목록에 `LaserSizzle`(길이 3.2s)이 정상 등록·재생 중임을 확인. 5배속 자연 전투로도 콘솔 에러 0건.
+
+---
+
+## 2026-07-29-0 — 8비트 전투 SFX 4종 추가 (SoundTable 기반)
+
+### 개요
+사용자 요청("적 죽는거, 크리 터지는거, 무기 발사효과음, 스플래쉬 데미지 음... 레트로 8bit느낌... 적용까지") — 이 클래스가 기존에 이미 "전투 피드백 허브"(크리 폭발/셰이크/진동/스플래시/체인 VFX) 역할을 하고 있어 새 매니저를 만들지 않고 여기에 SFX 재생도 얹음(2026-07-23-2/2026-07-24-1과 동일 판단 기준). "SoundTable 만들어서 적용해야해"(사용자 지시)에 따라 AudioClip을 코드에 하드코딩하지 않고 신규 `SoundTable`(Key→ClipPath→MaxConcurrent) 경유로 재생.
+
+### 사운드 에셋
+fal.ai 키 미구성으로 AI 생성 대신 **순수 코드로 파형을 합성**해 4개의 8bit 스타일 WAV를 직접 생성(`execute_code`로 1회 실행, 재사용 가능한 영구 에디터 툴은 안 만듦 — 일회성 에셋 생성 작업이라 스크립트 파일로 남기지 않음):
+- `EnemyDeath.wav`(0.18s) — 480→90Hz 하강 스퀘어웨이브 스윕
+- `CritHit.wav`(0.12s) — 650→700Hz, 950→1000Hz 2연타 블립("치명타!" 느낌)
+- `WeaponFire.wav`(0.09s) — 1100→350Hz 빠른 하강 스윕("퓨" 레이저 샷)
+- `SplashDamage.wav`(0.28s) — 화이트노이즈 폭발(지수 감쇠) + 150→60Hz 저음 스퀘어 럼블 믹스
+경로: `Assets/Resources/Sound/Sfx/*.wav` (16bit PCM mono, 22050Hz, 직접 작성한 WAV 헤더).
+
+### 데이터/코드
+- `Assets/Scripts/Table/SoundRecord.cs`(신규) — `SoundRecord{Key,ClipPath,MaxConcurrent}`/`SoundTable.GetRecordByKey(string)`.
+- `Assets/Resources/Table/SoundTable.csv`(신규) — EnemyDeath/CritHit/WeaponFire/SplashDamage 4행.
+- `Assets/Scripts/Glory/Table/TableManager.cs` — `SoundTable` 로드/등록 추가(다른 테이블과 동일 패턴). **최초 구현 시 `LoadCsvTable` 호출만 추가하고 `new SoundTable(...)`/`m_TableDictionary.Add(...)`를 빠뜨려 `GetTable<SoundTable>()`이 계속 null을 반환하는 버그가 있었음 — Play Mode 실측으로 발견, 즉시 수정.**
+- **신규 필드**: `m_SoundClipCache`(Dictionary&lt;string,AudioClip&gt;) — SoundTable 조회 결과를 캐싱해 매번 Resources.Load 안 하도록.
+- **신규 `PlaySfxByKey(string)`**(private): `SoundTable.GetRecordByKey()` → 캐시 확인/로드 → `SoundManager.instance.PlaySfx(clip, null, record.MaxConcurrent)`.
+- **신규 공개 메서드**: `PlayEnemyDeathSound()`/`PlayCritSound()`/`PlayWeaponFireSound()` — 전부 `PlaySfxByKey()` 위임. Splash는 별도 메서드 없이 기존 `ShowSplashExplosion()` 안에 `PlaySfxByKey("SplashDamage")` 한 줄 추가(VFX와 항상 세트로 발동하므로).
+
+### 호출부(트리거 지점)
+- `PlayEnemyDeathSound()` ← `MonsterManager.ProcessDeadMonsters()`(몬스터 죽을 때마다, 크리 여부 무관 전부)
+- `PlayCritSound()` ← `HealthSystem.cs`(치명타 발생 즉시, `ShakeCamera()`/`VibrateOnCrit()`과 같은 지점 — 처치 여부 무관)
+- `PlayWeaponFireSound()` ← `ActorPlayer.Fire()`(무기 종류 무관, Double Shot 등으로 여러 발 나가도 `Fire()` 호출당 1회)
+- Splash 사운드 ← `ProjectileCollisionSystem`의 Splash 분기가 이미 호출하던 `ShowSplashExplosion()` 안에 자연 포함
+
+### 검증 (Play Mode, Unity MCP)
+TitleScene→Btn_Play→Item_Normal 실제 클릭 흐름 진입 후:
+1. `SoundTable.list.Count=4` 확인, 4개 Key 전부 정상 조회.
+2. `PlayWeaponFireSound()`/`PlayCritSound()`/`PlayEnemyDeathSound()` 수동 호출 → `SoundManager`의 활성 Sfx 리스트에 3개 다 등록, `isPlaying=True`, 클립 이름 일치 확인.
+3. 5배속으로 실제 자동 전투를 ~85초 진행(킬 38회) — 콘솔 에러 0건. 종료 시점 활성 Sfx 0개, 재사용 대기 풀 8개로 정상 순환(풀링 누수 없음) 확인.
+
+### 관련 클래스
+- [[SoundManager]](Glory) — 재생 엔진 자체
+- MonsterManager/HealthSystem/ActorPlayer — 각 트리거 호출부(개별 md 미기록, 변경 자체가 한 줄씩이라 이 문서에 통합)
+
+---
+
 ## 연관 클래스
 - SceneSingleton (베이스)
 - DamageText, MemoryPooling

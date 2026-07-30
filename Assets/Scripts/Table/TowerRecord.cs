@@ -7,7 +7,8 @@ public enum eTargetingType
     Closest,
     Weakest,
     Fastest,
-    Random
+    Random,
+    Farthest
 }
 
 public class TowerRecord : Record
@@ -26,6 +27,9 @@ public class TowerRecord : Record
     public float CritChance;
     public float CritMultiplier;
     public int ProjectileId;
+
+    // Orbital Slow(신규 무기) 전용 — 접촉한 적의 이동속도 감소율(%, 0이면 슬로우 없음). 다른 무기는 전부 0.
+    public float SlowPercent;
 
     // ProjectileTable.PrefabPath와 동일 개념 — 대부분 무기는 ProjectileId로 발사체만 쏘면 끝이라 비어있고,
     // Laser처럼 무기 하나당 지속되는 전용 시각 오브젝트가 필요한 경우에만 채운다(빈 문자열이면 생성 안 함).

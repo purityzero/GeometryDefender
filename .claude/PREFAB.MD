@@ -6,7 +6,7 @@
 |---|---|
 | 이미지/스프라이트 | `UnityEngine.UI.Image` |
 | 텍스트 | `TMPro.TextMeshProUGUI` (legacy `Text` 사용 금지) |
-| 클릭 버튼 | `UnityEngine.UI.Button` |
+| 클릭 버튼 | `UIButton`(`Button` 상속 확장 클래스, 2026-07-29부터 — 클릭 사운드 키 필드 보유. 기존 `Button` 사용 금지, [[UIButton]] 참고) |
 | 목록/스크롤 | `UnityEngine.UI.ScrollRect` |
 
 ### 확장 클래스 관례

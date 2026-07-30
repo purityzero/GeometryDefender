@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -13,14 +15,19 @@ public class ActorPlayer : Actor
 {
     // TowerTable 특정 행을 가리키는 FK성 참조 — 밸런스 튜닝값이 아니라 데이터 스키마 연결점이라 GameConfigTable
     // 이관 대상에서 제외(TOWER_RECORD_ID와 동일 기준, [[GameConfigRecord]] 2026-07-24-0 참고).
-    private const int TOWER_RECORD_ID = 3;
+    private const int ARCHER_RECORD_ID = 1;
     private const int MAGE_RECORD_ID = 2;
+    private const int TOWER_RECORD_ID = 3;
     private const int CHAIN_COIL_RECORD_ID = 4;
     private const int HOMING_POD_RECORD_ID = 5;
     private const int LASER_RECORD_ID = 6;
+    // 2026-07-30 신규 무기 — 메타 트리로만 해금(카드 드래프트 대상 아님, CardManager에 대응 카드 없음).
+    private const int ORBITAL_SLOW_RECORD_ID = 7;
+    private const int MORTAR_RECORD_ID = 8;
 
     // 2026-07-27 무기 다양화 — 무기마다 독립 쿨다운/타겟팅을 갖는 슬롯. m_WeaponList[0]이 항상 기본 무기(CentralTower, m_Record와 동일 레코드)이고
-    // 카드로 해금되는 추가 무기(AddWeapon)는 뒤에 이어붙는다. 데미지%/치명타%/공속% 등 전역 카드 효과는 전 무기 공통 적용, 기본 무기의 타겟팅 카드(SetTargetingStrategy)는 m_WeaponList[0]만 갈아끼운다.
+    // 카드로 해금되는 추가 무기(AddWeapon)는 뒤에 이어붙는다. 데미지%/공속% 등 전역 카드 효과는 전 무기 공통 적용, 기본 무기의 타겟팅 카드(SetTargetingStrategy)는 m_WeaponList[0]만 갈아끼운다.
+    // 2026-07-29 — 치명타(%/배율)는 더 이상 전역이 아니라 CentralTower 전용(원래 크리 스탯을 가진 유일한 무기, Fire() 참고). Archer/HomingPod도 각자 전용 강화 필드(m_ArcherAttackSpeedBonus/m_HomingTurnRateBonus)를 갖는다.
     private class TowerWeapon
     {
         public TowerRecord Record;
@@ -34,6 +41,15 @@ public class ActorPlayer : Actor
         public float LaserRotationAngle;
         public float LaserTickTimer;
         public LaserBeamVisual LaserVisual;
+
+        // Orbital Slow(#7) 전용 상태 — 발사/타겟팅 없이 매 프레임 타워 주위를 공전하며 범위 슬로우만 갱신(UpdateOrbitalSlowWeapon 참고).
+        public float OrbitalAngle;
+        public ActorProjectile OrbitalSlowVisual;
+        // 2026-07-30 — 사용자 요청("데미지 약하게 천천히 들어가게, 대신 더 느리게")으로 추가된 약한 틱 데미지 타이머.
+        public float OrbitalDamageTickTimer;
+
+        // 2026-07-30 — 무기별 개별 공격력 메타 트리(WeaponDamagePercent) 해금분. Init()/AddWeapon() 시점에 1회 계산해 고정.
+        public float MetaDamageMultiplier = 1f;
     }
 
     private TowerRecord m_Record;
@@ -42,9 +58,19 @@ public class ActorPlayer : Actor
     private EntityManager m_EntityManager;
     private EntityQuery m_AliveMonsterQuery;
 
-    // 05_meta.html "STARTING POWER" 줄기(DamagePercent/RangePercent) 해금분 — Init()에서 1회 계산해 고정
+    // 2026-07-30 — 여러 무기(또는 한 무기의 다중 발사체)가 항상 같은 몬스터만 쏘던 문제 대응. 매 프레임 UpdateFire()
+    // 시작 시 비우고, 발사가 확정될 때마다 그 대상을 추가 — 다음 SelectTarget 호출들이 이미 찍힌 대상을 피하게 한다.
+    private HashSet<Entity> m_ClaimedTargetsThisFrame = new HashSet<Entity>();
+    private List<Entity> m_MultiShotTargets = new List<Entity>();
+
+    // 05_meta.html "STARTING POWER" 줄기(DamagePercent/RangePercent/AttackSpeedPercent) 해금분 — Init()에서 1회 계산해 고정
     private float m_MetaDamageMultiplier = 1f;
     private float m_MetaRangeMultiplier = 1f;
+    private float m_MetaAttackSpeedMultiplier = 1f;
+
+    // 2026-07-30 — 메타 트리(M-405, WeaponSlotCount)로 확장 가능한 무기 슬롯 최대치. GameConfigTable.MAX_WEAPON_COUNT(기본)
+    // + 해금된 WeaponSlotCount 합산, Init()에서 1회 계산해 고정(다른 메타 배율들과 동일 패턴).
+    public int maxWeaponSlots { get; private set; }
 
     // 04_card.html 카드 효과(공격) — 런 중 CardManager가 계속 누적/설정(사거리/데미지는 매번 재계산, 나머지는 즉시 반영)
     private float m_CardDamagePercent;
@@ -60,14 +86,24 @@ public class ActorPlayer : Actor
     private bool m_hasChain;
     private int m_ChainJumps;
     private float m_ChainRadius;
-    private bool m_hasHoming;
     private bool m_hasLaserDurationBonus;
     private float m_LaserDurationBonus;
+    private float m_HomingTurnRateBonus;
     private eEnemySpecies? m_BonusSpeciesTarget;
-    private float m_BonusSpeciesDamagePercent;
+    private float m_BonusSpeciesDamageFlat;
     private float m_BerserkerMaxBonusPercent;
 
+    // 04_card.html 무기 전용 강화 카드(2026-07-29) — Archer는 자기 무기에만 붙는 추가 공속(GetWeaponAttackSpeedMultiplier에서 적용)
+    private float m_ArcherAttackSpeedBonus;
+
+    // 04_card.html 몬스터 변종(Normal/Elite/Boss)별 추가 데미지 — 3장 모두 독립적으로 누적(단일 슬롯 덮어쓰기가 아님, SpeciesBonusDamage와 다른 방식)
+    // 2026-07-30 — 사용자 요청("트라이앵글 퍼센트 데미지도 좀 다 수치로 가야해... 보스 엘리트 이런거 다 수치로")로 %에서 고정 데미지로 전환.
+    private float m_EliteDamageBonusFlat;
+    private float m_BossDamageBonusFlat;
+    private float m_NormalVariantDamageBonusFlat;
+
     private float m_DamageMultiplier = 1f;
+    private float m_AttackSpeedMultiplier = 1f;
 
     // 04_card.html 카드 효과(체력) — TowerHealth 병합분
     public event Action OnDie;
@@ -108,20 +144,60 @@ public class ActorPlayer : Actor
 
         currentTargetingType = m_Record.DefaultTargeting;
 
+        // 2026-07-30 — 사용자 보고("카드 선택 시 더블샷 찍은것처럼 됨") 조사 중 발견: Init()이 무기 목록/메타 배율만
+        // 리셋하고 카드로 누적되는 런 스코프 상태(발사체 수, 관통/스플래시/체인 등)는 전혀 초기화하지 않고 있었다.
+        // ActorPlayer 인스턴스가 씬 재로드 없이 재사용되는 경로가 있으면 이전 런의 카드 효과가 그대로 남아
+        // 새 런 시작부터 이미 적용된 것처럼 보인다(CLAUDE.md "초기화 로직 중복 호출" 버그 유형과 동일 패턴).
+        m_CardDamagePercent = 0f;
+        m_CardRangePercent = 0f;
+        m_CardAttackSpeedPercent = 0f;
+        m_CardProjectileSpeedPercent = 0f;
+        m_CardCritChance = 0f;
+        m_CardCritMultiplier = 0f;
+        m_ProjectileCount = 1;
+        m_PierceStacks = 0;
+        m_hasSplash = false;
+        m_SplashRadius = 0f;
+        m_hasChain = false;
+        m_ChainJumps = 0;
+        m_ChainRadius = 0f;
+        m_hasLaserDurationBonus = false;
+        m_LaserDurationBonus = 0f;
+        m_HomingTurnRateBonus = 0f;
+        m_BonusSpeciesTarget = null;
+        m_BonusSpeciesDamageFlat = 0f;
+        m_BerserkerMaxBonusPercent = 0f;
+        m_ArcherAttackSpeedBonus = 0f;
+        m_EliteDamageBonusFlat = 0f;
+        m_BossDamageBonusFlat = 0f;
+        m_NormalVariantDamageBonusFlat = 0f;
+        m_DamageTakenReductionPercent = 0f;
+        m_HealPerSecond = 0f;
+        m_HealAccumulator = 0f;
+        m_ShieldBurstThresholdPercent = 0f;
+        m_isShieldBurstArmed = true;
+        m_hasRevive = false;
+        m_ReviveHpPercent = 0f;
+
         m_WeaponList.Clear();
         m_WeaponList.Add(new TowerWeapon
         {
             Record = m_Record,
             TargetingStrategy = CreateTargetingStrategy(m_Record.DefaultTargeting),
             CooldownTimer = 0f,
+            MetaDamageMultiplier = GetWeaponMetaDamageMultiplier(TOWER_RECORD_ID),
         });
 
         MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
         int damagePercent = (metaTreeTable != null) ? metaTreeTable.GetTotalEffectValue(eMetaEffectType.DamagePercent, PlayerManager.instance.playerData.UnlockedMetaNodes) : 0;
         int rangePercent = (metaTreeTable != null) ? metaTreeTable.GetTotalEffectValue(eMetaEffectType.RangePercent, PlayerManager.instance.playerData.UnlockedMetaNodes) : 0;
+        int attackSpeedPercent = (metaTreeTable != null) ? metaTreeTable.GetTotalEffectValue(eMetaEffectType.AttackSpeedPercent, PlayerManager.instance.playerData.UnlockedMetaNodes) : 0;
+        int weaponSlotBonus = (metaTreeTable != null) ? metaTreeTable.GetTotalEffectValue(eMetaEffectType.WeaponSlotCount, PlayerManager.instance.playerData.UnlockedMetaNodes) : 0;
 
         m_MetaDamageMultiplier = 1f + (damagePercent / 100f);
         m_MetaRangeMultiplier = 1f + (rangePercent / 100f);
+        m_MetaAttackSpeedMultiplier = 1f + (attackSpeedPercent / 100f);
+        maxWeaponSlots = GameConfigTable.MAX_WEAPON_COUNT + weaponSlotBonus;
 
         RecalculateDerivedStats();
 
@@ -159,6 +235,17 @@ public class ActorPlayer : Actor
         SetTargetingStrategy(CreateTargetingStrategy(_type));
     }
 
+    // 2026-07-30 — 무기별 개별 공격력 메타 트리(WeaponDamagePercent, EffectParam=TowerRecord.Id 문자열) 해금분.
+    private float GetWeaponMetaDamageMultiplier(int _towerRecordId)
+    {
+        MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
+        if (metaTreeTable == null)
+            return 1f;
+
+        int percent = metaTreeTable.GetTotalEffectValueForParam(eMetaEffectType.WeaponDamagePercent, _towerRecordId.ToString(), PlayerManager.instance.playerData.UnlockedMetaNodes);
+        return 1f + (percent / 100f);
+    }
+
     private ITargetingStrategy CreateTargetingStrategy(eTargetingType _type)
     {
         switch (_type)
@@ -175,6 +262,9 @@ public class ActorPlayer : Actor
             case eTargetingType.Random:
                 return new RandomTargetingStrategy();
 
+            case eTargetingType.Farthest:
+                return new FarthestTargetingStrategy();
+
             default:
                 return new ClosestTargetingStrategy();
         }
@@ -183,6 +273,15 @@ public class ActorPlayer : Actor
     // 04_card.html 무기 해금 카드(WeaponUnlock) — _towerRecordId(TowerTable)로 정의된 무기를 독립 쿨다운/타겟팅 슬롯으로 추가
     public void AddWeapon(int _towerRecordId)
     {
+        // 2026-07-30 — 사용자 요청("무기는 한꺼번에 4개만 갖을 수 있도록" + "무기 장착슬롯 추가도 메타트리에 넣으면 좋을듯").
+        // CardManager가 weaponCount로 드래프트 풀을 미리 걸러주는 게 1차 방어선이지만, 치트 창 등 드래프트를 거치지
+        // 않는 경로도 있어 여기서 최종적으로 막는다. maxWeaponSlots는 기본치+메타 트리(M-405) 해금분 합산(Init() 참고).
+        if (m_WeaponList.Count >= maxWeaponSlots)
+        {
+            Logger.Log($"[ActorPlayer] AddWeapon Skipped - 이미 최대 무기 수({maxWeaponSlots}) 보유 중");
+            return;
+        }
+
         TowerTable towerTable = TableManager.instance.GetTable<TowerTable>();
         if (towerTable == null)
         {
@@ -202,21 +301,72 @@ public class ActorPlayer : Actor
             Record = weaponRecord,
             TargetingStrategy = CreateTargetingStrategy(weaponRecord.DefaultTargeting),
             CooldownTimer = 0f,
+            MetaDamageMultiplier = GetWeaponMetaDamageMultiplier(_towerRecordId),
         };
 
-        if (string.IsNullOrEmpty(weaponRecord.PrefabPath) == false)
+        // 무기 Id별로 필요한 시각 오브젝트 타입이 다르다(Laser=LaserBeamVisual, Orbital Slow=ActorProjectile 재사용) —
+        // PrefabPath 유무만으로 분기하면 안 되고(예전엔 Laser 전용이라 그걸로 충분했음), Id로 명확히 나눠야 한다.
+        if (weaponRecord.Id == LASER_RECORD_ID)
         {
-            newWeapon.LaserVisual = ResUtil.Create<LaserBeamVisual>(weaponRecord.PrefabPath, transform);
-            if (newWeapon.LaserVisual != null)
+            if (string.IsNullOrEmpty(weaponRecord.PrefabPath) == false)
             {
-                if (ColorUtility.TryParseHtmlString(weaponRecord.ColorHex, out Color laserColor) == true)
+                newWeapon.LaserVisual = ResUtil.Create<LaserBeamVisual>(weaponRecord.PrefabPath, transform);
+                if (newWeapon.LaserVisual != null)
                 {
-                    laserColor.a = weaponRecord.Alpha;
-                    newWeapon.LaserVisual.SetColor(laserColor);
-                }
+                    if (ColorUtility.TryParseHtmlString(weaponRecord.ColorHex, out Color laserColor) == true)
+                    {
+                        laserColor.a = weaponRecord.Alpha;
+                        newWeapon.LaserVisual.SetColor(laserColor);
+                    }
 
-                newWeapon.LaserVisual.SetBeamActive(false);
+                    newWeapon.LaserVisual.SetBeamActive(false);
+                }
             }
+        }
+        else if (weaponRecord.Id == ORBITAL_SLOW_RECORD_ID)
+        {
+            // Prefabs/Projectile/Basic을 그대로 재사용(ActorProjectile은 SpriteRenderer+SetColor만 있으면 되는
+            // 단순 원형 시각 오브젝트라 새 프리팹을 만들 필요가 없었음) — ECS 엔티티가 아니라 타워 자식 Transform으로
+            // 직접 움직이는 순수 시각 오브젝트(Laser 비주얼과 동일한 방식).
+            if (string.IsNullOrEmpty(weaponRecord.PrefabPath) == false)
+            {
+                newWeapon.OrbitalSlowVisual = ResUtil.Create<ActorProjectile>(weaponRecord.PrefabPath, transform);
+                if (newWeapon.OrbitalSlowVisual != null)
+                {
+                    // 사용자 요청("기본 크기 더 크게") — 다른 투사체와 같은 프리팹을 쓰므로 스케일만 별도로 키움.
+                    newWeapon.OrbitalSlowVisual.transform.localScale = Vector3.one * GameConfigTable.ORBITAL_SLOW_VISUAL_SCALE;
+
+                    if (ColorUtility.TryParseHtmlString(weaponRecord.ColorHex, out Color orbColor) == true)
+                    {
+                        orbColor.a = weaponRecord.Alpha;
+
+                        // 사용자 요청("타워처럼 Glow효과 추가" + "깜빡깜빡 거리게" + "하얀색→지금 색 천천히 트윈" →
+                        // "근데 티가 안남" — 색 Tween과 글로우 Tween이 서로 다른 주기(Yoyo 2개, 언싱크)라 흰색 절정과
+                        // 글로우 절정이 거의 안 겹쳐서 "흰색 Glow"가 뚜렷하게 안 보였음). 하나의 Sequence로 묶어
+                        // 흰색+최대글로우/지정색+최소글로우가 항상 동시에 절정을 찍도록 동기화.
+                        Material material = newWeapon.OrbitalSlowVisual.material;
+                        Color whiteWithSameAlpha = new Color(1f, 1f, 1f, orbColor.a);
+
+                        newWeapon.OrbitalSlowVisual.SetColor(whiteWithSameAlpha);
+                        material.SetFloat("_GlowAmount", GameConfigTable.ORBITAL_SLOW_GLOW_MAX);
+
+                        // 시작 상태(흰색+최대글로우)에서 지정색+최소글로우로 갔다가, Yoyo가 자동으로 역재생해서
+                        // 다시 흰색+최대글로우로 돌아온다 — 왕복 구간을 직접 두 번 안 써도 됨.
+                        float halfDuration = GameConfigTable.ORBITAL_SLOW_COLOR_TWEEN_DURATION * 0.5f;
+                        TweenSequenceBuilder.Create()
+                            .Append(TweenUtil.Color(material, orbColor.linear, halfDuration))
+                            .Join(TweenUtil.Float(material, "_GlowAmount", GameConfigTable.ORBITAL_SLOW_GLOW_MIN, halfDuration))
+                            .Loops(-1, LoopType.Yoyo)
+                            .Play();
+                    }
+                }
+            }
+
+            newWeapon.OrbitalAngle = UnityEngine.Random.Range(0f, 360f);
+            newWeapon.OrbitalDamageTickTimer = 0f;
+
+            // 사용자 요청("사운드랑 로칼라이징 키 이런거 다 셋팅해야하는거 알지?") — 획득 시 1회 활성화음.
+            InGameScene.Current.damageTextManager?.PlayWeaponFireSound("OrbitalSlowActivate");
         }
 
         m_WeaponList.Add(newWeapon);
@@ -232,7 +382,7 @@ public class ActorPlayer : Actor
             return 0f;
 
         TowerWeapon weapon = m_WeaponList[_index];
-        float attackInterval = weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
+        float attackInterval = weapon.Record.AttackInterval / GetWeaponAttackSpeedMultiplier(weapon);
         if (attackInterval <= 0f)
             return 1f;
 
@@ -264,6 +414,16 @@ public class ActorPlayer : Actor
         return m_WeaponList[_index].Record.Alpha;
     }
 
+    // 사용자 요청("반짝거리는 거 없는애들은 그냥 color값 적용, 냉기오브 같은 반짝거리는 효과 있는애들은 tween") —
+    // UIInGameHUD가 무기 쿨다운 게이지 색을 정적으로 칠할지, 인게임 오브젝트와 톤을 맞춰 펄스 Tween을 걸지 판단하는 데 사용.
+    public bool GetWeaponHasGlowPulse(int _index)
+    {
+        if (_index < 0 || _index >= m_WeaponList.Count)
+            return false;
+
+        return m_WeaponList[_index].Record.Id == ORBITAL_SLOW_RECORD_ID;
+    }
+
     // CardManager가 카드 드래프트 풀 필터링에 사용 — Splash/Chain/Homing 카드(#303/#304/#305)는
     // 해당 무기(Mage/ChainCoil/HomingPod)를 이미 보유했을 때만 드래프트에 나오게 하는 선행조건 체크.
     public bool HasWeapon(int _towerRecordId)
@@ -274,7 +434,7 @@ public class ActorPlayer : Actor
     // 이하 카드 효과 적용 API — CardManager.ApplyCard()가 호출
     public void AddCardDamagePercent(float _percent) { m_CardDamagePercent += _percent; RecalculateDerivedStats(); }
     public void AddCardRangePercent(float _percent) { m_CardRangePercent += _percent; RecalculateDerivedStats(); }
-    public void AddCardAttackSpeedPercent(float _percent) { m_CardAttackSpeedPercent += _percent; }
+    public void AddCardAttackSpeedPercent(float _percent) { m_CardAttackSpeedPercent += _percent; RecalculateDerivedStats(); }
     public void AddCardProjectileSpeedPercent(float _percent) { m_CardProjectileSpeedPercent += _percent; }
     public void AddCardCritChance(float _percent) { m_CardCritChance += _percent / 100f; }
     public void AddCardCritMultiplier(float _value) { m_CardCritMultiplier += _value; }
@@ -282,10 +442,32 @@ public class ActorPlayer : Actor
     public void AddPierce(int _amount) { m_PierceStacks += _amount; }
     public void SetSplash(float _radius) { m_hasSplash = true; m_SplashRadius = _radius; }
     public void SetChain(int _jumps, float _radius) { m_hasChain = true; m_ChainJumps = _jumps; m_ChainRadius = _radius; }
-    public void SetHoming() { m_hasHoming = true; }
     public void SetLaserDuration(float _duration) { m_hasLaserDurationBonus = true; m_LaserDurationBonus = _duration; }
-    public void SetSpeciesBonusDamage(eEnemySpecies _species, float _percent) { m_BonusSpeciesTarget = _species; m_BonusSpeciesDamagePercent = _percent; }
+    public void AddHomingTurnRate(float _value) { m_HomingTurnRateBonus += _value; }
+    public void SetSpeciesBonusDamage(eEnemySpecies _species, float _flatDamage) { m_BonusSpeciesTarget = _species; m_BonusSpeciesDamageFlat = _flatDamage; }
     public void SetBerserker(float _maxBonusPercent) { m_BerserkerMaxBonusPercent = _maxBonusPercent; }
+
+    // Archer 전용 강화 카드 — 전역 AddCardAttackSpeedPercent와 별개로 Archer 무기에만 곱해짐(GetWeaponAttackSpeedMultiplier 참고)
+    public void AddArcherAttackSpeedPercent(float _percent) { m_ArcherAttackSpeedBonus += _percent; }
+
+    // 몬스터 변종(Elite/Boss/Normal) 대상 추가 데미지 — 3장이 서로 다른 변종을 노리므로 독립 누적(덮어쓰기 아님)
+    public void AddVariantBonusDamage(eEnemyVariant _variant, float _flatDamage)
+    {
+        switch (_variant)
+        {
+            case eEnemyVariant.Elite:
+                m_EliteDamageBonusFlat += _flatDamage;
+                break;
+
+            case eEnemyVariant.Boss:
+                m_BossDamageBonusFlat += _flatDamage;
+                break;
+
+            default:
+                m_NormalVariantDamageBonusFlat += _flatDamage;
+                break;
+        }
+    }
 
     // Shield Burst(#404)가 터질 때의 폭발 데미지 — 현재 타워 기본 데미지(배율 반영)를 그대로 사용
     public float GetShieldBurstDamage()
@@ -299,12 +481,24 @@ public class ActorPlayer : Actor
     private void RecalculateDerivedStats()
     {
         m_DamageMultiplier = m_MetaDamageMultiplier * (1f + m_CardDamagePercent / 100f);
+        m_AttackSpeedMultiplier = m_MetaAttackSpeedMultiplier * (1f + m_CardAttackSpeedPercent / 100f);
     }
 
     // 무기마다 기본 사거리(Record.Range)가 다르므로 공통 배율(메타+카드)만 곱해 매 발사 시점에 계산
     private float GetWeaponRange(TowerWeapon _weapon)
     {
         return _weapon.Record.Range * m_MetaRangeMultiplier * (1f + m_CardRangePercent / 100f);
+    }
+
+    // 전 무기 공통 배율(m_AttackSpeedMultiplier)에 Archer 전용 강화(m_ArcherAttackSpeedBonus)를 추가로 곱한다
+    private float GetWeaponAttackSpeedMultiplier(TowerWeapon _weapon)
+    {
+        float multiplier = m_AttackSpeedMultiplier;
+
+        if (_weapon.Record.Id == ARCHER_RECORD_ID)
+            multiplier *= (1f + m_ArcherAttackSpeedBonus / 100f);
+
+        return multiplier;
     }
 
     public override void UpdateLogic()
@@ -314,12 +508,80 @@ public class ActorPlayer : Actor
 
         UpdateFire();
         UpdateRegeneration();
+        UpdateCameraZoom();
+    }
+
+    // 사용자 요청("게임화면 조금더 넓게 볼 수 있게 카메라 조정기능... 오토 줌아웃기능인거지 디폴트 화면 안에 계속 몹들이
+    // 있으면 안늘어나고 몹이 화면 밖의 범위에 숫자가 많다 하면 좀 늘어나는거") — 화면 밖 몬스터 수에 비례해 자동으로
+    // 줌아웃. 매 프레임이 아니라 CAMERA_ZOOM_CHECK_INTERVAL마다만 재계산(줌 자체도 1.5초 트윈이라 프레임 단위로
+    // 정확할 필요가 없음). "단, 몹 젠 되는 거리가 넘어가면 더이상 안늘어나게" — WayPoint.Radius(스폰 링, 씬 시작
+    // 시점 카메라 기준으로 고정된 값)에 대응하는 orthographicSize를 상한으로 클램프해 스폰 지점이 노출되지 않게 한다.
+    private float m_CameraZoomCheckTimer;
+    private float m_LastCameraTargetOrthoSize = -1f;
+
+    private void UpdateCameraZoom()
+    {
+        m_CameraZoomCheckTimer -= Time.deltaTime;
+        if (m_CameraZoomCheckTimer > 0f)
+            return;
+
+        m_CameraZoomCheckTimer = GameConfigTable.CAMERA_ZOOM_CHECK_INTERVAL;
+
+        Camera mainCamera = Camera.main;
+        if (mainCamera == null || mainCamera.orthographic == false)
+            return;
+
+        int offScreenCount = CountMonstersOutsideView(mainCamera);
+        float offScreenRatio = Mathf.Clamp01(offScreenCount / (float)GameConfigTable.CAMERA_ZOOM_FULL_MONSTER_COUNT);
+        float targetOrthoSize = GameConfigTable.CAMERA_BASE_ORTHO_SIZE + offScreenRatio * GameConfigTable.CAMERA_MAX_ZOOM_OUT_AMOUNT;
+
+        if (WayPoint.instance != null)
+        {
+            float maxOrthoSize = WayPoint.instance.Radius / Mathf.Sqrt(mainCamera.aspect * mainCamera.aspect + 1f);
+            targetOrthoSize = Mathf.Min(targetOrthoSize, maxOrthoSize);
+        }
+
+        if (Mathf.Approximately(targetOrthoSize, m_LastCameraTargetOrthoSize) == true)
+            return;
+
+        m_LastCameraTargetOrthoSize = targetOrthoSize;
+
+        // 이 프로젝트 DOTween 설치본엔 Camera 모듈(DOOrthoSize)이 빠져있어(Modules 폴더에 없음), 범용 DOTween.To로 직접 트윈.
+        DOTween.Kill(mainCamera);
+        DOTween.To(() => mainCamera.orthographicSize, value => mainCamera.orthographicSize = value, targetOrthoSize, GameConfigTable.CAMERA_ZOOM_TWEEN_DURATION)
+            .SetTarget(mainCamera);
+    }
+
+    private int CountMonstersOutsideView(Camera _camera)
+    {
+        Vector3 cameraPosition = _camera.transform.position;
+        float halfHeight = _camera.orthographicSize;
+        float halfWidth = halfHeight * _camera.aspect;
+
+        NativeArray<Entity> entities = m_AliveMonsterQuery.ToEntityArray(Allocator.Temp);
+        int outsideCount = 0;
+
+        for (int i = 0; i < entities.Length; ++i)
+        {
+            LocalTransform localTransform = m_EntityManager.GetComponentData<LocalTransform>(entities[i]);
+            float deltaX = Mathf.Abs(localTransform.Position.x - cameraPosition.x);
+            float deltaY = Mathf.Abs(localTransform.Position.y - cameraPosition.y);
+
+            if (deltaX > halfWidth || deltaY > halfHeight)
+                ++outsideCount;
+        }
+
+        entities.Dispose();
+        return outsideCount;
     }
 
     // 무기마다 독립 쿨다운/타겟팅으로 발사 — 카드로 무기가 늘어나면 이 리스트도 함께 늘어남(AddWeapon)
     private void UpdateFire()
     {
         float3 towerPosition = new float3(transform.position.x, transform.position.y, 0f);
+
+        // 이번 프레임에 어느 무기가 어느 대상을 쐈는지 초기화 — 무기별로 순서대로 채워나가며 서로 겹치지 않게 유도.
+        m_ClaimedTargetsThisFrame.Clear();
 
         for (int i = 0; i < m_WeaponList.Count; ++i)
         {
@@ -331,18 +593,26 @@ public class ActorPlayer : Actor
                 continue;
             }
 
+            if (weapon.Record.Id == ORBITAL_SLOW_RECORD_ID)
+            {
+                UpdateOrbitalSlowWeapon(weapon);
+                continue;
+            }
+
             weapon.CooldownTimer -= Time.deltaTime;
             if (weapon.CooldownTimer > 0f)
                 continue;
 
-            Entity target = weapon.TargetingStrategy.SelectTarget(m_EntityManager, m_AliveMonsterQuery, towerPosition, GetWeaponRange(weapon));
+            Entity target = weapon.TargetingStrategy.SelectTarget(m_EntityManager, m_AliveMonsterQuery, towerPosition, GetWeaponRange(weapon), m_ClaimedTargetsThisFrame);
 
             if (target == Entity.Null)
                 continue;
 
+            m_ClaimedTargetsThisFrame.Add(target);
+
             Fire(weapon, target);
 
-            weapon.CooldownTimer = weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
+            weapon.CooldownTimer = weapon.Record.AttackInterval / GetWeaponAttackSpeedMultiplier(weapon);
         }
     }
 
@@ -362,14 +632,20 @@ public class ActorPlayer : Actor
 
             _weapon.IsLaserActive = true;
             _weapon.LaserActiveTimer = duration;
-            _weapon.LaserRotationAngle = 0f;
+            // 2026-07-29 — 매번 0도(고정 방향)에서 시작하지 않고 무작위 각도에서 시작(사용자 피드백
+            // "항상 같은곳에서 똑같은 곳만 쏘고 가니까 범위가 너무 일정하다" — 기존엔 항상 같은 0~회전각 구간만
+            // 쓸어서 타워 뒤쪽 절반은 영원히 레이저가 안 닿는 사각지대이기도 했음).
+            _weapon.LaserRotationAngle = UnityEngine.Random.Range(0f, 360f);
             _weapon.LaserTickTimer = 0f;
             _weapon.LaserVisual?.SetBeamActive(true);
+
+            // 사용자 요청("레이저는 불에 지지는 소리 같은걸로") — 활성화 시작 시 1회 재생(지속시간 3.2초, 기본 활성시간을 커버)
+            InGameScene.Current.damageTextManager?.PlayWeaponFireSound("LaserSizzle");
             return;
         }
 
         _weapon.LaserActiveTimer -= Time.deltaTime;
-        _weapon.LaserRotationAngle += GameConfigTable.LASER_ROTATION_SPEED * Time.deltaTime;
+        _weapon.LaserRotationAngle = (_weapon.LaserRotationAngle + GameConfigTable.LASER_ROTATION_SPEED * Time.deltaTime) % 360f;
 
         // 사용자 요청("사정거리는 무한이야") — 다른 무기와 달리 Record.Range를 안 쓰고 맵 전체를 항상 커버하는 고정값 사용.
         Vector3 towerPosition = transform.position;
@@ -393,43 +669,145 @@ public class ActorPlayer : Actor
 
         _weapon.IsLaserActive = false;
         _weapon.LaserVisual?.SetBeamActive(false);
-        _weapon.CooldownTimer = _weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f);
+        _weapon.CooldownTimer = _weapon.Record.AttackInterval / GetWeaponAttackSpeedMultiplier(_weapon);
     }
 
-    private void Fire(TowerWeapon _weapon, Entity _target)
+    // Orbital Slow(#7) — 발사/타겟팅 없이 타워 주위를 천천히 공전하며, 매 프레임 자기 위치 기준 범위 안의 적을
+    // 슬로우(MonsterManager.ApplySlowAura가 범위 밖은 자동으로 원래 속도로 되돌림, 이 메서드 쪽에 별도 정리 로직 불필요).
+    // Record.Range를 "공전 반지름"으로, Record.SplashRadius를 "슬로우 판정 반경"으로 재사용(둘 다 다른 무기에서 각각의
+    // 원래 의미로 쓰이는 컬럼이라 새 컬럼을 늘리지 않고 재사용 — SlowPercent만 이 무기 전용으로 신설).
+    private void UpdateOrbitalSlowWeapon(TowerWeapon _weapon)
+    {
+        _weapon.OrbitalAngle = (_weapon.OrbitalAngle + GameConfigTable.ORBITAL_SLOW_ROTATION_SPEED * Time.deltaTime) % 360f;
+
+        float angleRadian = _weapon.OrbitalAngle * Mathf.Deg2Rad;
+        Vector3 towerPosition = transform.position;
+        Vector3 orbitOffset = new Vector3(Mathf.Cos(angleRadian), Mathf.Sin(angleRadian), 0f) * _weapon.Record.Range;
+        Vector3 orbitPosition = towerPosition + orbitOffset;
+
+        if (_weapon.OrbitalSlowVisual != null)
+            _weapon.OrbitalSlowVisual.transform.position = orbitPosition;
+
+        float slowMultiplier = 1f - Mathf.Clamp01(_weapon.Record.SlowPercent / 100f);
+        InGameScene.Current.monsterManager.ApplySlowAura(orbitPosition, _weapon.Record.SplashRadius, slowMultiplier);
+
+        // 사용자 요청("데미지 약하게 천천히 들어가게, 대신 더 느리게") — Orbital Ring 카드와 동일한 틱 간격 재사용,
+        // 슬로우 판정 반경(SplashRadius) 그대로 데미지 판정에도 사용.
+        _weapon.OrbitalDamageTickTimer -= Time.deltaTime;
+        if (_weapon.OrbitalDamageTickTimer <= 0f && _weapon.Record.Damage > 0)
+        {
+            _weapon.OrbitalDamageTickTimer = GameConfigTable.ORBITAL_DAMAGE_TICK_INTERVAL;
+
+            int tickDamage = Mathf.RoundToInt(_weapon.Record.Damage * m_DamageMultiplier * _weapon.MetaDamageMultiplier);
+            if (tickDamage > 0)
+                InGameScene.Current.monsterManager.DamageEntitiesInRadius(orbitPosition, _weapon.Record.SplashRadius, tickDamage);
+        }
+    }
+
+    // Double Shot(#107) — 기본 무기(CentralTower)에만 적용(사용자 지적: "더블샷 스킬 같은경우는 기본무기에만 적용되어야해").
+    // 추가 무기(Archer/Mage/ChainCoil/HomingPod)는 항상 1발만 발사. 2026-07-30부터 2발 이상일 때 같은 대상에 전부
+    // 몰리지 않도록, 첫 발 이후의 각 발은 이번 프레임에 이미 찍힌 대상(m_ClaimedTargetsThisFrame)을 피해 같은
+    // 무기의 타겟팅 전략으로 "다음 순위" 대상을 새로 고른다(사용자 요청: "다른 미사일이 잡고있는 타겟을 잡지말라").
+    // 대상마다 실제 위치를 직접 조준하므로 기존의 부채꼴 각도 분산(GetSpreadTargetPosition)은 더 이상 필요 없다.
+    private void Fire(TowerWeapon _weapon, Entity _primaryTarget)
+    {
+        int projectileCount = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_ProjectileCount : 1;
+        float weaponRange = GetWeaponRange(_weapon);
+
+        m_MultiShotTargets.Clear();
+        m_MultiShotTargets.Add(_primaryTarget);
+
+        if (projectileCount > 1)
+        {
+            float3 towerPosition = new float3(transform.position.x, transform.position.y, 0f);
+
+            for (int i = 1; i < projectileCount; ++i)
+            {
+                Entity nextTarget = _weapon.TargetingStrategy.SelectTarget(m_EntityManager, m_AliveMonsterQuery, towerPosition, weaponRange, m_ClaimedTargetsThisFrame);
+                if (nextTarget == Entity.Null)
+                    nextTarget = _primaryTarget;
+
+                m_MultiShotTargets.Add(nextTarget);
+                m_ClaimedTargetsThisFrame.Add(nextTarget);
+            }
+        }
+
+        InGameScene.Current.damageTextManager?.PlayWeaponFireSound(GetWeaponFireSoundKey(_weapon));
+
+        Vector2 firePosition = transform.position;
+        float finalProjectileSpeed = _weapon.Record.ProjectileSpeed * (1f + m_CardProjectileSpeedPercent / 100f);
+
+        for (int i = 0; i < m_MultiShotTargets.Count; ++i)
+        {
+            FireSingleShot(_weapon, m_MultiShotTargets[i], firePosition, finalProjectileSpeed, weaponRange);
+        }
+    }
+
+    private void FireSingleShot(TowerWeapon _weapon, Entity _target, Vector2 _firePosition, float _projectileSpeed, float _range)
     {
         LocalTransform targetTransform = m_EntityManager.GetComponentData<LocalTransform>(_target);
         Vector2 targetPosition = new Vector2(targetTransform.Position.x, targetTransform.Position.y);
 
-        // 최종 데미지 = (BaseDamage × DamageMul) × CritMul × (1 + ElementBonus) — 02_combat.html "데미지 모델"
-        // DamageMul은 메타 트리 해금분 + 카드 누적분(RecalculateDerivedStats). ElementBonus는 종 특효 카드(Triangle Hunter 등)가 채우는 확장 지점
+        // 최종 데미지 = (BaseDamage × DamageMul) × CritMul × (1 + ElementBonus) + FlatBonus — 02_combat.html "데미지 모델"
+        // DamageMul은 메타 트리 해금분 + 카드 누적분(RecalculateDerivedStats). ElementBonus는 Berserker처럼 배율로 작동하는 카드,
+        // FlatBonus는 종/변종 특효 카드(Triangle Hunter, Elite/Boss/Normal)처럼 2026-07-30부터 고정 데미지로 작동하는 카드
+        // (사용자 요청: "트라이앵글 퍼센트 데미지도 좀 다 수치로... 보스 엘리트 이런거 다 수치로" — 배율 누적 폭주 방지 겸 체감 단순화).
         float elementBonus = 0f;
+        float flatBonusDamage = 0f;
+
         if (m_BonusSpeciesTarget != null && m_EntityManager.HasComponent<EnemySpeciesData>(_target) == true)
         {
             eEnemySpecies targetSpecies = m_EntityManager.GetComponentData<EnemySpeciesData>(_target).Species;
             if (targetSpecies == m_BonusSpeciesTarget.Value)
-                elementBonus += m_BonusSpeciesDamagePercent / 100f;
+                flatBonusDamage += m_BonusSpeciesDamageFlat;
         }
 
-        // Berserker(#502) — 타워 HP가 낮을수록 데미지 증가(선형 보간, 최대 보너스는 카드 수치)
+        // 04_card.html 몬스터 변종(Elite/Boss/Normal) 대상 추가 데미지 — 3장 독립 누적
+        if (m_EntityManager.HasComponent<EnemyVariantData>(_target) == true)
+        {
+            eEnemyVariant targetVariant = m_EntityManager.GetComponentData<EnemyVariantData>(_target).Variant;
+            switch (targetVariant)
+            {
+                case eEnemyVariant.Elite:
+                    flatBonusDamage += m_EliteDamageBonusFlat;
+                    break;
+
+                case eEnemyVariant.Boss:
+                    flatBonusDamage += m_BossDamageBonusFlat;
+                    break;
+
+                default:
+                    flatBonusDamage += m_NormalVariantDamageBonusFlat;
+                    break;
+            }
+        }
+
+        // Berserker(#502) — 타워 HP가 낮을수록 데미지 증가(선형 보간, 최대 보너스는 카드 수치) — 이건 그대로 배율 유지
         if (m_BerserkerMaxBonusPercent > 0f && m_MaxHp > 0)
         {
             float missingHpRatio = 1f - ((float)currentHp.Value / m_MaxHp);
             elementBonus += (m_BerserkerMaxBonusPercent / 100f) * missingHpRatio;
         }
 
-        bool isCrit = UnityEngine.Random.value < (_weapon.Record.CritChance + m_CardCritChance);
-        float critMul = (isCrit == true) ? (_weapon.Record.CritMultiplier + m_CardCritMultiplier) : 1f;
-        float finalDamage = (_weapon.Record.Damage * m_DamageMultiplier) * critMul * (1f + elementBonus);
-        int roundedDamage = Mathf.RoundToInt(finalDamage);
+        // 2026-07-29 — 치명타는 이제 전역이 아니라 CentralTower 전용 정체성(원래 크리 스탯을 가진 유일한 무기).
+        // m_CardCritChance/m_CardCritMultiplier는 CentralTower 전용 강화 카드 + Offense 시너지 티어7(AddCardCritChance)만 채운다.
+        float weaponCardCritChance = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_CardCritChance : 0f;
+        float weaponCardCritMultiplier = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_CardCritMultiplier : 0f;
 
-        float finalProjectileSpeed = _weapon.Record.ProjectileSpeed * (1f + m_CardProjectileSpeedPercent / 100f);
+        bool isCrit = UnityEngine.Random.value < (_weapon.Record.CritChance + weaponCardCritChance);
+        // 크리티컬 배율 없는 무기(CritMultiplier=0)는 자기 CritChance도 0이라 원래 크리가 안 뜨지만, 위에서 CentralTower가
+        // 아니면 weaponCardCritChance가 항상 0이라 이제 이 경로 자체가 CentralTower 한정이다 — 그래도 최소 1배 보장은 유지.
+        float critMul = (isCrit == true) ? Mathf.Max(1f, _weapon.Record.CritMultiplier + weaponCardCritMultiplier) : 1f;
+        float finalDamage = (_weapon.Record.Damage * m_DamageMultiplier * _weapon.MetaDamageMultiplier) * critMul * (1f + elementBonus) + flatBonusDamage;
+        int roundedDamage = Mathf.RoundToInt(finalDamage);
 
         // Splash/Chain/Homing은 더 이상 전역 적용이 아니라 무기 고유 특성 — ApplyInnateWeaponAbility()가
         // 무기 Id로 분기해서 채운다(사용자 지적: "전부 호밍이 되더라, 각각 미사일에 맞게 해줘").
+        // Pierce(#105/#106)도 2026-07-30부터 CentralTower 전용(사용자 요청: "기본무기만 관통이 통해야하고 나머지는 통하면 안됨")
+        // — 치명타와 동일하게 CentralTower가 아니면 0으로 무시.
         ProjectileEffects cardEffects = new ProjectileEffects
         {
-            Pierce = m_PierceStacks,
+            Pierce = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_PierceStacks : 0,
             SplashRadius = 0f,
             ChainJumps = 0,
             ChainRadius = 0f,
@@ -439,42 +817,35 @@ public class ActorPlayer : Actor
 
         ApplyInnateWeaponAbility(_weapon, ref cardEffects);
 
-        // Double Shot(#107) — 기본 무기(CentralTower)에만 적용(사용자 지적: "더블샷 스킬 같은경우는 기본무기에만 적용되어야해").
-        // 추가 무기(Archer/Mage/ChainCoil/HomingPod)는 항상 1발만 발사. 2발 이상일 때는 같은 궤적에 겹치지 않도록
-        // 조준 방향을 중심으로 부채꼴로 벌려서 발사 — 사용자 요청("더블샷 같은애들 부채꼴로 발사").
-        int projectileCount = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_ProjectileCount : 1;
-
-        Vector2 firePosition = transform.position;
-        for (int i = 0; i < projectileCount; ++i)
-        {
-            Vector2 spreadTargetPosition = GetSpreadTargetPosition(firePosition, targetPosition, i, projectileCount);
-
-            InGameScene.Current.projectileManager.Fire(
-                firePosition,
-                spreadTargetPosition,
-                roundedDamage,
-                finalProjectileSpeed,
-                GetWeaponRange(_weapon),
-                _weapon.Record.ProjectileId,
-                cardEffects,
-                isCrit);
-        }
+        InGameScene.Current.projectileManager.Fire(
+            _firePosition,
+            targetPosition,
+            roundedDamage,
+            _projectileSpeed,
+            _range,
+            _weapon.Record.ProjectileId,
+            cardEffects,
+            isCrit);
     }
 
-    // 발사체 여러 발이 나갈 때 조준 방향을 중심으로 균등하게 벌린 가상의 조준점을 계산 — 실제 타겟 엔티티는 그대로 두고
-    // (호밍은 ProjectileEffects.HomingTarget으로 별도 추적되므로 초기 발사 방향만 벌어짐, 유도 중엔 다시 타겟으로 모여든다)
-    // 초기 방향 벡터만 회전시킨다.
-    private Vector2 GetSpreadTargetPosition(Vector2 _firePosition, Vector2 _targetPosition, int _index, int _count)
+    // 사용자 요청("호밍은 날아가니까 삐슈우웅 2~3초음, 래피드는 두두두두 연속적으로") — 무기 정체성에 맞는 발사음 Key 매핑.
+    // 나머지 무기(CentralTower/Mage/ChainCoil)는 DamageTextManager.PlayWeaponFireSound()의 기본값("WeaponFire") 사용.
+    private string GetWeaponFireSoundKey(TowerWeapon _weapon)
     {
-        if (_count <= 1)
-            return _targetPosition;
+        switch (_weapon.Record.Id)
+        {
+            case ARCHER_RECORD_ID:
+                return "RapidFire";
 
-        float centeredIndex = _index - (_count - 1) / 2f;
-        float angleDegrees = centeredIndex * GameConfigTable.PROJECTILE_SPREAD_ANGLE_STEP;
+            case HOMING_POD_RECORD_ID:
+                return "HomingFire";
 
-        Vector2 toTarget = _targetPosition - _firePosition;
-        Vector2 rotatedDirection = Quaternion.Euler(0f, 0f, angleDegrees) * toTarget;
-        return _firePosition + rotatedDirection;
+            case MORTAR_RECORD_ID:
+                return "MortarFire";
+
+            default:
+                return "WeaponFire";
+        }
     }
 
     // 테마 무기(Mage=스플래쉬/ChainCoil=체인/HomingPod=유도)만 자기 고유 효과를 갖는다 — 다른 무기(CentralTower/Archer 등)에는
@@ -503,8 +874,14 @@ public class ActorPlayer : Actor
                 _effects.ChainRadius = chainRadius;
                 break;
 
+            case MORTAR_RECORD_ID:
+                // 카드로 강화되지 않는 자체 스플래시(현재 대응 강화 카드 없음, Mage와 달리 m_hasSplash를 안 봄) — 필요해지면 그때 추가.
+                _effects.SplashRadius = _weapon.Record.SplashRadius;
+                break;
+
             case HOMING_POD_RECORD_ID:
                 _effects.IsHoming = true;
+                _effects.HomingTurnRateBonus = m_HomingTurnRateBonus;
                 break;
         }
     }

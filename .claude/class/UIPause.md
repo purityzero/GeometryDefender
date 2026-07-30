@@ -13,7 +13,7 @@ UIPause.prefab 루트에 부착되는 일시정지 팝업 컴포넌트. 2026-07-
 - `Close()`: `Time.timeScale = 1f`(복구) → `base.Close()`. `override`라 뒤로가기([[UIPopup]].OnPressBackBtn 기본 동작)로 닫아도 동일하게 복구됨.
 - `OnClickResumeButton()`: `Close()` 호출.
 - `OnClickRestartButton()`/`OnClickMainMenuButton()`: `Time.timeScale = 1f` 먼저 설정 후 `SceneManager.instance.NextScene(EScene.InGameScene/TitleScene.ToString())` — [[UIRunOver]]의 `OnClickRestart`/`OnClickMainMenu`와 동일 패턴 그대로 재사용(씬을 나가면서 timeScale이 0으로 남아있으면 다음 씬까지 멈춰있을 위험 방지).
-- `OnClickSoundButton()`/`RefreshSoundText()`: `PlayerManager.instance.SetSoundOn(현재값 반전)` → `PlayerManager.instance.optionData.isSoundOn` 상태를 `StringTable`의 `SettingsSoundLabel`+`SettingsOn`/`SettingsOff` 키를 조합해 `"사운드: ON"`/`"사운드: OFF"` 형태로 `m_SoundText`에 직접 대입. **UIText 컴포넌트는 안 씀** — 라벨+상태를 런타임에 조합하는 동적 표시라 (로컬라이제이션 키 관리 원칙: "코드가 매번 값을 덮어쓰는 표시는 키 불필요") [[UIRunOver]]의 `RunOverBest`/`RunOverTotal` 처리 방식과 동일 패턴.
+- `OnClickSoundButton()`/`RefreshSoundText()` (2026-07-29부터): [[PlayerManager]]가 `isSoundOn` bool 대신 `BgmVolume`/`SfxVolume`(float) 2개로 분리되면서, 이 버튼은 "둘 다 0보다 크면 On"으로 판정해 클릭 시 **Bgm/Sfx를 함께 0↔1로 토글**하는 빠른 뮤트 버튼 역할로 변경됨(세부 음량 조절은 [[UISetting]] 전용). `StringTable`의 `PauseSoundLabel`(신규, 범용 "Sound" 문구 — `SettingsBgmLabel`은 이제 BGM 전용 의미라 재사용 안 함)+`SettingsOn`/`SettingsOff` 키를 조합해 `"Sound: ON"`/`"Sound: OFF"` 형태로 `m_SoundText`에 직접 대입. **UIText 컴포넌트는 안 씀** — 라벨+상태를 런타임에 조합하는 동적 표시라 (로컬라이제이션 키 관리 원칙: "코드가 매번 값을 덮어쓰는 표시는 키 불필요") [[UIRunOver]]의 `RunOverBest`/`RunOverTotal` 처리 방식과 동일 패턴.
 - 정적 라벨 5개(Title/Resume/Restart/MainMenu/BuildLabel)는 [[UIText]] 컴포넌트로 로컬라이즈 — 상세는 prefab.md 참고. Restart/MainMenu는 [[UIRunOver]]가 이미 쓰던 `RunOverRestartButton`/`RunOverMainMenuButton` 키를 재사용(동일 문구/동작이라 새 키 안 만듦), Title/Resume/BuildLabel은 신규 키(`PauseTitle`/`PauseResumeButton`/`PauseBuildLabel`, StringTable.csv Id 53~55).
 - 프리팹 경로는 UITable(Resources/Table/UITable.csv)에서 조회 가능(UIType은 이미 Popup이었음, 변경 없음)
 
@@ -144,3 +144,7 @@ Unity MCP 미연결 상태라 YAML 직접 편집으로 진행 — 컴파일 에�
 ## 2026-07-24-0 — 게임오버 후 정지가 풀리던 버그 수정 (Time.timeScale → SetPaused)
 사용자 버그 리포트("죽었을때, RunOver나오면서 뒤에 적들은 멈춰야하는데 전혀 멈추질 않음") — 상세 원인/최종 설계는 [[InGameScene]] 2026-07-24-1, 동일 버그/동일 수정은 [[UICardDraft]] 2026-07-24-0 참고. `Show()`의 `Time.timeScale = 0f;` → `InGameScene.Current?.SetPaused(true);`, `Close()`의 `Time.timeScale = 1f;` → `InGameScene.Current?.SetPaused(false);`로 교체 — 게임오버 상태면 이 호출로도 정지가 안 풀린다(`InGameScene`이 내부적으로 게임오버 OR 팝업정지를 계산). 뒤로가기(`OnPressBackBtn` 기본 동작이 `Close()`를 그대로 탐)도 동일하게 적용됨. `OnClickRestartButton()`/`OnClickMainMenuButton()`은 씬 전환이 목적이라 `Time.timeScale = 1f`를 그대로 유지(QA 배속 도구가 남겨둔 값이 다음 씬까지 새는 것을 막는 안전장치 — 사용자가 "TimeScale은 QA때만 건드는걸로 하자"고 허용한 범위).
 검증: 컴파일 에러 0건. Play Mode 실측 — 사망 후 Pause `Show()`→`Close()` 반복해도 몬스터/타이머가 그대로 정지 유지 확인, `Time.timeScale`은 시종일관 1.
+
+## 2026-07-29-0 — SetSoundOn 제거에 따른 연쇄 수정
+[[UISetting]] 2026-07-29-0/[[PlayerManager]] 2026-07-29-0 참고 — `PlayerManager.SetSoundOn`/`OptionData.isSoundOn`이 `BgmVolume`/`SfxVolume`(float)로 대체되면서 이 클래스가 컴파일 에러(`read_console`로 발견)를 냈다. `OnClickSoundButton()`/`RefreshSoundText()`를 위 "현재 상태" 서술대로 수정. `StringTable`에 `PauseSoundLabel`(Id 170) 신규 추가.
+검증: 컴파일 에러 0건. Play Mode 실측(버튼 클릭 시 뮤트 토글 동작)은 사용자 지시("MCP 연결하지말고 나 불러")로 미검증.

@@ -1,5 +1,27 @@
 # UIInGameHUD
 
+## 2026-07-30-2 — 무기 쿨다운 게이지 글로우 펄스 (Frost Orb Turret 전용)
+사용자 요청("쿨타임도 반짝거리는애들은 똑같이 반짝거리는걸로" → "반짝거리는 거 없는애들은 그냥 color값 적용, 냉기오브 같은 애들은 tween"). `UpdateWeaponCooldowns()`의 행 생성 블록에서 `towerController.GetWeaponHasGlowPulse(index)`(신규, [[ActorPlayer]] 2026-07-30-4)가 true인 무기(현재 Frost Orb Turret만)만 `Image_GaugeFill`에 `TweenUtil.Color(fill, brighterColor, ORBITAL_SLOW_GLOW_PULSE_DURATION).SetLoops(-1, Yoyo)`를 걸어 인게임 오브젝트와 톤을 맞춤 — 나머지 무기는 기존처럼 정적 색상만 적용. `using DG.Tweening;` 추가.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증.
+
+---
+
+## 2026-07-30-1 — 유저 레벨 숫자 표시 (Text_Level 신규)
+사용자 요청("유저의 레벨 숫자도 표기했으면 좋겠음. InGameHud에"). `m_LevelText`(TextMeshProUGUI) 필드 추가, `UpdateLogic()`에 `UpdateLevelText()` 호출 추가 — Wave와 동일하게 매 프레임 폴링(`InGameScene.Current.xpManager.currentLevel`), `"LV.{level}"` 형식. 프리팹 `Text_Level`은 `Text_Wave`(y=-150) 바로 아래 y=-190에 동일 스타일(fontSize18, 회색 #A0A0B8, 상단 중앙 정렬)로 신규 배치, 루트 `m_LevelText` 필드 연결. 상세는 [prefab.md](../prefab/UIInGameHUD.md) 2026-07-30-0 참고.
+
+검증: 컴파일 확인 필요. Play Mode 미검증 — 레벨업 시 숫자가 즉시 갱신되는지, 다른 요소와 안 겹치는지 확인 필요.
+
+---
+
+## 2026-07-30-0 — Infinite 난이도에서 WAVE 숫자가 계속 올라가도록 수정
+사용자 피드백("인피니트 Wave에서 Wave는 적이 강해질때마다 계속 올라갔으면 좋겠음"). `UpdateWaveText()`가 `WaveTable.GetActivePhase().Id`만 표시해서, 마지막 웨이브(Id=9, 480~600초) 이후로도 시간이 계속 흐르는 Infinite 난이도에서는 실제로 난이도가 계속 올라가는데도 화면엔 "WAVE 9"로 영구 고정돼 보였음. [[DifficultyManager]]의 `GetInfiniteStepCount()`(2026-07-30-0에 public 전환)를 더해 `displayWaveId = activePhase.Id + GetInfiniteStepCount()`로 계산하도록 수정 — Normal/Hard/Hell은 스텝이 항상 0이라 영향 없음.
+
+검증: 컴파일 확인 필요. Play Mode 미검증 — Infinite 난이도로 600초 이상 진행 시 WAVE 숫자가 10, 11...로 계속 올라가는지 확인 필요.
+
+---
+
 연관 클래스: UIBase, BaseScene, IUpdatable, TimerManager, TowerHealth, MonsterManager, ObservableVariable, [[UIPause]](Btn_Pause가 여는 팝업), [[UICheatWindow]](Btn_Cheat가 여는 팝업), [[UIFpsCounter]](Text_Fps에 부착)
 
 ## 개요

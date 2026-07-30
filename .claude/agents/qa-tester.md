@@ -25,22 +25,28 @@ Unity MCP → QARecorder(스크린샷 연속 캡처 + ffmpeg 스티칭) → watc
 
 ## 2. 녹화 실행 절차
 
-### 배속 사용 원칙 (2026-07-21 추가, 2026-07-21 수정)
+### 배속 사용 원칙 (2026-07-21 추가, 2026-07-21 수정, 2026-07-29 수정)
 프레임 단위로 눈으로 직접 지켜봐야 판단 가능한 구간(애니메이션 타이밍, 겹침/튐 여부 등)이 아니라면 — 즉 콘솔 로그나 `execute_code`로 폴링한 값(위치/태그/거리 등)만으로 판별 가능한 검증이라면 — Play Mode 진입 직후 무리 없이 `Time.timeScale`을 5로 올려(`execute_code`로 직접 대입하거나 `Tools/QA/Time Scale` 5배속 버튼) 진행한다. 게임 시간을 확보하는 대기 자체는 배속을 낮출 이유가 없다 — 실시간 1배속으로 기다리는 건 사용자 확인 없이는 지양. 정말 정밀하게(프레임 단위로) 눈으로 살펴봐야 하는 구간에서만 1~2배속으로 낮췄다가, 그 구간이 끝나면 다시 5배속으로 올린다.
+
+**배속 조절에 인게임 치트 창(`UICheatWindow`)을 쓰지 말 것.** 이 에이전트는 `execute_code`로 `Time.timeScale`을 직접 대입하거나 에디터 전용 `Tools/QA/Time Scale` 메뉴를 쓸 수 있는 권한이 있으므로, 굳이 UI를 열어 배속 버튼을 클릭할 필요가 없다. 게다가 `UICheatWindow.Show()`는 `InGameScene.SetPaused(true)`를 호출해 그 창이 열려있는 동안 게임 로직 자체를 정지시킨다(2026-07-29, `client-issues.md` 2026-07-29-0 참고 — 이 정지 상태 관리가 참조 카운터 방식으로 바뀌긴 했지만, 치트 창을 열고 닫는 절차 자체가 관찰 구간에 불필요한 정지/재개 이벤트를 끼워 넣어 관찰을 왜곡할 수 있다). 배속이 필요하면 `Time.timeScale`을 직접 대입한다.
 
 **주의 (2026-07-20 확인) — Play Mode인데 시간이 안 흐르는 환경이 있다:**
 `manage_editor(action:"play")`가 성공을 반환해도, 이 MCP 브릿지 환경에서는 에디터에 실제 포커스/렌더링이 없어 **Play Mode의 프레임이 저절로 진행되지 않을 수 있다** (실제로 `Time.frameCount`가 수십 초 동안 그대로 멈춰있는 사례 확인됨). 이 상태에서 `sleep`으로만 기다리면 `Init()`도 안 불리고 스폰도 안 되는데, 코드 버그처럼 보이는 거짓 양성(false negative)이 발생한다. 매 실행마다 아래를 따를 것:
+- **`manage_editor(action:"play")` 호출 전에 Unity 에디터 창에 OS 포커스를 맞춰둔다** (2026-07-29 추가) — `Bash`/`PowerShell`로 `Get-Process`에서 `MainWindowTitle`이 있는 Unity 프로세스를 찾아 `(New-Object -ComObject WScript.Shell).AppActivate($process.Id)`로 전면 활성화. 포커스 없는 상태가 위 "프레임이 안 흐르는" 현상의 원인 후보로 지목되어 있으므로, 매번 습관적으로 먼저 해둘 것.
 - Play Mode 진입 직후 `execute_code`로 `UnityEditor.EditorApplication.isPlaying`, `Time.frameCount`를 확인. 프레임이 몇 초 뒤에도 그대로면(같은 `sleep` 반복으로 확인) 자동 진행이 안 되는 환경이라는 뜻.
 - 이 경우 `execute_code`에서 `UnityEditor.EditorApplication.Step()`을 반복 호출해 프레임을 수동으로 밀어야 한다(1회 호출 = 1프레임, `deltaTime` 약 0.02초). 한 번의 `execute_code` 호출 안에서 bounded for문으로 여러 번 `Step()`을 부르면 된다(예: 2000회 = 게임 시간 약 40초). `sleep`은 이 환경에서 게임 시간 확보 수단으로 신뢰하지 말 것 — 반드시 `Time.time`/`Time.frameCount`로 실제 진행을 확인.
 - 씬 전환(TitleScene→InGameScene)은 **반드시 실제 UI 클릭 경로**로 유발한다 — 스크립트의 `OnClickXxxButton()`을 `execute_code`로 직접 호출하지 말 것(Edit Mode에서도 실행되어버려 "실제 플레이"를 검증한 게 아니게 된다). `find_gameobjects`(`by_component: Button`)로 버튼을 찾고, `UnityEngine.EventSystems.ExecuteEvents.Execute(buttonGameObject, pointerEventData, ExecuteEvents.pointerClickHandler)`로 실제 클릭 이벤트를 발생시킬 것.
 
 1. Unity MCP로 Play Mode 진입 (발견한 도구 사용).
 2. Play Mode가 실제로 시작됐는지 확인 — `EditorApplication.isPlaying == true`이고, `Time.frameCount`가 이후 실제로 증가하는지까지 확인(위 주의 참고. isPlaying만 True인 걸로 안심하지 말 것).
+   - **콘솔에 Text Animator(Febucci) 관련 `NullReferenceException`이 반복되면(`TypewriterComponent`/`TextAnimatorComponentBase` 스택트레이스) 새 버그로 오인하지 말 것** — 이미 알려진 핫 리로드 잔재 문제(Play 중 재컴파일 이력이 있는 에디터 세션에서 발생, 세션이 이어지는 한 스스로 안 없어짐)다. 발견하면 그 즉시 Stop 후 Play로 재진입해 깨끗한 세션에서 이어간다. 재진입해도 같은 에러가 바로 또 나면 이번 세션 자체의 문제이니 사용자에게 보고.
 3. 메뉴 아이템 `Tools/QA/Start Recording` 실행 (`QARecorder.cs`, `.claude/class/QARecorder.md` 참고 — 2026-07-21부터 Unity Recorder 세션 방식을 폐기하고, `EditorApplication.update`마다 `ScreenCapture.CaptureScreenshot`로 PNG만 저장하는 방식으로 교체됨. **Play Mode 실시간 재생 속도에 전혀 영향을 안 준다** — 예전엔 녹화 자체가 Play Mode를 강제로 늦췄지만 이제 그런 부작용이 없다).
    - 예전엔 이 시점에 "Start Recording 직후 Step() 대량 호출 시 9분간 응답 없음" 문제가 있었는데, 그건 옛 Unity Recorder가 매 프레임 인코딩을 동기 처리하며 생긴 문제라 이번 교체로 원인 자체가 사라졌을 가능성이 높다 — 다만 아직 라이브로 재검증되지 않았으니, 이번에도 대량 `Step()`을 한 번에 몰아 부르기보다는 소량씩 나눠 호출하며 진행 상황을 확인하는 습관은 유지할 것.
 4. 게임 시간을 진행시켜 플레이 구간을 확보한다. 기본 60~90초(게임 시간) 권장:
    - WaveTable 첫 페이즈 전환이 120초 시점이라, 여러 페이즈를 보고 싶으면 그만큼 길게(120초+) 잡을 것. 짧게 잡으면 항상 1페이즈(Normal 100%)만 보게 된다는 걸 감안해서 목적에 맞게 조정.
    - 토스트/텍스트 애니메이션처럼 짧은 UI 이벤트를 확인하려면 해당 이벤트가 트리거되는 조작을 이 구간에 함께 수행(가능한 경우).
+   - **레벨업 카드 드래프트 등 일시정지형 모달 팝업이 뜨면 방치하지 말고 즉시 선택/닫기 클릭으로 넘긴다.** 이런 팝업은 대개 열려있는 동안 게임 로직 자체를 멈추는데, `Time.time`처럼 팝업과 무관하게 계속 흐르는 값을 기준으로 대기하면 "그 시간 내내 로직이 멈춰있었다"는 걸 놓치고 관찰 대상(발사 빈도/스폰/이동 등)이 실제보다 느리거나 안 움직이는 것처럼 보이는 거짓 양성이 생길 수 있다. 매 폴링 시점마다 이런 팝업이 열려 있는지 확인하고, 있으면 실제 클릭(`ExecuteEvents.pointerClickHandler`)으로 즉시 닫은 뒤 이어간다. **이 프로젝트는 초반 XP 획득이 빨라 `UICardDraft`가 아주 자주(수 초~십수 초 간격으로 연달아) 뜬다** — "가끔 확인" 수준이 아니라 실질적으로 매 폴링마다 나온다고 가정하고 빠짐없이 처리할 것, 하나 놓치면 그 뒤로 계속 정지 상태로 남을 수 있다. 이 프로젝트의 구체적인 일시정지 메커니즘(어떤 팝업이 무엇을 멈추는지)은 `.claude/rules/glory.md`의 "씬 진입점 베이스 + 중앙 Update" 참고.
+   - **`UICardDraft`가 처음 열리는 시점엔 `Logger.Log("[UICardDraft] Open")`이 콘솔에 찍힌다**(2026-07-29 추가, `.claude/class/UICardDraft.md` 참고). `find_gameobjects`로 화면을 매번 뒤지는 대신 `read_console`로 이 로그를 확인해 열림을 감지하면 더 가볍고 확실하다 — 게임 시간을 진행시키는 `Step()`/`sleep` 루프 사이사이에 `read_console`을 끼워 넣어, 이 로그가 보이는 즉시(다음 폴링까지 미루지 말고) 바로 클릭 처리할 것. 단, 연속 레벨업으로 카드가 재롤링될 때는 `Show()`가 재호출되지 않아 이 로그도 다시 안 찍히므로, 로그가 안 보인다고 팝업이 닫혔다고 단정하지 말고 화면 상태(`find_gameobjects` 등)로 실제 열림 여부를 한 번 더 확인할 것.
 5. 메뉴 아이템 `Tools/QA/Stop Recording` 실행 — 캡처된 PNG 시퀀스를 ffmpeg로 mp4 하나로 자동 스티칭한 뒤 PNG는 정리(삭제)된다. ffmpeg를 못 찾으면 `last_recording.json`의 `path`가 `null`로 기록되고 PNG 폴더(`QA_Recordings/{세션명}_frames/`)가 남아있으니, 그 경우 PATH에 `ffmpeg`가 있는지(`%LOCALAPPDATA%\ffmpeg\*\bin\ffmpeg.exe`도 자동 탐색됨) 먼저 확인.
 6. Unity MCP로 Play Mode 종료.
 7. `Read` 또는 `Bash`로 `QA_Recordings/last_recording.json` 확인 — `status`가 `recording_stopped`이고 `path`가 `null`이 아니며 실제 존재하는 파일인지 검증(`Bash`의 `test -f` 등). 아직 `recording_started`면 Stop이 아직 반영 안 된 것이니 1~2초 뒤 재확인. `frameCount`도 함께 확인 — 60~90초 구간인데 한 자릿수 등 비정상적으로 적으면 캡처 자체가 제대로 안 된 것.

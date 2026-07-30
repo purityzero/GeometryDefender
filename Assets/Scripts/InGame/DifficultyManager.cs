@@ -104,7 +104,8 @@ public class DifficultyManager : UpdatableBehaviour
         return m_CurrentRecord.ShardMultiplier + GetInfiniteStepCount() * m_CurrentRecord.InfiniteStepAmount;
     }
 
-    private float GetInfiniteStepCount()
+    // UIInGameHUD가 Infinite 난이도에서 WAVE 표시를 계속 올리는 데도 사용(마지막으로 정의된 웨이브 이후 몇 단계 지났는지).
+    public float GetInfiniteStepCount()
     {
         if (m_CurrentRecord.InfiniteStepSeconds <= 0f)
             return 0f;

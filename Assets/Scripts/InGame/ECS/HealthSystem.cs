@@ -37,6 +37,7 @@ public partial struct HealthSystem : ISystem
                     // 02_combat.html "치명타 발생 시... 화면 미세 셰이크 / 진동" — 처치 여부와 무관하게 치명타가 발생한 즉시
                     damageTextManager?.ShakeCamera();
                     damageTextManager?.VibrateOnCrit();
+                    damageTextManager?.PlayCritSound();
                 }
             }
             damageRequests.Clear();

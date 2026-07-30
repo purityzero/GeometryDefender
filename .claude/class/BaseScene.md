@@ -4,6 +4,8 @@
 - IUpdatable
 - InGameScene, TitleScene (파생 클래스)
 - [[SceneSingleton]] (부모, 2026-07-21부터 — `Current` 필드/Awake/OnDestroy가 여기로 이동)
+- SoundManager, SoundTable, SoundRecord, TableManager, ResUtil (2026-07-29부터 `PlaySfx` 경유 — 프로젝트 비의존 원칙 예외, [[glory]] 참고)
+- UIButton (2026-07-29 신설, `PlaySfx` 최초 소비자)
 
 ## 개요
 씬 진입점(InGameScene/TitleScene)의 공통 베이스 클래스 (Glory 라이브러리, 프로젝트 비의존). 두 가지 역할을 한다.
@@ -136,3 +138,44 @@ Register 호출은 여전히 생략(자기 참조 방지, 기존 의도 유지)�
 
 ### 검증
 IDE 진단(컴파일 에러 0건)만 확인. Play Mode 실측(재컴파일 강제 재현)은 미완 — qa-tester 후속 세션에서 확인 예정.
+
+---
+
+## 2026-07-29-0 — PlaySfx(string) 신규 (버튼 클릭음 등 "키로 SFX 재생" 공용 진입점)
+
+### 개요
+사용자 요청("버튼 클릭음도 만들어줘어~~" → "UIButton이라고 만들어서... Button 상속 받아서 만들어도 됨" → "UIClickSoundPlayer 이거는 좀 아닌거 같아, 차라리 SceneBase에 따로 갖고 있어서 해주는게 나을꺼같아"). 애초에 전역 레이캐스트 리스너(`UIClickSoundPlayer`, MonoSingleton — 매 프레임 Mouse/Touchscreen 릴리즈 감지 + `EventSystem.RaycastAll`로 클릭된 Button 탐지)를 만들었으나 사용자가 이 방식을 반려하고, 대신 [[UIButton]](`Button` 상속, 사운드 키 필드 보유)이 자기 클릭 시 `BaseScene.Current.PlaySfx(key)`를 직접 호출하는 구조로 변경. 삭제된 파일: Assets/Scripts/UI/UIClickSoundPlayer.cs(미커밋 상태라 흔적 없이 제거).
+
+### 파일
+- Assets/Scripts/Glory/Scene/BaseScene.cs
+
+### 수정 (함수 단위)
+
+**PlaySfx(string _soundKey)** (신규)
+```csharp
+public void PlaySfx(string _soundKey)
+{
+    if (string.IsNullOrEmpty(_soundKey) == true)
+        return;
+
+    SoundTable soundTable = TableManager.instance.GetTable<SoundTable>();
+    SoundRecord record = soundTable?.GetRecordByKey(_soundKey);
+    if (record == null)
+    {
+        Logger.Error($"[BaseScene] PlaySfx Failed! SoundRecord not found - {_soundKey}");
+        return;
+    }
+
+    AudioClip clip = ResUtil.Load<AudioClip>(record.ClipPath);
+    if (clip == null)
+        return;
+
+    SoundManager.instance.PlaySfx(clip, null, record.MaxConcurrent);
+}
+```
+
+### 설계 근거
+`SoundTable`/`SoundRecord`는 프로젝트 소유 테이블이라 Glory가 직접 참조하면 원칙 위반이지만, `UIManager.Get<T>()` → `UITable`/`UIRecord` 참조(2026-07-15)와 동일한 성격의 기명 예외로 취급 — [[glory]] 문서의 예외 목록에 함께 기록.
+
+### 미검증
+컴파일/Play Mode 미실행 상태 편집 — 사용자 지시("MCP 연결하지말고 나 불러")에 따라 MCP 자동 검증을 하지 않고 직접 테스트를 기다리는 중.

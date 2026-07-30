@@ -3,7 +3,7 @@ using Unity.Entities;
 using Unity.Transforms;
 using UnityEngine;
 
-// 엔티티의 LocalTransform.Position을 시각적 GameObject의 transform에 복사 (VisualSyncSystem과 동일 패턴, 대상만 ProjectileTag)
+// 엔티티의 LocalTransform.Position을 시각적 GameObject의 transform에 복사 (VisualSyncSystem과 동일 패턴, 대상은 ProjectileTag 또는 OrbitalTag)
 [UpdateInGroup(typeof(PresentationSystemGroup))]
 public partial class ProjectileVisualSyncSystem : SystemBase
 {
@@ -11,9 +11,11 @@ public partial class ProjectileVisualSyncSystem : SystemBase
 
     protected override void OnCreate()
     {
-        m_Query = GetEntityQuery(
-            ComponentType.ReadOnly<LocalTransform>(),
-            ComponentType.ReadOnly<ProjectileTag>());
+        m_Query = GetEntityQuery(new EntityQueryDesc
+        {
+            All = new ComponentType[] { ComponentType.ReadOnly<LocalTransform>() },
+            Any = new ComponentType[] { ComponentType.ReadOnly<ProjectileTag>(), ComponentType.ReadOnly<OrbitalTag>() },
+        });
     }
 
     protected override void OnUpdate()

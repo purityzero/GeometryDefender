@@ -40,6 +40,28 @@ public abstract class BaseScene : SceneSingleton<BaseScene>
         m_UpdatableList.Remove(_updatable);
     }
 
+    // UIManager.Get<T>()의 UITable 참조(2026-07-15, 사용자 요청)와 동일한 성격의 프로젝트 비의존 원칙 예외 —
+    // 씬 전역에서 "키 하나로 SFX 재생"이 필요한 곳(UIButton 등)이 각자 SoundTable을 조회하지 않고 여기로 모으기 위해 신설(2026-07-29, 사용자 요청).
+    public void PlaySfx(string _soundKey)
+    {
+        if (string.IsNullOrEmpty(_soundKey) == true)
+            return;
+
+        SoundTable soundTable = TableManager.instance.GetTable<SoundTable>();
+        SoundRecord record = soundTable?.GetRecordByKey(_soundKey);
+        if (record == null)
+        {
+            Logger.Error($"[BaseScene] PlaySfx Failed! SoundRecord not found - {_soundKey}");
+            return;
+        }
+
+        AudioClip clip = ResUtil.Load<AudioClip>(record.ClipPath);
+        if (clip == null)
+            return;
+
+        SoundManager.instance.PlaySfx(clip, null, record.MaxConcurrent);
+    }
+
     private void Update()
     {
         if (isPaused == true)

@@ -19,3 +19,11 @@ public enum eLanguage
     Chinese,
     Japanese
 }
+
+public enum eSoundCategory
+{
+    Master = 0,
+    Bgm,
+    Sfx,
+    Ambience
+}

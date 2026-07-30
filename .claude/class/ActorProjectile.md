@@ -1,5 +1,15 @@
 # ActorProjectile
 
+## 2026-07-30-0 — material 접근자 신설 + Close() 시 Tween/글로우 정리
+Frost Orb Turret(비영구 인스턴스, [[ActorPlayer]] 2026-07-30-4)와 Orbital Ring 오브(풀링 인스턴스, [[ProjectileManager]] 2026-07-30-3) 둘 다 이 컴포넌트의 머티리얼에 무한 루프 Tween(색상/글로우 펄스)을 걸게 되면서:
+- `public Material material => m_Renderer.material;` 신규 노출(인스턴스 머티리얼, 외부 TweenUtil 호출용).
+- `Close()`(풀 반납 시 항상 호출)에 `DOTween.Kill(m_Renderer.material)` + `SetFloat("_GlowAmount", 1f)` 추가 — 안 하면 Orbital Ring처럼 풀링되는 인스턴스는 반납 후 재사용될 때 **전혀 다른 투사체가 이전 오브젝트의 반짝임을 그대로 물려받는** 풀링 오염이 생김.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증.
+
+---
+
 ## 연관 클래스
 - Actor(부모), FactoryObject
 - ProjectileManager — 풀링/스폰 시 `SetColor()` 호출

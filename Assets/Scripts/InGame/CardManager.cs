@@ -13,16 +13,32 @@ public class CardManager : UpdatableBehaviour
         { "Splash1", 303 },
         { "GlassCannon", 501 },
         { "OrbitalRing", 503 },
+        // 2026-07-30 — 신규 무기 2종(Orbital Slow/Mortar)은 메타 트리로 "카드가 드래프트에 뜨도록" 해금하는 방식
+        // (사용자 요청: "해금을 하면 드래프트에 나오는 시스템으로 해줘" — 기존 5종 무기와 동일한 흐름).
+        { "OrbitalSlowWeapon", 606 },
+        { "MortarWeapon", 607 },
     };
 
     // Splash(#303)/Chain(#304)/Homing(#305)은 이제 무기 전용 강화 카드(ActorPlayer.ApplyInnateWeaponAbility 참고) —
     // 이 런에서 해당 무기(Mage/ChainCoil/HomingPod)를 아직 안 뽑았으면 드래프트 풀에서 제외(사용자 요청: "무기가 없으면 다른 걸 뽑아와야지").
+    // 2026-07-29 — 전역 공격력/치명타 카드(101~104) 제거 자리를 무기 전용 강화 카드로 메우며 Archer(#309)/HomingPod(#310)/
+    // CentralTower(#311/#312)도 동일 패턴으로 편입(사용자 요청: "각 무기 특징으로 업그레이드... 해당무기가 없으면 뜨지 않게").
     private static readonly Dictionary<int, int> WEAPON_REQUIRED_CARD_IDS = new Dictionary<int, int>
     {
         { 303, 2 }, // Splash I → Mage
         { 304, 4 }, // Chain Lightning → ChainCoil
-        { 305, 5 }, // Homing Missile → HomingPod
         { 308, 6 }, // Laser Overdrive → LaserSpinner
+        { 309, 1 }, // Rapid Overclock → Archer(래피드 오토캐논)
+        { 310, 5 }, // Homing Overdrive → HomingPod
+        { 311, 3 }, // Focused Aim → CentralTower
+        { 312, 3 }, // Devastating Blow → CentralTower
+    };
+
+    // 2026-07-30 — 사용자 요청("관통 1스택이 나온 후 2스택이 나오게 선행조건 추가"). 무기 보유 여부가 아니라
+    // "이번 런에서 이미 뽑은 카드" 기준 선행조건 — WEAPON_REQUIRED_CARD_IDS와는 별개 축이라 새 딕셔너리로 분리.
+    private static readonly Dictionary<int, int> CARD_PREREQUISITE_IDS = new Dictionary<int, int>
+    {
+        { 106, 105 }, // Pierce II ← Pierce I 선획득 필요
     };
 
     // Double Shot(#107)은 Legendary라 등급상 유니크 취급되지만, 사용자 요청("더블샷 계속 먹으면 탄수 한번에 늘어나게")대로
@@ -43,6 +59,9 @@ public class CardManager : UpdatableBehaviour
     private HashSet<SynergyTierKey> m_GrantedSynergyTiers = new HashSet<SynergyTierKey>();
 
     private int m_PitySinceEpic;
+    // 2026-07-29-2 — 등급 천장과 별개인 카테고리 천장(design-issues.md 2026-07-29-0). 두 번째 무기(Weapon 카테고리)가
+    // 없는 채로 WEAPON_PITY_THRESHOLD회 연속 드래프트에 한 번도 안 뜨면 다음 드래프트 슬롯 하나를 강제로 Weapon 카드로 채운다.
+    private int m_DraftsSinceWeaponCard;
     private int m_RerollsUsed;
 
     private bool m_hasVampire;
@@ -66,6 +85,7 @@ public class CardManager : UpdatableBehaviour
 
         m_AllCards = cardTable.list;
         m_PitySinceEpic = 0;
+        m_DraftsSinceWeaponCard = 0;
         m_RerollsUsed = 0;
         m_ObtainedCardIds.Clear();
         m_ObtainedUniqueIds.Clear();
@@ -95,11 +115,26 @@ public class CardManager : UpdatableBehaviour
         bool isPityActive = (m_PitySinceEpic >= GameConfigTable.PITY_THRESHOLD)
             && (HasAnyCard(pool, eCardRarity.Epic) == true || HasAnyCard(pool, eCardRarity.Legendary) == true);
 
+        // 무기 카테고리 천장 — 등급 천장(위)과 독립. 두 번째 무기가 아직 없는데 오래 안 뜨면 슬롯 0을 강제로 Weapon 카드로.
+        List<CardRecord> weaponCandidates = GetWeaponCategoryCards(pool);
+        bool isWeaponPityActive = (m_DraftsSinceWeaponCard >= GameConfigTable.WEAPON_PITY_THRESHOLD)
+            && (InGameScene.Current.towerController.weaponCount <= 1)
+            && (weaponCandidates.Count > 0);
+
         for (int slot = 0; slot < GameConfigTable.DRAFT_SIZE; ++slot)
         {
-            eCardRarity rarity = (isPityActive == true && slot == 0) ? RollPityRarity(pool) : RollRarity(pool);
+            CardRecord picked;
 
-            CardRecord picked = PickCardExcluding(pool[rarity], pickedIds);
+            if (slot == 0 && isWeaponPityActive == true)
+            {
+                picked = PickCardExcluding(weaponCandidates, pickedIds);
+            }
+            else
+            {
+                eCardRarity rarity = (slot == 0 && isPityActive == true) ? RollPityRarity(pool) : RollRarity(pool);
+                picked = PickCardExcluding(pool[rarity], pickedIds);
+            }
+
             if (picked == null)
                 continue;
 
@@ -109,6 +144,9 @@ public class CardManager : UpdatableBehaviour
 
         bool hasEpicOrAbove = result.Exists(record => record.Rarity == eCardRarity.Epic || record.Rarity == eCardRarity.Legendary);
         m_PitySinceEpic = (hasEpicOrAbove == true) ? 0 : m_PitySinceEpic + 1;
+
+        bool hasWeaponCard = result.Exists(record => record.Category == eCardCategory.Weapon);
+        m_DraftsSinceWeaponCard = (hasWeaponCard == true) ? 0 : m_DraftsSinceWeaponCard + 1;
 
         return result;
     }
@@ -122,6 +160,22 @@ public class CardManager : UpdatableBehaviour
             return eCardRarity.Legendary;
 
         return RollRarity(_pool);
+    }
+
+    private List<CardRecord> GetWeaponCategoryCards(Dictionary<eCardRarity, List<CardRecord>> _pool)
+    {
+        List<CardRecord> weaponCards = new List<CardRecord>();
+
+        foreach (KeyValuePair<eCardRarity, List<CardRecord>> pair in _pool)
+        {
+            foreach (CardRecord record in pair.Value)
+            {
+                if (record.Category == eCardCategory.Weapon)
+                    weaponCards.Add(record);
+            }
+        }
+
+        return weaponCards;
     }
 
     // 등급별 가중치 — 튜플 대신 struct 사용(CODE.MD "튜플 구조 분해/저장 금지")
@@ -204,6 +258,12 @@ public class CardManager : UpdatableBehaviour
             if (HasRequiredWeapon(record) == false)
                 continue;
 
+            if (HasWeaponSlotAvailable(record) == false)
+                continue;
+
+            if (HasRequiredPrerequisiteCard(record) == false)
+                continue;
+
             bool isUnique = IsUniqueCard(record);
             if (isUnique == true && m_ObtainedUniqueIds.Contains(record.Id) == true)
                 continue;
@@ -256,6 +316,27 @@ public class CardManager : UpdatableBehaviour
         return InGameScene.Current.towerController.HasWeapon(requiredTowerRecordId);
     }
 
+    // 2026-07-30 — 사용자 요청("무기는 한꺼번에 4개만 갖을 수 있도록" + "무기 장착슬롯 추가도 메타트리에 넣으면 좋을듯").
+    // 무기 카드(WeaponUnlock)만 대상 — Weapon 카테고리가 아닌 카드는 무기 슬롯과 무관하므로 항상 통과.
+    // maxWeaponSlots는 메타 트리(M-405) 해금분까지 반영된 유효 상한(ActorPlayer.Init() 참고). 최종 방어선은 ActorPlayer.AddWeapon().
+    private bool HasWeaponSlotAvailable(CardRecord _record)
+    {
+        if (_record.Category != eCardCategory.Weapon)
+            return true;
+
+        return InGameScene.Current.towerController.weaponCount < InGameScene.Current.towerController.maxWeaponSlots;
+    }
+
+    // 2026-07-30 — 사용자 요청("관통 1스택이 나온 후 2스택이 나오게 선행조건 추가"). CARD_PREREQUISITE_IDS에
+    // 없는 카드는 항상 통과, 있으면 이번 런에서 그 선행 카드를 이미 뽑았을 때만 통과.
+    private bool HasRequiredPrerequisiteCard(CardRecord _record)
+    {
+        if (CARD_PREREQUISITE_IDS.TryGetValue(_record.Id, out int prerequisiteCardId) == false)
+            return true;
+
+        return m_ObtainedCardIds.Contains(prerequisiteCardId);
+    }
+
     // Epic/Legendary는 원래 한 런에 한 장만(유니크) — REPEATABLE_CARD_IDS에 등록된 카드(Double Shot #107)만 예외로 반복 드래프트 허용.
     private bool IsUniqueCard(CardRecord _record)
     {
@@ -284,17 +365,6 @@ public class CardManager : UpdatableBehaviour
     public void UseReroll()
     {
         m_RerollsUsed++;
-    }
-
-    public bool CanSkip()
-    {
-        MetaTreeTable metaTreeTable = TableManager.instance.GetTable<MetaTreeTable>();
-        return metaTreeTable != null && metaTreeTable.GetTotalEffectValue(eMetaEffectType.SkipEnable, PlayerManager.instance.playerData.UnlockedMetaNodes) > 0;
-    }
-
-    public void Skip()
-    {
-        PlayerManager.instance.AddCurrency(eCurrencyType.Shard, GameConfigTable.SKIP_SHARD_REWARD);
     }
 
     public void ApplyCard(CardRecord _record)
@@ -351,9 +421,9 @@ public class CardManager : UpdatableBehaviour
 
             case eCardCategory.Speed:
                 if (_tier == 3)
-                    InGameScene.Current.towerController.AddCardAttackSpeedPercent(10f);
+                    InGameScene.Current.towerController.AddCardAttackSpeedPercent(8f);
                 else if (_tier == 5)
-                    InGameScene.Current.towerController.AddCardAttackSpeedPercent(25f);
+                    InGameScene.Current.towerController.AddCardAttackSpeedPercent(20f);
                 else if (_tier == 7)
                     InGameScene.Current.towerController.AddProjectileCount(1);
                 break;
@@ -391,10 +461,9 @@ public class CardManager : UpdatableBehaviour
 
         switch (_record.EffectType)
         {
-            case eCardEffectType.DamagePercent:
-                InGameScene.Current.towerController.AddCardDamagePercent(_record.EffectValue);
-                break;
-
+            // 2026-07-29 — CentralTower 전용 강화 카드(Focused Aim/Devastating Blow)만 이 두 케이스를 사용한다.
+            // WEAPON_REQUIRED_CARD_IDS로 CentralTower 보유 시에만 드래프트에 등장(사실상 항상 참이지만 패턴 일관성 유지),
+            // ActorPlayer.Fire()가 CentralTower 발사 시에만 이 값을 실제로 적용해 다른 무기에는 영향 없음.
             case eCardEffectType.CritChance:
                 InGameScene.Current.towerController.AddCardCritChance(_record.EffectValue);
                 break;
@@ -414,6 +483,22 @@ public class CardManager : UpdatableBehaviour
             case eCardEffectType.SpeciesBonusDamage:
                 if (Enum.TryParse(_record.EffectParam, out eEnemySpecies species) == true)
                     InGameScene.Current.towerController.SetSpeciesBonusDamage(species, _record.EffectValue);
+                break;
+
+            // 2026-07-29 — 몬스터 변종(Normal/Elite/Boss) 대상 추가 데미지. EffectParam이 eEnemyVariant 이름 문자열.
+            case eCardEffectType.VariantBonusDamage:
+                if (Enum.TryParse(_record.EffectParam, out eEnemyVariant variant) == true)
+                    InGameScene.Current.towerController.AddVariantBonusDamage(variant, _record.EffectValue);
+                break;
+
+            // Rapid Overclock(#309) 전용 — Archer(래피드 오토캐논) 무기에만 곱해지는 추가 공속(전역 AttackSpeedPercent와 별개)
+            case eCardEffectType.ArcherAttackSpeedPercent:
+                InGameScene.Current.towerController.AddArcherAttackSpeedPercent(_record.EffectValue);
+                break;
+
+            // Homing Overdrive(#310) 전용 — HomingPod 유도 회전율 가산
+            case eCardEffectType.HomingTurnRateAdd:
+                InGameScene.Current.towerController.AddHomingTurnRate(_record.EffectValue);
                 break;
 
             // Overdrive(#205) 전용 — AS +100%(EffectValue) / DMG -30%(EffectParam, 음수 문자열)
@@ -441,10 +526,6 @@ public class CardManager : UpdatableBehaviour
             case eCardEffectType.ChainEnable:
                 float chainRadius = (string.IsNullOrEmpty(_record.EffectParam) == false && float.TryParse(_record.EffectParam, out float parsedChainRadius) == true) ? parsedChainRadius : 2f;
                 InGameScene.Current.towerController.SetChain(Mathf.RoundToInt(_record.EffectValue), chainRadius);
-                break;
-
-            case eCardEffectType.HomingEnable:
-                InGameScene.Current.towerController.SetHoming();
                 break;
 
             case eCardEffectType.LaserDurationAdd:
@@ -490,7 +571,9 @@ public class CardManager : UpdatableBehaviour
                 {
                     int orbitalCount = Mathf.RoundToInt(_record.EffectValue);
                     int orbitalDamage = Mathf.RoundToInt(InGameScene.Current.towerController.GetShieldBurstDamage());
-                    InGameScene.Current.projectileManager.SpawnOrbitals(InGameScene.Current.towerController.transform.position, orbitalCount, orbitalDamage, 0.3f, 1.5f);
+                    // 사용자 요청("오비탈링도 좀 넓은 범위로 하고 도는 링이 5개로 하고 좀 살짝 더 크게") — 판정 반경 0.3→0.4,
+                    // 공전 거리 1.5→2.5, 시각 크기 배율 1.3(개수는 CardTable Card503.EffectValue를 4→5로 조정).
+                    InGameScene.Current.projectileManager.SpawnOrbitals(InGameScene.Current.towerController.transform.position, orbitalCount, orbitalDamage, 0.4f, 2.5f, 1.3f);
                 }
                 break;
 

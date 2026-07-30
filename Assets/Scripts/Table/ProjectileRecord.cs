@@ -6,7 +6,9 @@ public enum eProjectileType
     Pierce,
     Splash,
     Homing,
-    Chain
+    Chain,
+    Rapid,
+    Mortar
 }
 
 public class ProjectileRecord : Record

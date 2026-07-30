@@ -11,6 +11,20 @@ using UnityEngine;
 [UpdateAfter(typeof(ProjectileMoveSystem))]
 public partial struct ProjectileCollisionSystem : ISystem
 {
+    // 직전 프레임 위치→현재 위치 구간에서 몬스터 중심(_point)에 가장 가까운 지점을 구해 명중 여부를 판정한다.
+    // 프레임당 이동거리가 반지름보다 커지면(배속이 높을수록 커짐) "현재 위치가 원 안"이라는 스냅샷 판정만으로는
+    // 사이 구간을 그냥 지나쳐도(터널링) 못 잡아내던 문제를 방지.
+    private static float3 ClosestPointOnSegment(float3 _segmentStart, float3 _segmentEnd, float3 _point)
+    {
+        float3 segment = _segmentEnd - _segmentStart;
+        float segmentLengthSq = math.lengthsq(segment);
+        if (segmentLengthSq <= 0.0001f)
+            return _segmentStart;
+
+        float projectionRatio = math.saturate(math.dot(_point - _segmentStart, segment) / segmentLengthSq);
+        return _segmentStart + segment * projectionRatio;
+    }
+
     public void OnUpdate(ref SystemState state)
     {
         EntityCommandBuffer commandBuffer = SystemAPI
@@ -32,19 +46,26 @@ public partial struct ProjectileCollisionSystem : ISystem
             monsterRadii.Add(combatRadius.ValueRO.Value);
         }
 
-        foreach (var (projectileTransform, stats, effects, entity) in
-            SystemAPI.Query<RefRO<LocalTransform>, RefRO<ProjectileStats>, RefRW<ProjectileEffects>>()
+        foreach (var (projectileTransform, motion, stats, effects, entity) in
+            SystemAPI.Query<RefRO<LocalTransform>, RefRO<ProjectileMotion>, RefRO<ProjectileStats>, RefRW<ProjectileEffects>>()
             .WithAll<ProjectileTag>()
             .WithNone<ProjectileExpiredTag>()
             .WithEntityAccess())
         {
             float3 projectilePosition = projectileTransform.ValueRO.Position;
+            float3 projectilePreviousPosition = motion.ValueRO.PreviousPosition;
 
             int hitIndex = -1;
             for (int i = 0; i < monsterEntities.Length; ++i)
             {
+                // 관통 직후 같은 프레임/다음 프레임에 방금 맞은 대상을 또 스윕 판정에 잡아버리는 문제 방지
+                // (관통 스택만 축내고 새 대상은 못 맞히는 버그의 원인 — 2026-07-30 사용자 보고로 발견).
+                if (monsterEntities[i] == effects.ValueRO.LastHitEntity)
+                    continue;
+
                 float hitDistance = stats.ValueRO.Radius + monsterRadii[i];
-                if (math.distancesq(projectilePosition, monsterPositions[i]) > hitDistance * hitDistance)
+                float3 closestPoint = ClosestPointOnSegment(projectilePreviousPosition, projectilePosition, monsterPositions[i]);
+                if (math.distancesq(closestPoint, monsterPositions[i]) > hitDistance * hitDistance)
                     continue;
 
                 hitIndex = i;
@@ -100,10 +121,11 @@ public partial struct ProjectileCollisionSystem : ISystem
                 damageTextManager?.ShowSplashExplosion(splashPosition);
             }
 
-            // Pierce(#105/#106) — 관통 스택이 남아있으면 소멸하지 않고 계속 날아감(같은 적을 다시 맞히는 경우는 매 프레임 1체만 판정하는 구조상 드묾)
+            // Pierce(#105/#106) — 관통 스택이 남아있으면 소멸하지 않고 계속 날아감
             if (effects.ValueRO.Pierce > 0)
             {
                 effects.ValueRW.Pierce -= 1;
+                effects.ValueRW.LastHitEntity = monsterEntities[hitIndex];
                 continue;
             }
 

@@ -13,12 +13,13 @@ public enum eMetaEffectType
     MaxHp,
     DamagePercent,
     RangePercent,
+    AttackSpeedPercent,
     UnlockCard,
-    XpMagnetPercent,
     XpPercent,
     ShardPercent,
     RerollCount,
-    SkipEnable
+    WeaponSlotCount,
+    WeaponDamagePercent
 }
 
 public class MetaTreeRecord : Record
@@ -92,6 +93,25 @@ public class MetaTreeTable : Table<MetaTreeRecord>
                 continue;
 
             if (record.EffectType == _effectType)
+                total += record.EffectValue;
+        }
+
+        return total;
+    }
+
+    // GetTotalEffectValue와 동일하지만 EffectParam까지 일치해야 합산 — 무기별 개별 강화(WeaponDamagePercent, EffectParam=TowerRecord.Id 문자열)처럼
+    // 같은 EffectType을 여러 무기가 각자 다른 EffectParam으로 나눠 쓰는 경우에 사용(2026-07-30, [[ActorPlayer]] 참고).
+    public int GetTotalEffectValueForParam(eMetaEffectType _effectType, string _effectParam, List<int> _unlockedIds)
+    {
+        int total = 0;
+
+        for (int i = 0; i < _unlockedIds.Count; ++i)
+        {
+            MetaTreeRecord record = GetRecordById(_unlockedIds[i]);
+            if (record == null)
+                continue;
+
+            if (record.EffectType == _effectType && record.EffectParam == _effectParam)
                 total += record.EffectValue;
         }
 

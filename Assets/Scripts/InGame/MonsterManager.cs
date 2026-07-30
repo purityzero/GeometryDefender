@@ -94,12 +94,17 @@ public class MonsterManager : UpdatableBehaviour
         {
             Species = _record.Species,
         });
+        m_EntityManager.AddComponentData(entity, new EnemyVariantData
+        {
+            Variant = _record.Variant,
+        });
         m_EntityManager.AddComponentData(entity, new MonsterTag());
         m_EntityManager.AddComponentData(entity, new CombatRadius
         {
             // VisualSize(스프라이트 스케일 배율)의 절반을 대략적인 충돌 반경으로 사용 — 투사체 충돌 판정용 근사치
             Value = _record.VisualSize * 0.5f,
         });
+        m_EntityManager.AddComponentData(entity, new SlowAuraData { SlowMultiplier = 1f });
         m_EntityManager.AddComponentData(entity, LocalTransform.FromPosition(new float3(
             wayPoint.x,
             wayPoint.y,
@@ -156,6 +161,44 @@ public class MonsterManager : UpdatableBehaviour
                 continue;
 
             m_EntityManager.GetBuffer<DamageRequest>(entities[i]).Add(new DamageRequest { Amount = _damage });
+        }
+
+        entities.Dispose();
+        transforms.Dispose();
+        aliveQuery.Dispose();
+    }
+
+    // Orbital Slow(신규 무기) — 매 프레임 호출 전제. 범위 안이면 슬로우 배율 적용, 밖이면 1(정상 속도)로 되돌림 —
+    // "그 프레임에 닿아있는지"만으로 매번 다시 계산하므로 별도의 진입/이탈 이벤트나 리셋 로직이 필요 없다.
+    public void ApplySlowAura(Vector2 _center, float _radius, float _slowMultiplier)
+    {
+        if (m_isInitialized == false)
+            return;
+
+        float3 center = new float3(_center.x, _center.y, 0f);
+
+        EntityQuery aliveQuery = m_EntityManager.CreateEntityQuery(
+            ComponentType.ReadOnly<MonsterTag>(),
+            ComponentType.ReadOnly<LocalTransform>(),
+            ComponentType.Exclude<DeadTag>(),
+            ComponentType.Exclude<ReachedEndTag>());
+
+        NativeArray<Entity> entities = aliveQuery.ToEntityArray(Allocator.Temp);
+        NativeArray<LocalTransform> transforms = aliveQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
+        for (int i = 0; i < entities.Length; ++i)
+        {
+            bool isTouching = math.distancesq(center, transforms[i].Position) <= _radius * _radius;
+            m_EntityManager.SetComponentData(entities[i], new SlowAuraData { SlowMultiplier = (isTouching == true) ? _slowMultiplier : 1f });
+
+            // 사용자 요청("냉기오브에서 슬로우가 좀 걸리는게 눈에 띄었으면 좋겠고") — 슬로우 판정 중인 몬스터를 시각적으로 구분.
+            if (m_EntityManager.HasComponent<VisualObject>(entities[i]) == true)
+            {
+                VisualObject visualObject = m_EntityManager.GetComponentObject<VisualObject>(entities[i]);
+                ActorMonster actorMonster = visualObject.transform.GetComponent<ActorMonster>();
+                if (actorMonster != null)
+                    actorMonster.SetSlowTinted(isTouching);
+            }
         }
 
         entities.Dispose();
@@ -252,6 +295,7 @@ public class MonsterManager : UpdatableBehaviour
             if (rewards[i].IsBoss == true)
                 bossKillCount.Value++;
             OnMonsterDie?.Invoke(rewards[i]);
+            InGameScene.Current?.damageTextManager?.PlayEnemyDeathSound();
             m_EntityManager.DestroyEntity(deadEntities[i]);
         }
 

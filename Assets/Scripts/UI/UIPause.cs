@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UIPause : UIPopup
 {
-    [SerializeField] private TextMeshProUGUI m_SoundText;
+    [SerializeField] private Slider m_BgmVolumeSlider;
+    [SerializeField] private Slider m_SfxVolumeSlider;
     [SerializeField] private TextMeshProUGUI m_EnemyDamageTextText;
     [SerializeField] private TextMeshProUGUI m_AllyDamageTextText;
     [SerializeField] private TextMeshProUGUI m_BuildText;
@@ -17,7 +19,16 @@ public class UIPause : UIPopup
 
         InGameScene.Current?.SetPaused(true);
 
-        RefreshSoundText();
+        OptionData optionData = PlayerManager.instance.optionData;
+
+        m_BgmVolumeSlider.SetValueWithoutNotify(optionData.BgmVolume);
+        m_BgmVolumeSlider.onValueChanged.RemoveAllListeners();
+        m_BgmVolumeSlider.onValueChanged.AddListener(OnBgmVolumeChanged);
+
+        m_SfxVolumeSlider.SetValueWithoutNotify(optionData.SfxVolume);
+        m_SfxVolumeSlider.onValueChanged.RemoveAllListeners();
+        m_SfxVolumeSlider.onValueChanged.AddListener(OnSfxVolumeChanged);
+
         RefreshEnemyDamageTextText();
         RefreshAllyDamageTextText();
         RefreshBuildText();
@@ -50,10 +61,14 @@ public class UIPause : UIPopup
         SceneManager.instance.NextScene(EScene.TitleScene.ToString());
     }
 
-    public void OnClickSoundButton()
+    private void OnBgmVolumeChanged(float _value)
     {
-        PlayerManager.instance.SetSoundOn(PlayerManager.instance.optionData.isSoundOn == false);
-        RefreshSoundText();
+        PlayerManager.instance.SetBgmVolume(_value);
+    }
+
+    private void OnSfxVolumeChanged(float _value)
+    {
+        PlayerManager.instance.SetSfxVolume(_value);
     }
 
     public void OnClickEnemyDamageTextButton()
@@ -66,15 +81,6 @@ public class UIPause : UIPopup
     {
         PlayerManager.instance.SetAllyDamageTextOn(PlayerManager.instance.optionData.isAllyDamageTextOn == false);
         RefreshAllyDamageTextText();
-    }
-
-    private void RefreshSoundText()
-    {
-        StringTable stringTable = TableManager.instance.GetTable<StringTable>();
-        bool isSoundOn = PlayerManager.instance.optionData.isSoundOn;
-        string stateText = (isSoundOn == true) ? stringTable.GetString("SettingsOn") : stringTable.GetString("SettingsOff");
-
-        m_SoundText.text = $"{stringTable.GetString("SettingsSoundLabel")}: {stateText}";
     }
 
     private void RefreshEnemyDamageTextText()

@@ -77,7 +77,7 @@ public class PlayerDataResetWindow : EditorWindow
             }
             else
             {
-                EditorGUILayout.LabelField($"사운드: {optionData.isSoundOn} / 진동: {optionData.isHapticOn} / 왼손 모드: {optionData.isLeftHandMode}");
+                EditorGUILayout.LabelField($"BGM: {optionData.BgmVolume} / SFX: {optionData.SfxVolume} / 진동: {optionData.isHapticOn}");
                 EditorGUILayout.LabelField($"FPS: {optionData.FpsOption} / 언어: {optionData.Language}");
             }
         }

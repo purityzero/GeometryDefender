@@ -1,12 +1,41 @@
 # MonsterManager
 
+## 2026-07-30-1 — ApplySlowAura()에 슬로우 시각화 연동
+사용자 요청("냉기오브에서 슬로우가 좀 걸리는게 눈에 띄었으면") — [[ActorMonster]] 2026-07-30-0 참고. 기존 `SlowAuraData` 갱신 루프에 `VisualObject`→`ActorMonster.SetSlowTinted(isTouching)` 호출 추가(HasComponent 가드 후).
+
+---
+
+## 2026-07-30-0 — SlowAuraData 신설 + ApplySlowAura() (신규 무기: Frost Orb Turret용)
+사용자 요청("ActorPlayer를 천천히 공전하면서 일정 사거리 만큼 적을 슬로우 걸 수 있는 무기가 있었으면 좋겠어") — 상세 설계는 [[ActorPlayer]] 2026-07-30-2 참고. `SlowAuraData(SlowMultiplier)` 컴포넌트를 `Spawn()`에서 전 몬스터에 기본값 1(무효과)로 부착. 신규 `ApplySlowAura(Vector2 center, float radius, float slowMultiplier)` — `DamageEntitiesInRadius`/`DamageEntitiesInArc`와 동일한 "매번 전체 스캔" 패턴으로, 반경 안이면 슬로우 배율, 밖이면 1로 **매 프레임 무조건 재설정** — 진입/이탈 이벤트나 별도 리셋 로직이 필요 없다(호출 안 하면 그 몬스터는 마지막 값에 영구히 머무니, 무기가 활성 상태인 동안 매 프레임 호출이 전제).
+
+### 파일
+- Assets/Scripts/InGame/ECS/SlowAuraData.cs (신규)
+- Assets/Scripts/InGame/MonsterManager.cs
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — Frost Orb Turret 범위 안에 들어온 몬스터가 실제로 느려지는지, 범위를 벗어나면 정상 속도로 복귀하는지 확인 필요.
+
+---
+
+## 2026-07-29-1 — EnemyVariantData 컴포넌트 신설 (몬스터 변종 조건부 데미지 카드 지원)
+사용자 요청("엘리트, 보스, 일반몬스터 등등 타격 데미지 증가")으로 신설 — 기존엔 `RewardData.IsBoss`(bool)만 있어 Boss 여부는 알 수 있어도 Elite/Normal을 구분할 방법이 없었음(스폰 시점 `EnemyRecord.Variant`가 즉시 버려짐). `EnemySpeciesData`(종족)와 동일 패턴으로 `EnemyVariantData { eEnemyVariant Variant }` 컴포넌트 신설, `Spawn()`에서 `_record.Variant`로 채움. `ActorPlayer.Fire()`가 타겟 조회에 사용([[ActorPlayer]] 2026-07-29-4 참고).
+
+### 파일
+- Assets/Scripts/InGame/ECS/EnemyVariantData.cs (신규)
+- Assets/Scripts/InGame/MonsterManager.cs (`Spawn()`에 `AddComponentData` 한 줄)
+
+### 검증
+컴파일 에러 0건. Play Mode(execute_code로 Elite 변종 엔티티 직접 생성 + 실제 자동 전투) — 데미지가 정확히 Elite 배율만큼 반영됨을 대량 샘플로 확인([[ActorPlayer]] 2026-07-29-4 참고).
+
+---
+
 ## 연관 클래스
 - ActorMonster — CullingObject 캐시 보유, `UpdateCullingLogic()` 노출(2026-07-27)
 - MemoryPoolFactory — `GetAllActive()`(2026-07-27)로 활성 몬스터 순회
 - WayPoint
 - EnemyRecord
 - BaseScene, IUpdatable (Update 대신 구동)
-- (ECS 컴포넌트) HealthData, MoveData, RewardData, MonsterTag, DeadTag, ReachedEndTag, WaypointElement, DamageRequest, VisualObject
+- (ECS 컴포넌트) HealthData, MoveData, RewardData, MonsterTag, DeadTag, ReachedEndTag, WaypointElement, DamageRequest, VisualObject, EnemySpeciesData, EnemyVariantData(2026-07-29 신설)
 - [[MonsterSpawnTestWindow]] — `GetAliveMonsterCount()` 조회 대상
 - KillCountText — `Current`/`killCount` 정적 접근자로 폴링, HUD Kill 텍스트 갱신
 

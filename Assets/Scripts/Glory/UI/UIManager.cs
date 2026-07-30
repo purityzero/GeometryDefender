@@ -168,6 +168,12 @@ public class UIManager : MonoSingleton<UIManager>
 		if (toast == null)
 			return;
 
+		// Get<T>()의 SetAsLastSibling과 동일한 이유 — Pop 시점에 다시 최상단으로 올리지 않으면
+		// 이 토스트를 처음 생성했을 때의 sibling index에 그대로 남아, 이후에 새로 연 팝업(Get<T>()가 매번
+		// SetAsLastSibling으로 앞으로 옴)보다 뒤에 깔려 가려질 수 있다(2026-07-29, 사용자 리포트: RunOver 위에
+		// MetaTree를 열면 토스트가 뒤에서 가려짐).
+		toast.transform.SetAsLastSibling();
+
 		toast.Open();
 		m_ActiveToasts.Insert(0, toast);
 		toast.Show(_message, CloseToast);

@@ -18,6 +18,7 @@ tools: "*"
 3. 수정 전, 해당 클래스의 `.claude/class/{클래스명}.md`가 있으면 먼저 읽는다(루트 CLAUDE.md 규칙). 없으면 수정 후 신규 생성.
 4. 최소 침습 수정 원칙(루트 CLAUDE.md "최소 침습 변경") 준수 — 버그와 무관한 코드·포맷·주석은 건드리지 않는다. 네이밍/스타일은 루트 CODE.MD를 따른다.
 5. 수정 후 Unity MCP로 컴파일 확인 — `refresh_unity`(compile 요청) → `read_console`으로 에러 없는지 확인. 가능하면 실제 Play Mode로 재현 시나리오를 짧게 다시 돌려 수정이 문제를 없앴는지 검증한다(리포트에 적힌 재현 절차 참고). 검증이 불가능하면 "미검증"임을 명시하고 절대 "고쳤다"고 단정하지 않는다.
+   - **`manage_editor(action:"play")` 호출 전에 Unity 에디터 창에 OS 포커스를 맞춰둔다** — `Bash`/`PowerShell`로 `Get-Process`에서 `MainWindowTitle`이 있는 Unity 프로세스를 찾아 `(New-Object -ComObject WScript.Shell).AppActivate($process.Id)`로 전면 활성화. 포커스가 없으면 이 MCP 브릿지 환경에서 Play Mode 진입 후에도 프레임이 저절로 안 흐르는 경우가 있다(`.claude/agents/qa-tester.md` "Play Mode인데 시간이 안 흐르는 환경이 있다" 참고) — 매번 습관적으로 먼저 해둘 것.
    - Play Mode 검증 중 프레임 단위로 눈으로 지켜봐야 하는 경우가 아니면(콘솔 로그/폴링 값으로 판별 가능한 경우) 반드시 배속을 올려 진행한다 — `.claude/agents/qa-tester.md` "배속 사용 원칙" 참고.
 6. `.claude/class/{클래스명}.md`에 이번 수정의 전/후 코드를 기록(함수 단위, 루트 CLAUDE.md "class 작업 시 md 파일 생성 규칙" 따름).
 7. `.claude/qa/client-issues.md`의 해당 항목 **아래에** (항목 자체는 지우지 않고) 다음 형식으로 서브섹션을 추가한다:

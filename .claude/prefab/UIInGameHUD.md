@@ -19,11 +19,13 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 ├─ Image_XpGauge (...1041)           — 상단 스트레치 h6, y-120, 배경 #1A1A26
 │  └─ Image_XpFill (...1045)         — Filled(Horizontal) shape_square 시안, fillAmount 0 (미구현 — 코드에서 갱신 안 함)
 ├─ Btn_Pause (...1051)               — 우상단 72×72, 투명 Image + Button / Text_Pause "II" — **2026-07-23-2부터 OnClick 연결됨**(UIInGameHUD.OnClickPauseButton() → UIPause 팝업)
-└─ Panel_WeaponCooldown (...1061, 2026-07-27 Panel_Synergy에서 리네임/용도 변경) — 하단 스트레치 h170, y+40, VerticalLayoutGroup
-   └─ Item_WeaponCooldown (...1071, 구 Item_Synergy)  — 행 템플릿 h30, **비활성**(코드가 무기 수만큼 `ResUtil.Create`로 복제, [[UIInGameHUD]] 2026-07-27-0 참고)
-      ├─ Text_Label (...1073)        — 무기 이름으로 런타임 갱신 (우측 180px 제외 스트레치)
-      └─ Image_GaugeBG (...1077)     — 우측 160×10 #1A1A26
-         └─ Image_GaugeFill (...1081) — Filled(Horizontal), 색은 무기 `ColorHex`로 런타임 갱신, fillAmount=무기 쿨다운 진행률
+└─ Panel_WeaponCooldown (...1061, 2026-07-27 Panel_Synergy에서 리네임/용도 변경) — 하단 스트레치 h170, y+40, **2026-07-30부터 ScrollRect**(구 VerticalLayoutGroup은 Content로 이동, 아래 참고)
+   └─ Viewport (...1065, 2026-07-30 신규) — 풀스트레치, RectMask2D(UIMetaTree의 ScrollView와 동일 패턴 재사용)
+      └─ Content (...1114, 2026-07-30 신규) — 상단 스트레치, VerticalLayoutGroup(구 Panel_WeaponCooldown 설정 그대로 이관) + ContentSizeFitter(Vertical=PreferredSize)
+         └─ Item_WeaponCooldown (...1071, 구 Item_Synergy)  — 행 템플릿 h30, **비활성**(코드가 무기 수만큼 `ResUtil.Create`로 복제, [[UIInGameHUD]] 2026-07-27-0 참고)
+            ├─ Text_Label (...1073)        — 무기 이름으로 런타임 갱신 (우측 180px 제외 스트레치)
+            └─ Image_GaugeBG (...1077)     — 우측 160×10 #1A1A26
+               └─ Image_GaugeFill (...1081) — Filled(Horizontal), 색은 무기 `ColorHex`로 런타임 갱신, fillAmount=무기 쿨다운 진행률
 ```
 
 추가(2026-07-23-4, 루트 직속 자식으로 append):
@@ -34,7 +36,13 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 
 추가(2026-07-28-0, 루트 직속 자식으로 append):
 ```
-└─ Text_Wave (...1110)               — 상단 중앙 anchor(0.5,1) pos(0,-16) size(200,30), "WAVE 1" #A0A0B8 18pt, Text_Fps와 동일 라인(Panel_Top보다 위)
+└─ Text_Wave (...1110)               — 상단 중앙 anchor(0.5,1) pos(0,-150) size(200,30), "WAVE 1" #A0A0B8 18pt
+```
+(실제 좌표가 md 최초 기록 y=-16과 다르게 y=-150으로 되어있음을 2026-07-30 재확인 시 발견 — 다른 요소와 겹치지 않도록 이 세션 이전에 조정된 것으로 추정, 실제 파일 기준으로 정정)
+
+추가(2026-07-30-0, 루트 직속 자식으로 append):
+```
+└─ Text_Level (...1120)              — 상단 중앙 anchor(0.5,1) pos(0,-190) size(200,30), "LV.1" #A0A0B8 18pt, Text_Wave 바로 아래
 ```
 
 ## 씬 배치 (2026-07-23-2부터)
@@ -48,6 +56,36 @@ UIInGameHUD (...1001)                — RectTransform 풀스트레치, UIInGame
 - XP/시너지 게이지는 Image Filled 타입 — 코드에서 `fillAmount`로 갱신할 예정이었으나 아직 미구현(이번 작업 범위 밖).
 - Btn_Pause 좌/우 반전(왼손 모드)은 코드에서 anchoredPosition.x 부호 전환으로 처리 예정(미구현).
 - **멀티 스프라이트 텍스처 참조 시 주의(참고용, 현재는 미사용)**: `frame_capsule.png`/`icon_*.png`류는 TextureImporter가 `spriteMode: 2`(Multiple)라, `m_Sprite`의 `fileID`는 관용적인 `21300000`이 아니라 각 텍스처 `.meta`의 `internalIDToNameTable`(classID 213) 값을 그대로 써야 한다 — 이번엔 되돌려져서 실제로 화면에 뜨는지 검증되지 않은 채 남음. 나중에 다시 이 방식으로 아이콘/스프라이트를 붙이게 되면 이 패턴을 재사용하되, 에디터에서 실제로 렌더링되는지 먼저 확인할 것.
+
+---
+
+## 2026-07-30-1 — Panel_WeaponCooldown을 ScrollView로 전환
+
+### 개요
+사용자 요청("InGameHud의 스킬 쿨타임쪽 스크롤뷰로 변경해야할듯") — 무기 슬롯이 메타 트리(M-405)로 최대 5개까지 늘어날 수 있게 되면서(2026-07-30-1/2 참고), 고정 높이(h170) 안에 `VerticalLayoutGroup`으로만 쌓던 기존 방식은 항목이 늘면 화면 밖으로 넘치는 문제가 있었음. **재사용 우선 원칙**에 따라 새로 만들지 않고, 이미 이 프로젝트에 있는 [[UIMetaTree]]의 ScrollView 구조(guid까지 확인 후 그대로 재사용)를 그대로 따름.
+
+### 수정 (오브젝트 단위)
+- `Panel_WeaponCooldown`(GO ...1060): 기존 `VerticalLayoutGroup` 컴포넌트(...1062) 제거, `ScrollRect`(...1063, `m_Content`=Content RT, `m_Viewport`=Viewport RT, `m_Vertical=1`/`m_Horizontal=0`) 추가. `m_Children`을 `Item_WeaponCooldown` 직접 참조 → `Viewport` 하나로 교체.
+- 신규 **Viewport**(GO ...1064, RectTransform ...1065, RectMask2D ...1066) — 풀스트레치, `RectMask2D`만 사용(Image+Mask 조합을 처음에 만들었다가, [[UIMetaTree]]의 기존 ScrollView가 이미 `RectMask2D`(guid `3312d7739989d2b4e91e6319e9a96d76`)만으로 구현돼 있는 걸 확인하고 동일하게 맞춤 — 프로젝트 관례 우선).
+- 신규 **Content**(GO ...1069, RectTransform ...1114, VerticalLayoutGroup ...1115, ContentSizeFitter ...1116) — 구 `Panel_WeaponCooldown`이 갖고 있던 `VerticalLayoutGroup` 설정(Padding 24/24/8/8, Spacing 8, ChildAlignment 1, ForceExpandWidth 1)을 그대로 이관 + `ContentSizeFitter`(HorizontalFit=Unconstrained, VerticalFit=PreferredSize) 신규 추가 — 항목 수만큼 Content 높이가 늘어나고 Viewport가 이를 잘라 스크롤.
+- `Item_WeaponCooldown`(RectTransform ...1071)의 `m_Father`를 `Panel_WeaponCooldown`(...1061) → `Content`(...1114)로 변경(그 외 좌표/자식 구조 불변).
+- **루트 `UIInGameHUD` 컴포넌트(...1900)의 `m_WeaponCooldownContainer`도 함께 갱신 필수**: `Panel_WeaponCooldown`(...1061) → `Content`(...1114). 이걸 놓치면 `UpdateWeaponCooldowns()`가 여전히 `Panel_WeaponCooldown` 밑에 직접 `ResUtil.Create`로 행을 생성해버려, 새로 생기는 무기 행이 스크롤 대상(Content) 밖에 놓이는 조용한 버그가 났을 것 — 코드는 그대로인데 프리팹 배선만 바꾸는 리팩터링에서 놓치기 쉬운 지점이라 기록.
+
+### 검증
+`grep`으로 fileID 중복 0건, 신규 오브젝트 간 부모/자식 참조 일관성 확인(Panel→Viewport→Content→Item). Play Mode 미검증 — 무기 5개 보유 시 스크롤이 실제로 동작하는지, 드래그가 게이지 위에서 정상적으로 잡히는지(RectMask2D 자체엔 레이캐스트 그래픽이 없어 빈 공간 드래그는 안 먹힐 수 있음 — Image_GaugeBG/Fill 위에서의 드래그로 확인 필요) 확인 필요.
+
+---
+
+## 2026-07-30-0 — Text_Level 신규 (유저 레벨 숫자 표시)
+
+### 개요
+[[UIInGameHUD]](class.md) 2026-07-30-1 참고. 사용자 요청("유저의 레벨 숫자도 표기했으면 좋겠음. InGameHud에").
+
+### 수정 (오브젝트 단위)
+루트(...1001) `m_Children`에 `{fileID: ...1121}` 추가. 신규 **Text_Level**(GO ...1120, RectTransform ...1121, CanvasRenderer ...1122, TextMeshProUGUI ...1123) — Text_Wave와 동일 스타일(anchor(0.5,1) pivot(0.5,1) size(200,30) fontSize18 색#A0A0B8), `anchoredPosition(0,-190)`로 Text_Wave(y=-150) 바로 아래 배치. 루트 컴포넌트(...1900)에 `m_LevelText: {fileID: ...1123}` 연결.
+
+### 검증
+`grep`으로 fileID 중복 0건 확인. Play Mode 미검증 — 실제 화면에서 다른 요소와 안 겹치는지, 레벨업 시 정상 갱신되는지 확인 필요.
 
 ---
 

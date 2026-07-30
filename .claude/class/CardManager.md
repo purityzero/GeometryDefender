@@ -1,5 +1,111 @@
 # CardManager
 
+## 2026-07-30-4 — 밸런스 일괄 조정 + Pierce II 선행조건 + Init() 상태 누락 발견/수정 + 오비탈 링 확장
+
+### Pierce II 선행조건 (사용자 요청: "관통 1스택이 나온 후 2스택이 나오게 선행조건 추가")
+신규 `CARD_PREREQUISITE_IDS`(Dictionary<int,int>) — `WEAPON_REQUIRED_CARD_IDS`(무기 보유 여부)와 별개 축으로, "이번 런에서 이미 뽑은 카드" 기준 선행조건. `{ 106, 105 }`(Pierce II ← Pierce I) 등록. 신규 `HasRequiredPrerequisiteCard(CardRecord)` — `m_ObtainedCardIds.Contains(prerequisiteCardId)`로 판정, `BuildAvailablePool()` 필터 체인에 추가.
+
+### 공속 계열 하향 (사용자 요청: "공속 계열은 조금 하향시켜야될꺼같아")
+- `GrantSynergyBonus()` Speed 시너지: tier3 10%→8%, tier5 25%→20%(tier7 발사체+1은 유지).
+- CardTable: Card201(Common AttackSpeedPercent) 15→12, Card202(Rare) 30→24, Card205(Legendary Overdrive) 100→80, Card309(Archer 전용) 50→40.
+- MetaTreeTable M-109(StartingPower AttackSpeedPercent) 10→8.
+
+### 공격력 증가 카드 재분류 (사용자 요청: "% 같은 경우는 레전더리, 수치 조금씩만 올리는건 노말 레어 유니크에 분포" + "조금 하향")
+- 퍼센트 기반 데미지 카드(SpeciesBonusDamage/VariantBonusDamage)는 전부 **Legendary로 승격** + 수치 소폭 하향: Card108 50%→40%, Card109 20%→16%, Card110 30%→24%, Card111 40%→32%.
+- 정수 스택 카드(PierceAdd)는 등급 하향 분산: Card105(Pierce I, +1) Epic→**Common**, Card106(Pierce II, +2) Epic→**Rare**.
+
+### Vampire(#405) 흡혈 확률 상향 (사용자 요청: "뱀파이어카드의 흡혈 확률 0.5%로 올려라")
+CardTable Card405 EffectValue 0.1→0.5, StringTable 문구도 동기화.
+
+### Orbital Ring(#503) 확장 (사용자 요청: "좀 넓은 범위로, 도는 링이 5개, 좀 살짝 더 크게")
+CardTable EffectValue(오브 개수) 4→5. `ApplyCardEffect()`의 `SpawnOrbitals()` 호출 인자 변경: 판정 반경 0.3→0.4, 공전 거리 1.5→2.5, 신규 `_visualScaleMultiplier=1.3f` 추가 전달([[ProjectileManager]] 2026-07-30-2 참고 — `SpawnOrbitals`/`SpawnVisual`에 선택적 배율 파라미터 신설).
+
+### ⚠️ Init() 미검증 상태 누락 발견 — "카드 선택 시 더블샷처럼 됨" 버그 조사 중
+사용자 보고("카드에서 뭔가 하면 더블샷 찍은것처럼 두개로 늘어남", 이후 "한 번의 런 안에서 카드 1장만 뽑았는데 발사 2발로 바뀜"으로 구체화) 조사 중, [[ActorPlayer]].`Init()`이 `m_ProjectileCount`를 비롯한 카드 누적 상태를 전혀 리셋하지 않던 것을 발견해 우선 수정(상세는 [[ActorPlayer]] 2026-07-30-4 참고). **다만 이 프로젝트는 재시작이 `SceneManager.NextScene()`으로 씬을 통째로 재로드하므로, "한 런 안에서(재시작 없이) 카드 1장에 발사 2발" 증상의 직접적 원인은 아직 못 찾음** — `CardManager`/`ActorPlayer`의 `RollCards()`/`ApplyCard()`/`Fire()` 경로를 정적으로 재검토했지만 뚜렷한 이중 실행 지점을 못 찾았다. **다음 세션 최우선**: `UICheatWindow`의 카드 즉시 적용 기능으로 카드를 하나씩 적용해가며 정확히 어떤 시점에 발사 수가 늘어나는지 이진 탐색으로 좁힐 것 — 사용자에게도 재현 시 정확한 카드명/타이밍 확인 요청.
+
+### 검증
+전부 컴파일 확인 필요, Play Mode 미검증. Pierce II 선행조건은 특히 Pierce I 없이 드래프트 풀에 106이 안 뜨는지 실측 필요.
+
+---
+
+## 2026-07-30-3 — Vampire(#405) 흡혈 확률 0.1% → 0.5%
+사용자 요청("마지막 뱀파이어카드의 흡혈 확률 0.5%로 올려라"). `CardTable.csv` Card405(LifestealOnKill) `EffectValue`: 0.1 → 0.5. `StringTable.csv` Card405Effect 문구(4개 언어)의 "0.1%" 표기도 "0.5%"로 함께 수정 — 코드(`OnMonsterKilledForVampire()`)는 `EffectValue`를 그대로 읽어 쓰므로 변경 없음.
+
+---
+
+## 2026-07-30-2 — HasWeaponSlotAvailable이 메타 트리 확장분까지 반영
+사용자 요청("무기 장착슬롯 추가도 메타트리에 넣으면 좋을듯") — [[ActorPlayer]] 2026-07-30-2 참고. `HasWeaponSlotAvailable()`의 비교 기준을 `GameConfigTable.MAX_WEAPON_COUNT` → `towerController.maxWeaponSlots`(메타 트리 M-405 해금분 합산된 유효 상한)로 교체.
+
+---
+
+## 2026-07-30-1 — 무기 최대 4개 도달 시 무기 카드 드래프트 풀 제외
+사용자 요청("무기는 한꺼번에 4개만 갖을 수 있도록") — 상세는 [[ActorPlayer]] 2026-07-30-1 참고. `BuildAvailablePool()`에 `HasWeaponSlotAvailable(CardRecord)` 필터 추가 — `Category == Weapon`인 카드는 `towerController.weaponCount < GameConfigTable.MAX_WEAPON_COUNT`(기본 4)일 때만 풀에 포함. Weapon이 아닌 카드는 항상 통과.
+
+---
+
+## 2026-07-30-0 — CanSkip()/Skip() 제거 (스킵 기능 폐지)
+사용자 요청("스킵자체는 없어져야할듯 대신 리롤을 좀 많이주는걸로 변경해줘 업그레이드하면") — 상세 배경/대체안은 [[MetaTreeRecord]] 2026-07-30-0 참고. `CanSkip()`/`Skip()` 메서드 전체 삭제(`eMetaEffectType.SkipEnable` 조회 + `GameConfigTable.SKIP_SHARD_REWARD` 지급 로직). 호출부인 [[UICardDraft]](class) 2026-07-30-0에서 Skip 버튼째로 함께 제거.
+
+---
+
+## 2026-07-29-2 — Weapon 카테고리 천장 신설 (두 번째 무기 등장 확률 보장)
+
+### 개요
+사용자 요청("이 구조적 문제를 지금 수정해줘") — qa-tester가 `design-issues.md` 2026-07-29-0에서 계산한 문제: Weapon 카드(601~605, 전부 Epic)가 드래프트당 약 10.8% 확률로만 등장해, 6연속 레벨업에도 전혀 안 뜰 확률이 약 50%. 기존 `PITY_THRESHOLD`(등급 천장, 5연속 Epic+ 미획득 시 강제)는 등급만 보장하고 카테고리는 보장 안 함(천장 발동해도 31.3% 확률로만 Weapon).
+
+### 수정 (함수 단위)
+**신규 필드**: `m_DraftsSinceWeaponCard`(int) — `Init()`에서 0으로 리셋.
+
+**신규 `GetWeaponCategoryCards(Dictionary<eCardRarity, List<CardRecord>>)`**: 풀 전체(등급 무관)에서 `Category == Weapon`인 카드만 추출.
+
+**`RollCards()`**:
+- `isWeaponPityActive` 판정 추가: `m_DraftsSinceWeaponCard >= GameConfigTable.WEAPON_PITY_THRESHOLD`(기본 3) && `타워 weaponCount <= 1`(아직 추가 무기 없음) && 풀에 Weapon 카드가 실제로 존재.
+- 슬롯 0 선택 로직 우선순위 변경: **무기 천장 > 등급 천장 > 일반 롤** — `isWeaponPityActive`가 참이면 슬롯 0을 `GetWeaponCategoryCards()` 후보 중에서 강제 선택(등급 천장 로직은 건너뜀). 아니면 기존 등급 천장/일반 롤 그대로.
+- 롤 종료 후 `hasWeaponCard` 체크로 `m_DraftsSinceWeaponCard`를 리셋(뽑혔으면 0) 또는 증가(안 뽑혔으면 +1) — `m_PitySinceEpic`과 동일 패턴.
+
+### 검증
+컴파일 에러 0건. 실측(3드래프트 연속 무기 없음 → 4번째 드래프트에 강제 등장)은 재QA 진행 중 — [[GameConfigRecord]] 2026-07-29-3, `design-issues.md` 2026-07-29-0 참고.
+
+---
+
+## 2026-07-29-1 — 전역 공격력/치명타 카드 제거 + 무기 전용 강화 3종 + 몬스터 변종 데미지 3종 신설
+
+### 개요
+사용자 요청("각 무기 특징으로 업그레이드... 해당무기가 없으면 뜨지 않게... 전체적인 공격력/치명타 없애고... 엘리트/보스/일반몬스터 데미지 증가는 남겨줘"). 상세 설계 근거는 [[ActorPlayer]] 2026-07-29-4 참고.
+
+### 데이터 변경
+- `CardTable.csv`: #101/#102(DamagePercent)/#103(CritChance)/#104(CritMultiplier) 삭제. 신규 7장 — #109(Grunt Buster)/#110(Elite Slayer)/#111(Boss Slayer, Offense/VariantBonusDamage), #309(Rapid Overclock)/#310(Homing Overdrive)/#311(Focused Aim)/#312(Devastating Blow, Utility). #403(HealPerSecond) 1→0.1, #405(LifestealOnKill) 10→0.1.
+- **2026-07-29-2 정정**: #309 카드명을 최초 "Archer Overclock"으로 지었으나, 실제 무기 표시명(`Card601Name`="래피드 오토캐논")과 안 맞아 사용자 혼동 유발 확인 → "Rapid Overclock"/"래피드 오버클럭"으로 정정(코드 내부 상수명 `ARCHER_RECORD_ID` 등은 그대로 — 내부 식별자와 플레이어 노출 문자열은 항상 일치할 필요 없음, [[TowerRecord]] 참고).
+- `StringTable.csv`: 위 4장 제거분 8행 삭제, 신규 7장 14행 추가(Id 155~168), #403/#405 Effect 텍스트 갱신.
+
+### 코드 (함수 단위)
+**`WEAPON_REQUIRED_CARD_IDS`**: `{309→1(Archer), 310→5(HomingPod), 311→3(CentralTower), 312→3(CentralTower)}` 추가 — 기존 Splash/Chain/Laser 패턴과 동일(해당 무기 미보유 시 드래프트 풀 제외).
+
+**`ApplyCardEffect()`**: `DamagePercent` 케이스 제거(101/102 삭제로 유일한 소비처가 사라져 죽은 코드가 됨 — [[CardRecord]] 참고). 신규 케이스 3개 — `VariantBonusDamage`(EffectParam을 `eEnemyVariant`로 파싱, SpeciesBonusDamage와 동일 패턴), `ArcherAttackSpeedPercent`, `HomingTurnRateAdd`(각각 `ActorPlayer`의 신규 메서드로 위임).
+
+### 검증
+컴파일 에러 0건. Play Mode — `CardTable.list.Count=36` 확인(33+7-4). 상세 게임플레이 검증은 [[ActorPlayer]] 2026-07-29-4 참고.
+
+---
+
+## 2026-07-29-0 — Homing Missile(#305) 카드 제거 (Card/MetaTree 전수 검사)
+
+### 개요
+사용자 요청("Card/MetaTree 전수 검사")으로 발견 — `eCardEffectType.HomingEnable`이 호출하던 `ActorPlayer.SetHoming()`은 `m_hasHoming = true`만 세팅할 뿐, 이 필드를 읽는 코드가 프로젝트 어디에도 없었다(2026-07-27-9에 "죽은 코드"로 이미 발견/보류됐던 이슈, [[ActorPlayer]] 참고). Splash(#303)/Chain(#304)은 무기 고유 능력을 `Max()` 비교로 강화하는 실제 효과가 있는데, Homing만 불리언이라 강화할 수치 자체가 없어 카드로서 완전히 무의미했음. 사용자 확인(AskUserQuestion) 후 "#306/#307과 같은 선례로 카드 자체 제거" 확정.
+
+### 파일
+- Assets/Resources/Table/CardTable.csv — Id 305 행 삭제
+- Assets/Resources/Table/StringTable.csv — Card305Name(Id 99)/Card305Effect(Id 100) 삭제
+- Assets/Scripts/Table/CardRecord.cs — `eCardEffectType.HomingEnable` 제거
+- Assets/Scripts/InGame/CardManager.cs — `WEAPON_REQUIRED_CARD_IDS`의 `{305,5}` 제거, `ApplyCardEffect()`의 `HomingEnable` 케이스 제거
+- Assets/Scripts/InGame/Actor/ActorPlayer.cs — `m_hasHoming` 필드/`SetHoming()` 메서드 제거([[ActorPlayer]] 참고)
+- Assets/Design/04_card.html — Homing Missile gcard 항목 삭제, UTILITY 카드 수 6→5장 갱신
+
+### 검증
+컴파일 에러 0건. Play Mode(TitleScene→Play, Unity MCP execute_code) — `CardTable.GetRecordById(305)`가 `null` 반환 확인, 전체 카드 수 34→33장 정상 반영, 콘솔 에러 0건.
+
+---
+
 연관 클래스: `SceneSingleton<T>`(부모), `CardRecord`/`CardTable`(데이터), `TowerController`/`TowerHealth`(효과 적용 대상), `MonsterManager`(`OnMonsterDie` 구독 — Vampire 카드), `MetaTreeTable`(카드풀 해금/리롤/스킵 메타 효과), `UICardDraft`(호출 주체), `CardEffectState`(ECS가 읽는 전역 카드 효과)
 
 ## 개요

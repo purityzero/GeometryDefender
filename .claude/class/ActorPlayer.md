@@ -1,6 +1,249 @@
 # ActorPlayer (구 TowerController)
 
+## 2026-07-30-8 — Pierce(관통) CentralTower 전용으로 제한
+사용자 요청("기본무기만 관통이 통해야하고 나머지는 통하면 안됨"). 기존엔 `m_PierceStacks`가 모든 무기의 `FireSingleShot()`에 공통 적용됐음 — 치명타(`weaponCardCritChance`/`weaponCardCritMultiplier`)와 동일한 패턴으로 `cardEffects.Pierce = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_PierceStacks : 0;`로 변경, CentralTower가 아니면 관통 스택 무시.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — Archer/Mage 등 추가 무기가 Pierce 카드 보유 중에도 관통 안 하는지, CentralTower만 관통하는지 확인 필요.
+
+---
+
+## 2026-07-30-7 — Frost Orb Turret 흰색 Glow 동기화 (안 보이던 문제 수정)
+사용자 피드백("냉기오브도 흰색 Glow효과 줄 수 있어?" → "오비탈 처럼 주면됨" → "근데 티가 안남"). 기존엔 색상 Tween(흰색↔지정색)과 글로우 Tween(_GlowAmount)이 서로 다른 독립 Yoyo 루프(주기가 달라 언싱크)라, 흰색이 되는 순간과 글로우가 최대가 되는 순간이 거의 안 겹쳐 "흰색 Glow"가 뚜렷하게 안 보였음.
+- 두 트윈을 [[TweenSequenceBuilder]](공용 Sequence 빌더, `DOTween.Sequence()` 직접 호출 금지 — 사용자 지적으로 정정)로 묶어 **흰색과 최대 글로우가 항상 동시에 절정을 찍도록 동기화** — `지정색+최소글로우 ↔ 흰색+최대글로우`를 반복.
+- `ORBITAL_SLOW_GLOW_MAX` 2.5→**4**(대비 강화, 더 눈에 띄게).
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — 실제로 흰색 플래시가 뚜렷하게 보이는지 확인 필요.
+
+---
+
+## 2026-07-30-6 — 종/변종 데미지 보너스 %→고정수치 전환 + Frost Orb 슬로우 시각화
+사용자 요청("트라이앵글 퍼센트 데미지도 좀 다 수치로 가야해... 보스, 엘리트 이런거 다 수치로" + "냉기오브에서 슬로우가 좀 걸리는게 눈에 띄었으면").
+
+### 종/변종 데미지 %→고정수치
+- 필드 리네임: `m_BonusSpeciesDamagePercent`→`m_BonusSpeciesDamageFlat`, `m_EliteDamageBonusPercent`/`m_BossDamageBonusPercent`/`m_NormalVariantDamageBonusPercent`→`...Flat`.
+- `SetSpeciesBonusDamage()`/`AddVariantBonusDamage()` 파라미터 의미 변경(%→고정 데미지), 로직은 그대로(누적 방식 불변).
+- `FireSingleShot()`: 기존엔 이 값들을 `elementBonus`(배율)에 더했는데, 신규 `flatBonusDamage`(가산 항)로 분리 — `finalDamage = (Damage × 배율들) × critMul × (1+elementBonus) + flatBonusDamage`. Berserker(#502)는 그대로 배율(elementBonus) 유지 — 이번 요청 대상이 아님.
+- CardTable: Card108(Triangle) 40%→**+5**, Card109(Normal) 16%→**+2**, Card110(Elite) 24%→**+4**, Card111(Boss) 32%→**+8**. 등급도 "고정수치 카드는 Common/Rare/Epic 분산" 원칙에 맞춰 재조정: 108 Legendary→Rare, 109 Legendary→Common, 110 Legendary→Rare, 111 Legendary→Epic.
+
+### Frost Orb Turret 슬로우 시각화
+- `ActorMonster`에 `SetSlowTinted(bool)` 신설 — `m_Record.ColorHex` 기준 원색과 프로스트 블루를 50% 블렌드, 해제 시 원색 복귀. 매번 원본 색에서 다시 계산하므로 반복 호출해도 색이 점점 짙어지는 누적 오염 없음. 폴링 재사용 대비 `Open(EnemyRecord)`에서 상태 리셋.
+- `MonsterManager.ApplySlowAura()`가 `SlowAuraData` 갱신과 함께 `VisualObject`를 통해 `ActorMonster.SetSlowTinted(isTouching)`도 호출.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증.
+
+---
+
+## 2026-07-30-5 — 몬스터 밀집도 기반 자동 카메라 줌아웃
+사용자 요청("게임화면 조금더 넓게 볼 수 있게 카메라 조정기능... 오토 줌아웃기능인거지 디폴트 화면 안에 계속 몹들이 있으면 안늘어나고 몹이 화면 밖의 범위에 숫자가 많다 하면 좀 늘어나는거" + "몹 젠 되는 거리가 넘어가면 더이상 안늘어나게" + "몬스터 20마리 정도"). 처음엔 "사거리 늘어남에 비례해 줌아웃"으로 시작했으나 사용자가 전면 정정 — **화면 밖 몬스터 수 기반**으로 확정.
+
+### 설계
+- `UpdateCameraZoom()`(`UpdateLogic()`에서 호출) — `GameConfigTable.CAMERA_ZOOM_CHECK_INTERVAL`(0.5초)마다만 재계산(줌 자체도 1.5초 트윈이라 프레임 단위 정밀도 불필요).
+- `CountMonstersOutsideView(Camera)` — 기존 `m_AliveMonsterQuery`를 재사용해 카메라 중심 기준 orthographic 뷰(halfWidth/halfHeight) 밖에 있는 몬스터 수를 센다.
+- `offScreenRatio = count / CAMERA_ZOOM_FULL_MONSTER_COUNT`(20, 클램프) → `targetOrthoSize = CAMERA_BASE_ORTHO_SIZE(10) + ratio × CAMERA_MAX_ZOOM_OUT_AMOUNT(4)` — 화면 밖 몬스터가 많을수록 비례해서 완만하게 줌아웃, 적으면 기본값(10)으로 복귀.
+- **상한 클램프**: `WayPoint.instance.Radius`(몬스터 스폰 링 — `WayPoint.Start()`가 씬 시작 시점 카메라로 1회 고정 계산)에 대응하는 orthographicSize를 넘지 않도록 클램프(`radius / sqrt(aspect²+1)`) — 줌아웃이 스폰 지점을 화면에 노출시키지 않게.
+- 실제 트윈은 `mainCamera.DOOrthoSize()`가 아니라 `DOTween.To(getter, setter, ...)`로 직접 구현 — **이 프로젝트 DOTween 설치본엔 Camera 모듈이 없어(Modules 폴더 확인, `DOOrthoSize` 미존재) 범용 DOTween.To 사용**. 목표가 바뀔 때마다 `DOTween.Kill(mainCamera)`로 이전 트윈 정리 후 재시작.
+- 신규 상수(GameConfigTable): `CAMERA_BASE_ORTHO_SIZE`(10), `CAMERA_MAX_ZOOM_OUT_AMOUNT`(4), `CAMERA_ZOOM_FULL_MONSTER_COUNT`(20), `CAMERA_ZOOM_CHECK_INTERVAL`(0.5), `CAMERA_ZOOM_TWEEN_DURATION`(1.5).
+
+### 검증
+컴파일 확인 필요(특히 DOTween.To 제네릭 사용부). Play Mode 미검증 — 몬스터가 화면 밖에 많이 쌓일 때 실제로 줌아웃되는지, 스폰 링이 노출 안 되는지, 몬스터가 줄면 다시 기본 줌으로 돌아오는지 확인 필요.
+
+---
+
+## 2026-07-30-4 — Init() 카드 누적 상태 리셋 추가 + Frost Orb Turret 비주얼/밸런스 보강 + 기본 공속 하향
+
+### ⚠️ Init() 리셋 누락 수정 (버그 조사 중 발견)
+사용자가 "카드 선택 시 더블샷 찍은것처럼 늘어남" 버그를 보고해 조사하던 중, `Init()`이 무기 목록/메타 배율만 리셋하고 **카드로 누적되는 런 스코프 상태(m_ProjectileCount, m_CardDamagePercent, m_PierceStacks, m_hasSplash 등 20여 개 필드)를 전혀 초기화하지 않는 것**을 발견 — CLAUDE.md "초기화 로직 중복 호출" 버그 유형과 동일 패턴. `Init()` 최상단에 전 필드 리셋 블록 추가.
+**주의 — 이 수정이 사용자가 보고한 정확한 증상(재시작 없이 한 런 안에서 카드 1장에 발사 2발)의 직접 원인인지는 미확정**: 이 프로젝트의 재시작은 `SceneManager.NextScene()`으로 씬을 통째로 재로드해 씬에 배치된 `ActorPlayer`도 새 인스턴스가 되므로(필드 이니셜라이저가 정상 적용됨), 이 리셋 누락만으로는 "재시작 없는 단일 런 내" 증상을 설명하기 어렵다. 정직하게 미해결로 남기고 [[CardManager]] 2026-07-30-4에 다음 세션 조사 방향(치트 창으로 카드 이진 탐색) 기록.
+
+### Frost Orb Turret(#7) 비주얼/밸런스 보강
+사용자 요청 연속 4건: "타워처럼 Glow효과 추가 + 기본 크기 더 크게 + 데미지 약하게 천천히 들어가게(대신 더 느리게) + 깜빡깜빡 거리게 Glow + 하얀색→지정색 천천히 트윈".
+- `ActorProjectile`에 `public Material material` 접근자 신설(인스턴스 머티리얼 노출, 범용적으로 작게 추가 — Frost Orb 전용 로직은 전부 `ActorPlayer` 쪽에 둠).
+- `AddWeapon()`의 `ORBITAL_SLOW_RECORD_ID` 분기: 생성 직후 `transform.localScale = Vector3.one * GameConfigTable.ORBITAL_SLOW_VISUAL_SCALE`(1.8배)로 확대. 초기 색을 흰색으로 세팅한 뒤 `TweenUtil.Color(material, orbColor.linear, ORBITAL_SLOW_COLOR_TWEEN_DURATION).SetLoops(-1, Yoyo)`(흰색↔지정색 2.5초 왕복)와 `TweenUtil.Float(material, "_GlowAmount", ORBITAL_SLOW_GLOW_MAX, ORBITAL_SLOW_GLOW_PULSE_DURATION).SetLoops(-1, Yoyo)`(1↔2.5 글로우 펄스, 1.2초 왕복) 2개의 무한 루프 트윈을 겁니다 — `TowerColorEffect`의 코어/글로우 트윈 방식(Material._GlowAmount, DOColor)을 그대로 재사용.
+- `TowerTable.csv` FrostOrbTurret `Damage` 0→3(약한 데미지). `UpdateOrbitalSlowWeapon()`에 `OrbitalDamageTickTimer` 추가 — `GameConfigTable.ORBITAL_DAMAGE_TICK_INTERVAL`(Orbital Ring 카드와 동일 상수 재사용, 0.5초)마다 `MonsterManager.DamageEntitiesInRadius()`로 슬로우 판정 반경(SplashRadius) 안에 약한 데미지.
+- `GameConfigTable.ORBITAL_SLOW_ROTATION_SPEED` 30→15(데미지 추가에 대한 트레이드오프로 공전 속도 추가 완화). 신규 상수 `ORBITAL_SLOW_VISUAL_SCALE`/`ORBITAL_SLOW_GLOW_MIN`/`MAX`/`GLOW_PULSE_DURATION`/`COLOR_TWEEN_DURATION`.
+- 신규 `public bool GetWeaponHasGlowPulse(int _index)` — UIInGameHUD가 무기 쿨다운 게이지에 동일한 펄스 Tween을 걸지 판단하는 데 사용(사용자 요청: "반짝거리는 거 없는애들은 그냥 color값, 냉기오브처럼 반짝거리는애들은 tween"). 현재 Frost Orb Turret만 true.
+
+### 기본 무기 공속 하향 (사용자 요청: "기본공격 공속도 조금 낮춰")
+`TowerTable.csv` CentralTower `AttackInterval` 0.4→0.45.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — Frost Orb Turret의 글로우 펄스/색 트윈/약한 데미지 틱이 실제로 동작하는지, HUD 게이지가 같은 톤으로 반짝이는지 확인 필요.
+
+---
+
+## 2026-07-30-3 — 신규 무기 2종 (Frost Orb Turret #7, Mortar #8) + 무기별 개별 공격력 메타 노드
+
+### 개요
+사용자 요청 3건: (1) "ActorPlayer를 천천히 공전하면서 일정 사거리 만큼 적을 슬로우 걸 수 있는 무기" — Frost Orb Turret. (2) "너가 추가하고 싶은 자율 무기 하나" — Mortar(사거리 끝 적 우선 타격 + 스플래시, 다른 무기가 못 미치는 "후방 포격" 정체성으로 직접 설계). (3) "각각 무기에 대한 기본 공격력 증가 메타트리에 추가" — 무기별 개별 데미지 메타 노드. 셋 다 최초엔 "메타 트리로 직접 해금"으로 시작했으나, 사용자가 "해금을 하면 드래프트에 나오는 시스템으로 해줘"로 정정 — 기존 5종 무기와 동일하게 **카드로 드래프트에서 뽑아야 실제로 장착**되고, 메타 트리는 그 카드가 드래프트 풀에 뜨도록 여는 역할만 한다(`eMetaEffectType.UnlockCard` 기존 패턴 재사용, `WeaponUnlock`이라는 별도 이펙트 타입을 만들려다 되돌림).
+
+### 신규 상수/필드
+- `ORBITAL_SLOW_RECORD_ID = 7`, `MORTAR_RECORD_ID = 8`(TowerTable Id).
+- `TowerWeapon.OrbitalAngle`(float)/`OrbitalSlowVisual`(ActorProjectile) — Frost Orb Turret 전용.
+- `TowerWeapon.MetaDamageMultiplier`(float, 기본 1) — 무기별 메타 데미지 배율, `Init()`/`AddWeapon()`에서 `GetWeaponMetaDamageMultiplier()`로 1회 계산해 고정.
+
+### Frost Orb Turret(#7) — 발사/타겟팅 없는 지속 효과 무기
+`UpdateFire()`에 `ORBITAL_SLOW_RECORD_ID` 분기 추가(Laser와 동일한 특수 케이스 패턴) → 신규 `UpdateOrbitalSlowWeapon(TowerWeapon)`: `Record.Range`를 "공전 반지름", `Record.SplashRadius`를 "슬로우 판정 반경"으로 재사용(새 컬럼 안 늘림), `Record.SlowPercent`(신규 컬럼)만 이 무기 전용. 매 프레임 각도를 `GameConfigTable.ORBITAL_SLOW_ROTATION_SPEED`(30도/초, "천천히 공전" 요청 반영)만큼 회전 → 위치 계산 → 비주얼 Transform 이동 → `MonsterManager.ApplySlowAura()` 호출. 비주얼은 새 프리팹 없이 `Prefabs/Projectile/Basic`을 `ActorProjectile` 타입으로 재사용(이 컴포넌트가 SpriteRenderer+SetColor만 있으면 충분해서 새로 안 만듦). `AddWeapon()`에서 획득 시 1회 `OrbitalSlowActivate` 사운드 재생.
+
+### Mortar(#8) — 사거리 끝 우선 타격 + 스플래시
+표준 `Fire()`/`FireSingleShot()` 흐름을 그대로 타는 일반 무기(신규 인프라 불필요) — `DefaultTargeting=Farthest`(신규 [[FarthestTargetingStrategy]], Closest의 반대: 사거리 안에서 가장 먼 적 우선 — "다른 무기가 이미 처리 중인 가까운 적 대신 사거리 끝자락을 커버"하는 정체성으로 직접 설계). `ApplyInnateWeaponAbility()`에 `MORTAR_RECORD_ID` 케이스 추가 — `Record.SplashRadius`를 그대로 `ProjectileEffects.SplashRadius`에 반영(카드로 강화되는 경로 없음, Mage와 달리 `m_hasSplash` 안 봄). `GetWeaponFireSoundKey()`에 `"MortarFire"` 케이스 추가. 전용 `ProjectileTable` Type=Mortar(Id7, 청동색 #C77B3D, 큰 Size 느린 TrailDuration로 "묵직한 포탄" 느낌) 신설.
+
+### 무기별 개별 공격력 메타 노드 (WeaponDamagePercent)
+신규 `eMetaEffectType.WeaponDamagePercent` + `MetaTreeTable.GetTotalEffectValueForParam(effectType, effectParam, unlockedIds)`(기존 `GetTotalEffectValue`와 동일하지만 `EffectParam`까지 일치해야 합산 — 같은 EffectType을 여러 무기가 각자 다른 `EffectParam`=TowerRecord.Id 문자열로 나눠 쓰기 위함). 신규 `GetWeaponMetaDamageMultiplier(int towerRecordId)` — `Init()`에서 CentralTower(m_WeaponList[0])에, `AddWeapon()`에서 추가 무기에 각각 적용. `FireSingleShot()`의 최종 데미지 계산에 `_weapon.MetaDamageMultiplier` 곱연산 추가.
+**Frost Orb Turret은 제외** — Damage가 항상 0인 순수 유틸리티 무기라 "데미지 +20%"가 의미가 없어(0의 20%는 0) 이 무기용 노드는 만들지 않음(사용자 확인 필요 시 슬로우 강화 등 다른 효과로 대체 검토 가능, 아직 미정).
+각 노드 이름/설명은 무기 정체성에 맞게 구체적으로 작성(예: "래피드 오토캐논 정밀화", "마도포 증폭") — 초안에 "궁수 강화"/"마법사 강화"처럼 뭉뚱그린 이름을 썼다가 사용자 지적으로 수정. 상세는 [[MetaTreeRecord]] 2026-07-30-2 참고.
+
+### 파일
+- Assets/Scripts/InGame/Actor/ActorPlayer.cs
+- Assets/Scripts/InGame/Combat/FarthestTargetingStrategy.cs (신규)
+- Assets/Scripts/Table/{TowerRecord,MetaTreeRecord,GameConfigRecord}.cs
+- Assets/Resources/Table/{TowerTable,ProjectileTable,CardTable,MetaTreeTable,StringTable,SoundTable,GameConfigTable}.csv
+- Assets/Scripts/InGame/CardManager.cs (LOCKED_CARD_IDS 2건 추가)
+- Assets/Resources/Sound/Sfx/{MortarFire,OrbitalSlowActivate}.wav(+.meta) (신규 합성 사운드)
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — M-205/206 해금 후 Card606/607이 실제로 드래프트에 뜨는지, 뽑으면 무기가 정상 장착되는지, Frost Orb Turret이 공전하며 슬로우를 거는지, Mortar가 사거리 끝 적을 우선 타격하고 스플래시가 터지는지, 무기별 데미지 메타 노드가 해당 무기에만 정확히 적용되는지 확인 필요.
+
+---
+
+## 2026-07-30-2 — 무기 슬롯 상한을 메타 트리로 확장 가능하게 (M-405)
+사용자 요청("무기 장착슬롯 추가도 메타트리에 넣으면 좋을듯"). `eMetaEffectType.WeaponSlotCount` 신설, `MetaTreeTable`에 M-405(Utility, Cost 350, Prereq 404 — 리롤 체인 끝에 이어붙는 캡스톤) 추가. 신규 `public int maxWeaponSlots { get; private set; }` — `Init()`에서 `GameConfigTable.MAX_WEAPON_COUNT + GetTotalEffectValue(WeaponSlotCount, ...)`로 1회 계산해 고정(다른 메타 배율과 동일 패턴). `AddWeapon()`의 상한 체크를 `GameConfigTable.MAX_WEAPON_COUNT` 직접 참조 → `maxWeaponSlots`로 교체. [[CardManager]] 2026-07-30-2, [[MetaTreeRecord]] 2026-07-30-1 참고.
+
+---
+
+## 2026-07-30-1 — 무기 최대 보유 개수 4개 제한
+사용자 요청("무기는 한꺼번에 4개만 갖을 수 있도록 설정해줘 앞으로는"). `AddWeapon(int)` 최상단에 `m_WeaponList.Count >= GameConfigTable.MAX_WEAPON_COUNT`(기본 4) 가드 추가 — 초과 시 로그만 남기고 조기 return. [[CardManager]] 2026-07-30-0의 드래프트 풀 필터링이 1차 방어선이고, 이건 치트 창 등 드래프트를 안 거치는 경로까지 포함한 최종 방어선(CentralTower 포함 총 4개 슬롯).
+
+---
+
+## 2026-07-30-0 — 무기/발사체 타겟 겹침 방지 (Double Shot 다중 타겟 + 무기 간 타겟 분산)
+
+### 개요
+사용자 피드백 2건을 하나의 메커니즘으로 처리: (1) "더블샷 같은 경우는 각 미사일마다 다른 타겟(다음 타겟이면 더욱 좋을듯)" (2) "무기를 전부 먹었을때 모두 한곳을 쏘니까 이상함". 사용자가 이후 명확히 범위를 확정("한명 죽이면 다음타겟, 다른 미사일이 잡고있는 타겟을 잡지말라는거임" + AskUserQuestion으로 "발사 순간에만 분산"안 채택, 비행 중인 발사체의 실시간 재추적은 범위 밖) — 매 프레임 발사 시점에만 타겟 겹침을 피하고, 몬스터 수가 부족하면 겹침을 허용한다.
+
+### 파일
+- Assets/Scripts/InGame/Combat/ITargetingStrategy.cs
+- Assets/Scripts/InGame/Combat/{Closest,Strongest,Weakest,Fastest,Random}TargetingStrategy.cs
+- Assets/Scripts/InGame/Actor/ActorPlayer.cs
+- Assets/Scripts/Table/GameConfigRecord.cs (부수 정리, 아래 참고)
+
+### 설계
+`ITargetingStrategy.SelectTarget()`에 `HashSet<Entity> _excludeEntities = null` 매개변수 추가 — 5개 구현체 전부 "제외 목록을 무시한 최선 후보"와 "제외 목록을 반영한 최선 후보"를 한 번의 순회로 동시에 추적하다가, 제외 반영 결과가 없으면(사거리 내 몬스터가 애초에 부족) 전자로 폴백한다. `RandomTargetingStrategy`는 후보 리스트를 필터링 후 그 안에서 뽑고, 필터링 결과가 비면 원본 리스트로 폴백.
+
+`ActorPlayer`에 `HashSet<Entity> m_ClaimedTargetsThisFrame`(무기 간 공유) 신설 — `UpdateFire()` 시작 시 `Clear()`, 각 무기가 유효한 타겟을 고를 때마다 그 자리에서 `Add()`. 다음 무기의 `SelectTarget()` 호출부터는 자동으로 이미 찍힌 대상을 피해 "다음 순위" 대상을 얻는다(이슈 2 해결).
+
+`Fire()`를 다중 타겟 구조로 재작성 — Double Shot(TOWER_RECORD_ID, `m_ProjectileCount>1`)일 때 2번째 발부터는 **같은 무기의 TargetingStrategy**로 `m_ClaimedTargetsThisFrame`을 제외한 "다음 순위" 대상을 새로 골라 즉시 클레임에 추가(이슈 1 해결). 데미지/크리/원소 보너스 계산은 대상마다 다를 수 있어 신규 `FireSingleShot(TowerWeapon, Entity, Vector2, float, float)`로 분리해 각 발이 자기 대상 기준으로 독립 계산하도록 변경 — 기존엔 `Fire()` 안에서 한 번만 계산해 모든 발에 재사용했음.
+**부수 제거**: 각 발을 이제 실제 대상 위치로 직접 조준하므로, 기존에 "부채꼴로 각도만 벌리던" `GetSpreadTargetPosition()`이 완전히 불필요해져 삭제 — 이 함수만 쓰던 `GameConfigTable.PROJECTILE_SPREAD_ANGLE_STEP`(상수+CSV 행)도 함께 제거.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — Double Shot 보유 시 2발이 서로 다른 몬스터로 날아가는지, 무기 여러 개(Archer+Mage+ChainCoil+HomingPod+CentralTower) 동시 보유 시 실제로 흩어져 쏘는지, 몬스터가 1마리뿐일 때는 정상적으로 겹쳐서라도 발사되는지 확인 필요.
+
+---
+
+## 2026-07-29-5 — Laser 시작 각도 랜덤화 (사각지대 버그 수정)
+
+### 개요
+사용자 피드백("레이저가 너무 약해서 볼품이 없어" 조사 중 발견 → "레이저는 나올때 좀 랜덤으로 위치 나올 수 있게 수정, 항상 같은곳에서 똑같은 곳만 쏘고 가니까 범위가 너무 일정하다"). `UpdateLaserWeapon()`이 매 활성화마다 `LaserRotationAngle = 0f`로 리셋한 뒤 항상 같은 방향(0도)부터 `LASER_ROTATION_SPEED × 지속시간`만큼만 회전 — 즉 **타워를 기준으로 정확히 같은 반원(또는 그 이하)만 매번 훑고, 나머지 방향은 영원히 레이저가 안 닿는 사각지대**였다. 시각적으로도 "항상 같은 곳만 쏜다"는 인상을 주는 원인.
+
+### 수정 (함수 단위)
+**`UpdateLaserWeapon()` — 활성화 진입 블록**: `_weapon.LaserRotationAngle = 0f;` → `_weapon.LaserRotationAngle = UnityEngine.Random.Range(0f, 360f);` — 매번 무작위 각도에서 시작.
+**회전 갱신 줄**: `_weapon.LaserRotationAngle += ...` → `_weapon.LaserRotationAngle = (기존값 + 회전량) % 360f;` — 각도를 0~360 범위로 wrap(무제한 누적 방지, 실질 동작에는 영향 없음 — `Cos`/`Sin`은 큰 각도도 정상 처리하지만 값을 깔끔하게 유지하기 위함).
+
+### 검증
+컴파일 에러 0건. Play Mode(execute_code로 Laser 강제 발동, 리플렉션으로 `LaserRotationAngle` 폴링) — 연속 2회 활성화의 시작 각도가 각각 346.0°/69.5°로 서로 다름을 확인, 무작위화가 실제로 적용됨. 카드 드래프트 팝업이 중간에 떠서 `BaseScene.isPaused`가 True가 되며 진행이 멈추는 것도 실측 중 확인 → 첫 번째 카드를 직접 클릭해 해소(기존에 알려진 정상 동작, QA 관례대로 처리).
+
+---
+
+## 2026-07-29-4 — 카드 시스템 무기별 재편: 전역 공격력/치명타 제거 + 무기 전용 강화 3종 신설 + 몬스터 변종 데미지
+
+### 개요
+사용자 요청 4건 동시 처리: (1) "카드 부분도 각 무기 특징으로 업그레이드할 수 있게... 해당무기가 없으면 뜨지 않게" — Archer/HomingPod/CentralTower 전용 강화 카드 신설(사전 확인 완료, AskUserQuestion). (2) "전체적인 공격력, 치명타... 없애줬으면" — 블랭킷 DamagePercent(#101/#102)/CritChance/CritMultiplier(#103/#104) 카드 제거. (3) "엘리트, 보스, 일반몬스터... 타격 데미지 증가... 남겨주고" — 신규 메커니즘으로 3장 신설(사전 확인, VariantBonusDamage). (4) "흡혈 0.1%", "회복 10초마다 1" — 수치 조정.
+
+### 설계 — 왜 치명타가 "CentralTower 전용"이 됐는가
+전역 크리 카드(#103/#104)를 없애면서, 크리 관련 스탯을 완전히 죽이는 대신 **CentralTower의 고유 정체성으로 재정의**했다 — CentralTower만 원래 크리 스탯(CritChance=0.05/CritMultiplier=2.0)을 가진 유일한 무기이므로 자연스러운 귀속처. 기존 `m_CardCritChance`/`m_CardCritMultiplier`/`AddCardCritChance()`/`AddCardCritMultiplier()`는 이름/시그니처 그대로 재사용(최소 침습) — 대신 **적용 지점(Fire())에서 CentralTower가 아니면 0으로 무시**하도록 변경. 이 필드들은 여전히 신규 카드(#311/#312) + 기존 Offense 카테고리 시너지 티어7(`AddCardCritChance(25f)`)이 채우는데, 시너지 보너스도 이제 자동으로 "CentralTower만 혜택" 결과가 된다(부수 효과지만 일관된 설계).
+
+### 코드 (함수 단위)
+**상수**: `ARCHER_RECORD_ID = 1` 신설(선언 순서를 Id 오름차순으로 정렬).
+
+**신규 필드**: `m_HomingTurnRateBonus`(HomingPod 전용), `m_ArcherAttackSpeedBonus`(Archer 전용), `m_EliteDamageBonusPercent`/`m_BossDamageBonusPercent`/`m_NormalVariantDamageBonusPercent`(3장 독립 누적 — SpeciesBonusDamage와 달리 덮어쓰기 아님, 서로 다른 변종을 노리는 카드라 동시 보유가 자연스러움).
+
+**신규 `GetWeaponAttackSpeedMultiplier(TowerWeapon)`**: `m_AttackSpeedMultiplier`(전역, 메타+카드)에 Archer면 `m_ArcherAttackSpeedBonus`를 추가로 곱함. `UpdateFire()`/`UpdateLaserWeapon()`/`GetWeaponCooldownRatio()` 3곳의 `m_AttackSpeedMultiplier` 직접 참조를 전부 이 헬퍼 호출로 교체(Laser도 일관성 위해 경유하지만 결과는 동일 — Laser Id는 Archer가 아니므로).
+
+**신규 `AddArcherAttackSpeedPercent(float)`**: `m_ArcherAttackSpeedBonus`에 가산.
+
+**신규 `AddHomingTurnRate(float)`**: `m_HomingTurnRateBonus`에 가산. `ApplyInnateWeaponAbility()`의 `HOMING_POD_RECORD_ID` 케이스에 `_effects.HomingTurnRateBonus = m_HomingTurnRateBonus;` 추가(ProjectileEffects로 전달 → ProjectileMoveSystem이 소비, [[ProjectileMoveSystem]] 참고). 이전 세션에 완전히 죽은 카드였던 Homing Missile(#305, `SetHoming()`)을 대체하는 **진짜 기능하는** HomingPod 전용 강화.
+
+**신규 `AddVariantBonusDamage(eEnemyVariant, float)`**: switch로 Elite/Boss/그 외(Normal)를 구분해 해당 필드에 가산.
+
+**`Fire(TowerWeapon, Entity)` 수정**:
+- `elementBonus` 계산에 변종 조회 블록 추가 — `EnemyVariantData`(신규 ECS 컴포넌트, [[MonsterManager]] 참고) 존재 시 타겟 변종에 따라 3개 필드 중 하나를 elementBonus에 가산.
+- 크리 계산: `weaponCardCritChance`/`weaponCardCritMultiplier`를 `_weapon.Record.Id == TOWER_RECORD_ID`일 때만 `m_CardCritChance`/`m_CardCritMultiplier`, 아니면 0으로 산출 → `isCrit`/`critMul` 계산에 이 지역 변수를 사용(전역 필드 직접 참조 대신). CentralTower가 아닌 무기는 이제 자기 자신의 `Record.CritChance`(전부 0)만으로 크리 여부가 결정되므로 사실상 절대 크리가 안 뜬다 — 2026-07-29-1의 `Mathf.Max(1f, ...)` 안전장치는 그대로 유지(방어적으로 남겨둠).
+
+### 검증
+컴파일 에러 0건. Play Mode(TitleScene→Btn_Play→Item_Normal 실클릭) — `CardTable.list.Count=36`(33+7신규-4제거) 확인. Elite 변종 몬스터 엔티티를 타워 위치에 직접 생성 + `AddVariantBonusDamage(Elite, 30f)` 호출 후 자동 전투로 누적 데미지 관찰 — 총 99983 데미지가 13(=CentralTower 기본 10 × Elite 1.3배)로 **나머지 없이 정확히 나눠떨어짐**(10의 배수는 전혀 없었음) → Elite 보너스가 매 타격에 정확히 반영됨을 대량 샘플로 확인. CentralTower 전용 크리 스코핑은 코드 검사로 확인(단순 ID 비교라 런타임 불확실성 낮음) — Archer 추가 후 동일 조건 재현 시도는 배경에서 이미 진행 중이던 실제 웨이브 스폰(127초 경과)과 타겟팅이 겹쳐 정량 재현은 실패, 별도 세션에서 정밀 재검증 권장. 콘솔 에러 0건(무관한 "2 audio listeners" 경고만 있음, 기존 이슈).
+
+### 관련 클래스
+- [[CardManager]] 2026-07-29-1 — 카드 데이터/switch 변경
+- [[CardRecord]] 2026-07-29-1 — enum 변경
+- [[MonsterManager]] 2026-07-29-1 — EnemyVariantData 신설
+- [[ProjectileMoveSystem]] 2026-07-29-1 — HomingTurnRateBonus 소비
+
+---
+
+## 2026-07-29-3 — 무기별 정체성 재조정(수치) + 메타 트리 AttackSpeedPercent 신규 배율 연결
+
+### 개요
+사용자 요청 2건: (1) "무기별 특색 반영"(기존 6종 수치/정체성 재조정) — 상세는 [[TowerRecord]] 2026-07-29-0 참고, 이 클래스 자체 코드 변경은 없음(전부 TowerTable.csv 데이터 조정). (2) "메타노드는 더 많이 만들어줘" — 신규 노드 중 하나(M-109, Starting Attack Speed)가 이제껏 없던 `eMetaEffectType.AttackSpeedPercent`를 요구해, 기존 `m_MetaDamageMultiplier`/`m_MetaRangeMultiplier`와 동일한 패턴으로 새 배율을 추가.
+
+### 수정 (함수 단위)
+**필드**: `m_MetaAttackSpeedMultiplier`(기본 1f), `m_AttackSpeedMultiplier`(기본 1f, 파생값) 신설.
+
+**Init()**: `MetaTreeTable.GetTotalEffectValue(eMetaEffectType.AttackSpeedPercent, ...)`로 해금분 조회 → `m_MetaAttackSpeedMultiplier = 1f + (attackSpeedPercent/100f)` (Damage/Range와 동일 계산).
+
+**RecalculateDerivedStats()**: `m_AttackSpeedMultiplier = m_MetaAttackSpeedMultiplier * (1f + m_CardAttackSpeedPercent / 100f)` 추가 — 메타 해금분과 카드 누적분(`m_CardAttackSpeedPercent`)을 합산해 캐싱.
+
+**AddCardAttackSpeedPercent(float)**: 기존엔 `m_CardAttackSpeedPercent`만 누적하고 끝(파생값 재계산 없음) — `RecalculateDerivedStats()` 호출 추가해 카드로 공속이 오를 때마다 캐싱된 배율도 즉시 갱신되도록 수정(전엔 이 필드가 파생 캐싱 없이 매번 인라인 계산됐어서 문제 없었지만, 캐싱 도입에 따라 갱신 트리거가 필요해짐).
+
+**무기 쿨다운 계산 3곳** — 전부 매번 `weapon.Record.AttackInterval / (1f + m_CardAttackSpeedPercent / 100f)`로 인라인 계산하던 것을 `weapon.Record.AttackInterval / m_AttackSpeedMultiplier`로 교체(캐싱된 배율 사용, 메타 반영 겸 계산 중복 제거): `UpdateFire()`(발사 후 쿨다운 리셋), `UpdateLaserWeapon()`(레이저 전용 쿨다운 리셋), `GetWeaponCooldownRatio()`(UIInGameHUD 게이지 표시용).
+
+### 검증
+컴파일 에러 0건. Play Mode(Unity MCP execute_code) — `MetaTreeTable.GetTotalEffectValue(AttackSpeedPercent, [109])`이 정확히 10 반환 확인(집계 로직 자체는 검증). `ActorPlayer.Init()`이 이 값을 실제로 `m_AttackSpeedMultiplier`에 반영해 무기 쿨다운이 짧아지는 End-to-End 확인은 다음 세션 권장(패턴 자체는 이미 검증된 Damage/Range 메타 배율과 동일). 상세는 [[MetaTreeRecord]] 2026-07-29-1, [[TowerRecord]] 2026-07-29-0 참고.
+
+---
+
+## 2026-07-29-2 — 죽은 코드 정리: m_hasHoming/SetHoming() 제거
+Homing Missile 카드(#305)가 [[CardManager]] 2026-07-29-0에서 완전히 제거됨에 따라, 그 유일한 소비 지점이었던 `m_hasHoming` 필드와 `SetHoming()` 메서드도 함께 제거(2026-07-27-9에서 "죽은 코드"로 이미 발견/보류됐던 항목 — 카드 제거로 정리 완료). `ApplyInnateWeaponAbility()`의 `HOMING_POD_RECORD_ID` 케이스(`_effects.IsHoming = true`)는 카드와 무관하게 HomingPod 무기 자체에 내장된 능력이라 영향 없음.
+
+---
+
 연관 클래스: `Actor`(2026-07-27부터 베이스), `TowerRecord`/`TowerTable`(스탯), `ITargetingStrategy`와 5종 구현체(`Closest/Strongest/Weakest/Fastest/Random TargetingStrategy`), `ProjectileManager`(발사 위임), `ProjectileRecord`/`ProjectileTable`/`eProjectileType`(투사체 데이터, 2026-07-22 [[ProjectileManager]] 테이블화 참고), `TowerHealth`(피격, 별개, 병합됨), `TowerColorEffect`(HP 시각화, 별개), `MonsterTag`/`HealthData`/`MoveData`(ECS, 타겟 조회 대상), [[LaserBeamVisual]](Laser 전용 시각), [[MonsterManager]](`DamageEntitiesInArc` 신설)
+
+## 2026-07-29-1 — 크리티컬 배율 0인 무기의 0데미지 버그 수정 + QA 5회 재검증
+
+### 개요
+사용자 보고("5배속으로 테스트하면 타워가 6분(게임시간 30분 상당)만에 죽는데, 1배속으로는 60분 넘게 안 죽는다")를 조사하며 발견한 두 번째 원인(첫 번째는 [[ProjectileCollisionSystem]] 2026-07-29-0 터널링 버그). ChainCoil/Archer/Mage/HomingPod 등 CentralTower를 제외한 무기는 `TowerRecord.CritMultiplier`가 기본 0(원래 자기 힘으로는 크리가 안 뜨는 무기)인데, 전역 크리티컬 확률 카드(`m_CardCritChance`)는 모든 무기에 공통 적용되므로 이 카드를 뽑으면 CritMultiplier=0인 무기도 가끔 크리가 뜬다. 그 순간 `critMul = weapon.Record.CritMultiplier(0) + m_CardCritMultiplier`이고 크리티컬 배율 카드를 따로 안 뽑았으면 `m_CardCritMultiplier`도 0이라 `critMul = 0` → 데미지가 정확히 0으로 계산되어 표시됐다.
+
+### 파일
+- Assets/Scripts/InGame/Actor/ActorPlayer.cs
+
+### 수정 (함수 단위)
+**Fire(TowerWeapon, Entity) — critMul 계산**
+- 전: `float critMul = (isCrit == true) ? (_weapon.Record.CritMultiplier + m_CardCritMultiplier) : 1f;`
+- 후: `float critMul = (isCrit == true) ? Mathf.Max(1f, _weapon.Record.CritMultiplier + m_CardCritMultiplier) : 1f;` — 크리티컬이 떴는데 배율 합산이 1 미만(대부분 0)이면 최소 1배(=크리 안 뜬 것과 동일한 데미지)를 보장. 크리티컬 배율 카드를 따로 보유한 무기/CentralTower(기본 CritMultiplier=2.0)는 기존과 동일하게 그 값을 그대로 사용(영향 없음).
+
+### 검증 (Play Mode, QA 5회 반복)
+Unity MCP로 TitleScene→Btn_Play(실제 클릭 이벤트)→Item_Normal→InGameScene 진입 후 5배속에서 Play Mode 진입~종료를 5회 반복(그중 1회는 세션 초반 Febucci Text Animator 핫 리로드 NRE가 재현돼 즉시 Stop→재진입, 별도 카운트 안 함). 매회:
+- `AddWeapon(4)`(ChainCoil, CritMultiplier=0)로 무기 해금 + `AddCardCritChance(100f)`(전역 크리 확률 100%, Crit Chance 카드 적용과 동일 효과)만 적용하고 **크리티컬 배율 카드(`AddCardCritMultiplier`)는 한 번도 호출 안 함**.
+- 리플렉션으로 `Fire(TowerWeapon, Entity)`를 ChainCoil 무기 슬롯에 직접 호출해 실제로 생성된 투사체의 `ProjectileStats`를 즉시 조회 — 5회 전부 `IsCrit=true`(CritChance=100%이므로 보장), `Damage`는 10/10/10/12/10으로 **한 번도 0이 아님**을 확인(수정 전이었다면 이 조건에서 매번 정확히 0이 나왔어야 함).
+- 실 게임플레이(5배속)에서도 매회 킬카운트 정상 상승, 타워 HP 5회 전부 무손상(150/150), 콘솔 에러 0건.
+
+### 관련
+- [[ProjectileCollisionSystem]] 2026-07-29-0 — 같은 조사에서 함께 발견/수정된 터널링 버그
+- `.claude/qa/client-issues.md` — 이번 세션 QA 요약
+
+---
 
 ## 2026-07-28-0 — TowerRecord.Alpha 반영 (무기 색상 다운톤)
 

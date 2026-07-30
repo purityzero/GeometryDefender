@@ -1,5 +1,8 @@
 # DifficultyManager
 
+## 2026-07-30-0 — GetInfiniteStepCount() public 전환 (WAVE 표시 연동용)
+사용자 요청("인피니트 Wave에서 Wave는 적이 강해질때마다 계속 올라갔으면 좋겠음"). `WaveTable.GetActivePhase()`는 마지막으로 정의된 웨이브(Id=9, 480~600초)를 그 이후로도 계속 반환해 [[UIInGameHUD]]의 WAVE 표시가 Infinite 난이도에서 영원히 "WAVE 9"에 고정되는 문제가 있었음. 이미 존재하던 `GetInfiniteStepCount()`(Infinite 배율 계산용, 120초마다 1씩 증가)를 `private` → `public`으로만 전환 — 계산 로직 자체는 변경 없음. `UIInGameHUD.UpdateWaveText()`가 이 값을 `activePhase.Id`에 더해 표시하도록 수정(상세는 [[UIInGameHUD]] 2026-07-30-0 참고). Normal/Hard/Hell은 `InfiniteStepSeconds=0`이라 항상 0을 더해 기존 표시와 동일.
+
 연관 클래스: `SceneSingleton`/`IUpdatable`(BaseScene 구동), `TimerManager`(경과 시간), `WaveTable`(클리어 판정 기준), `PlayerManager`(언락 상태 영구 저장), `SpawnManager`/`MonsterManager`(배율 소비), `InGameScene`(Init 호출 주체), [[UIDifficultySelect]](선택 UI), `DifficultyRecord`/`DifficultyTable`(2026-07-22-1부터 배율/체인 데이터 소스)
 
 ## 개요

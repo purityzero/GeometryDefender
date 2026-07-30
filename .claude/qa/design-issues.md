@@ -65,3 +65,51 @@ qa-tester 리포트를 넘겨받아 코드/테이블을 직접 분석. WaveTable
 - [[CardManager]], [[ActorPlayer]] (무기 독립 쿨다운 구조)
 
 ---
+
+## 2026-07-29-0 — 메타 트리 전부 해금 상태에서도 Normal이 114~176초에 사망 (2026-07-27-0 후속, 개선됐지만 목표엔 여전히 크게 미달)
+
+### 개요
+사용자 요청("게임데이터 리셋하고... 노말/하드/헬 깨는기준으로 니가 스스로 락풀어서 업그레이드 하고 플레이 좀 해봐") — 이번 세션에 변경된 시스템(투사체 스윕 충돌, 무기 6종 재조정, 카드 시스템 대개편, 메타 트리 21노드 확장, WaveTable 세분화) 통합 QA. `PlayerPrefs`(`PlayerData`/`OptionData`/`AssetData`) 삭제로 세이브 리셋 후, `PlayerManager.instance.UnlockMetaNode()`로 `MetaTreeTable`의 21개 노드 전부 해금(StartingPower MaxHp+60/DamagePercent+60%/RangePercent+25%/AttackSpeedPercent+10% 전부 포함, 최댓값 상태). TitleScene→`Btn_Play`→`Item_Normal` 실제 클릭 경로로 Normal 난이도를 독립 3회 시도, 매번 5배속(`Time.timeScale=5`).
+
+### 관찰 (3회 독립 시도, 카드 드래프트 선택 전략만 다르게)
+| 회차 | 카드 선택 전략 | 사망 시점 | 사망 시 maxHp | weaponCount |
+|---|---|---|---|---|
+| 1 | 항상 드래프트 첫 번째 카드 선택(전략 없음) | 175.8초 | 230 (MaxHp 카드 획득) | 미확인 |
+| 2 | Offense/Speed 카테고리 우선 선택 | 114.2초 | 210 (증가 없음) | 1 (끝까지 증가 없음) |
+| 3 | Weapon > Offense/Speed > Defense 우선순위로 재선택 | 119.9초 | 210 (증가 없음) | 1 (6회 레벨업 동안 Weapon 카드 단 한 번도 안 뜸) |
+
+세 회차 모두 [08_balance.html](../../Assets/Design/08_balance.html) 목표(600~720초)의 **약 20~30% 수준**에서 사망. 2026-07-27-0의 1·2차 조정(Range 5→7, TowerMaxHp 100→150, SpawnRampGraceSeconds 15→30, Normal DifficultyMultiplier 1.0→0.8) 이후 사망 시점이 44~65초 → 114~176초로 약 2~3배 개선됐으나, 메타 트리를 **전부** 해금한 최상급 상태에서도 여전히 목표에 크게 못 미친다.
+
+### 근거 — 스폰레이트 vs 킬레이트 재계산 (수치로 재확인)
+`SpawnManager.UpdatePhaseSpawn()`: `spawnRate(t) = SpawnBaseRate(1.0) × (1 + max(0, t-30)/60)^1.3 × DifficultyMultiplier`. Normal=0.8배.
+`TowerTable.csv` CentralTower: Damage=10, AttackInterval=0.4s → 메타 전부 해금 시 Damage×1.6(DamagePercent+60%)=16, AttackInterval÷1.1(AttackSpeedPercent+10%)≈0.364s → 유효 DPS≈43.96. `EnemyTable.csv` Normal(Id=1) MaxHp=20 → 킬당 약 0.455초 필요(단일 타겟, `DefaultTargeting=Closest`).
+`spawnInterval = 킬소요시간`을 만족하는 t를 역산하면 **t≈100.5초** — 실제 사망 시점(114~120초, 회차 2·3)과 거의 정확히 일치. 즉 메타 트리를 전부 해금해 얻는 딜/공속 보너스를 반영해도, 단일 무기(중앙 타워)만으로는 스폰레이트를 100초 전후로 따라잡지 못하게 되는 구조적 한계가 그대로 남아있다.
+
+콘솔 `[ActorPlayer] TakeDamage` 로그(회차 3)에서 `amount:5`(EnemyTable Normal의 DamageToBase=5)가 연속으로 찍힘 — 기지에 도달한 몬스터가 거의 전부 기본 Normal 종족이고, 죽지 못한 몬스터가 끊김 없이 계속 기지에 도달하고 있음을 뒷받침.
+
+### 신규 관찰 — Weapon 카테고리 카드(추가 무기 해금)가 핵심 완화 수단인데 등장 확률이 낮음(수치 계산)
+`CardTable.csv`의 `Category=Weapon` 카드(601~605, Archer/Mage/ChainCoil/HomingPod/LaserSpinner 해금)는 전부 `Rarity=Epic`. 회차 3에서 Weapon 카테고리를 최우선으로 고르도록 로직을 짰음에도, 사망까지 6회 연속 레벨업 드래프트(회당 3장) 중 **단 한 번도 Weapon 카드가 후보 3장에 포함되지 않았다**(weaponCount가 시작~사망까지 계속 1).
+
+`CardManager.cs`의 `RARITY_WEIGHTS`(Common 60/Rare 25/Epic 12/Legendary 3, 100 만점) 기준 카드 한 슬롯이 Epic일 확률은 12%. `CardTable.csv` 전체 Epic 카드는 16장(Defense 2/Offense 2/Utility 7/Weapon 5)인데 균등 추첨이라면 그중 Weapon은 5/16≈31.3% — 즉 슬롯 하나가 정확히 Weapon 카드일 확률은 0.12×0.313≈3.75%, 드래프트 3장 기준 "이번 드래프트에 Weapon이 한 장이라도 포함될 확률"은 약 1-(1-0.0375)³≈10.8%. 이 값대로면 **6회 연속 드래프트에서 전부 못 뽑을 확률이 약 (1-0.108)⁶≈50%**로, 이번 회차 3의 결과(0/6)는 통계적으로 딱히 이례적인 불운도 아니다 — 즉 "두 번째 무기를 100초 안에 못 구할 확률"이 설계상 이미 상당히 높다는 뜻.
+
+참고로 `GameConfigTable.csv`의 `PityThreshold=5`(연속 5회 Epic 이상 미획득 시 다음 드래프트 1장을 Epic/Legendary로 강제)로 인한 **레어도 천장 시스템은 이미 존재**하지만, 이 천장은 등급만 보장할 뿐 **카테고리(Weapon)까지 보장하지는 않는다** — 천장이 발동해도 위 계산대로 31.3% 확률로만 Weapon이 걸린다. 회차 3의 경우 6회 레벨업 중 몇 번째부터 천장이 발동했는지까지는 이번 조사에서 로그로 확인하지 않았음(추가 확인 필요 시 `CardManager.m_PitySinceEpic` 폴링 권장).
+
+### 제안 (결론 아님, 기획 검토용)
+- 레어도 천장(`PityThreshold`)과 별개로, "N회 레벨업 안에 Weapon 카테고리 미보유 시 다음 드래프트에 Weapon 1장 강제 포함" 같은 카테고리 전용 보장(또는 최소 Weapon 등장 가중치 상향)을 검토할 것 — 현재는 등급 천장만 있고 카테고리 천장이 없어, 등급 천장이 발동해도 Weapon이 아닌 다른 카테고리(Utility 7장 등)로 소모될 수 있음.
+- 또는 단일 무기 자체의 초반 DPS(Damage/AttackInterval)나 스폰 커브(`SpawnRateExponent=1.3`, `SpawnRampGraceSeconds=30`)를 추가로 조정해, 두 번째 무기 없이도 100초보다 더 오래 버틸 수 있게 하는 방향도 가능 — 다만 2026-07-27-0에서 이미 두 차례 조정한 값이라 추가로 낮추면 Hard/Hell과의 난이도 격차가 더 벌어질 수 있음(현재 Hard=1.3배, Hell=1.6배는 이번 세션에서 그대로 유지, Normal 전용 배율만 손댐).
+- 카드 선택 전략에 따라 사망 시점이 크게 달라지는 것(114초 vs 176초) 자체가, 초반 생존이 "본인이 원하는 카테고리를 못 뽑을 리스크"에 크게 좌우된다는 뜻 — 드래프트 카테고리 밸런스(가중치) 자체를 검토 대상으로 삼을 만하다.
+
+### 검증 못한 부분
+- 세 판 모두 클리어(600초 도달)에 실패해 `DifficultyManager.OnCleared`→`UnlockNextDifficulty()` 자동 언락 체인은 **런타임으로 검증 못함**(정적 코드 확인상 `DifficultyManager.cs`의 클리어 판정·언락 호출 자체는 정상적으로 연결되어 있음).
+- Hard/Hell은 `PlayerManager.instance.UnlockDifficulty()`로 강제 해금 후 구조적 동작(씬 로드, `DifficultyMultiplier` 1.3/1.6 정상 적용, 카드 드래프트 정상 동작, 에러 0건)만 짧게(약 20~35초) 확인 — Normal의 패턴상 더 일찍 죽을 것이 명백해 보여 전체 600초 완주 시도는 하지 않음.
+
+### 관련 클래스/테이블
+- [SpawnManager.cs](../../Assets/Scripts/InGame/SpawnManager.cs), [ActorPlayer.cs](../../Assets/Scripts/InGame/Actor/ActorPlayer.cs)
+- Assets/Resources/Table/{WaveTable,DifficultyTable,EnemyTable,TowerTable,CardTable,MetaTreeTable,GameConfigTable}.csv
+- 이전 조사: 본 파일 2026-07-27-0(1차/2차 조정 이력)
+
+### 참고 — 이번 QA 진행 중 발견한 환경 이슈(코드 버그 아님)
+- Text Animator(Febucci) 핫 리로드 NRE(`TypewriterComponent`/`TextAnimatorComponentBase`)가 이번 세션 첫 2회 Play 진입 시 재현됨 — 기존에 알려진 이슈([[QARecorder]] 관련 문서 및 사용자 메모리 `project_febucci_hotreload_bug` 참고). Stop→Play 2회 반복 후에는 재현 없이 이후 세션 전부 클린했음(이번 세션 git status상 Play 중 재컴파일 이력이 있던 에디터 세션이라는 설명과 일치). 새 버그 아님, 기록만 남김.
+- `watch:watch` 스킬로 녹화 영상을 직접 눈으로 리뷰하려 했으나, 이 머신에 Python 인터프리터가 설치돼 있지 않아(`python`/`python3`/`py` 전부 PATH에 없음) 스킬 실행 자체가 불가능했음 — 대신 콘솔의 `[ActorPlayer] TakeDamage` 로그와 스폰레이트/킬레이트 수식 역산으로 원인을 정량 검증(영상 없이도 결론 신뢰도는 충분하다고 판단). 영상 리뷰가 필요하면 Python 설치 후 재시도 필요. 녹화 파일 자체는 `QA_Recordings/`에 3개(`qa_20260729_160256.mp4`, `qa_20260729_161111.mp4`, `qa_20260729_161805.mp4`) 보존됨.
+
+---

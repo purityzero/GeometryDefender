@@ -11,8 +11,6 @@ public class UICardDraft : UIPopup
     [SerializeField] private GameObject m_CardTemplate;
     [SerializeField] private Button m_RerollButton;
     [SerializeField] private TextMeshProUGUI m_RerollText;
-    [SerializeField] private Button m_SkipButton;
-    [SerializeField] private TextMeshProUGUI m_SkipText;
     [SerializeField] private TextMeshProUGUI m_BuildInfoText;
 
     private List<GameObject> m_CardInstances = new List<GameObject>();
@@ -21,12 +19,13 @@ public class UICardDraft : UIPopup
     private void Awake()
     {
         m_RerollButton.onClick.AddListener(OnClickReroll);
-        m_SkipButton.onClick.AddListener(OnClickSkip);
     }
 
     public override void Show()
     {
         base.Show();
+
+        Logger.Log("[UICardDraft] Open");
 
         InGameScene.Current?.SetPaused(true);
 
@@ -126,16 +125,6 @@ public class UICardDraft : UIPopup
         RollAndDisplay();
     }
 
-    private void OnClickSkip()
-    {
-        if (InGameScene.Current.cardManager.CanSkip() == false)
-            return;
-
-        InGameScene.Current.cardManager.Skip();
-
-        AdvanceOrClose();
-    }
-
     // 한 몬스터로 여러 레벨을 동시에 넘긴 경우([[XpManager]].pendingLevelUps) 남은 드래프트가 있으면 새로 굴려서 계속 진행
     private void AdvanceOrClose()
     {
@@ -157,10 +146,6 @@ public class UICardDraft : UIPopup
         int remainingRerolls = InGameScene.Current.cardManager.GetRemainingRerolls();
         m_RerollButton.interactable = InGameScene.Current.cardManager.CanReroll();
         m_RerollText.SetText($"{stringTable.GetString("CardDraftRerollButton")} ({remainingRerolls})");
-
-        bool canSkip = InGameScene.Current.cardManager.CanSkip();
-        m_SkipButton.gameObject.SetActive(canSkip);
-        m_SkipText.SetText(stringTable.GetString("CardDraftSkipButton"));
     }
 
     private void RefreshBuildInfo()

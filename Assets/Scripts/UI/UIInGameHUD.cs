@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +10,7 @@ public class UIInGameHUD : UIBase
     [SerializeField] private TextMeshProUGUI m_TimeText;
     [SerializeField] private TextMeshProUGUI m_KillText;
     [SerializeField] private TextMeshProUGUI m_WaveText;
+    [SerializeField] private TextMeshProUGUI m_LevelText;
     [SerializeField] private Image m_XpFillImage;
     [SerializeField] private Image m_HpFillImage;
 
@@ -40,6 +42,7 @@ public class UIInGameHUD : UIBase
     {
         UpdateTimeText();
         UpdateWaveText();
+        UpdateLevelText();
         TryRegisterHpObservable();
         TryRegisterKillObservable();
         TryRegisterXpObservable();
@@ -74,7 +77,22 @@ public class UIInGameHUD : UIBase
         if (activePhase == null)
             return;
 
-        m_WaveText.text = $"WAVE {activePhase.Id}";
+        // Infinite 난이도는 마지막 정의 웨이브 이후로도 시간이 계속 흐르는데, WaveTable엔 그 이후 웨이브가 없어
+        // GetActivePhase()가 항상 마지막 Id를 반환한다 — 난이도가 계속 오르는 걸 표시에도 반영하도록 스텝 수만큼 더해준다.
+        int displayWaveId = activePhase.Id;
+        if (InGameScene.Current.difficultyManager != null)
+            displayWaveId += (int)InGameScene.Current.difficultyManager.GetInfiniteStepCount();
+
+        m_WaveText.text = $"WAVE {displayWaveId}";
+    }
+
+    // Wave와 동일한 이유로 폴링 유지(값이 자주 안 바뀌지만 조회 자체가 가벼움) — 사용자 요청("유저의 레벨 숫자도 표기했으면 좋겠음").
+    private void UpdateLevelText()
+    {
+        if (InGameScene.Current == null || InGameScene.Current.xpManager == null)
+            return;
+
+        m_LevelText.text = $"LV.{InGameScene.Current.xpManager.currentLevel}";
     }
 
     private void TryRegisterHpObservable()
@@ -166,6 +184,15 @@ public class UIInGameHUD : UIBase
             {
                 weaponColor.a = towerController.GetWeaponAlpha(index);
                 fill.color = weaponColor;
+
+                // 사용자 요청("반짝거리는 거 없는애들은 그냥 color값 적용, 냉기오브 같은 반짝거리는 효과 있는애들은 tween") —
+                // 인게임 오브젝트 쪽에 실제로 글로우 펄스가 있는 무기(Frost Orb Turret)만 게이지도 같은 톤으로 Tween, 나머지는 정적 색상 그대로.
+                if (towerController.GetWeaponHasGlowPulse(index) == true)
+                {
+                    Color brighterColor = Color.Lerp(weaponColor, Color.white, 0.6f);
+                    TweenUtil.Color(fill, brighterColor, GameConfigTable.ORBITAL_SLOW_GLOW_PULSE_DURATION)
+                        .SetLoops(-1, LoopType.Yoyo);
+                }
             }
 
             m_WeaponCooldownFills.Add(fill);

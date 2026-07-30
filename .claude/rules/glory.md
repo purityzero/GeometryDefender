@@ -7,7 +7,7 @@ paths:
 
 Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만들기 전에 여기 있는 것부터 재사용한다.**
 
-**프로젝트 비의존 원칙**: Glory 폴더 코드는 다른 프로젝트에 그대로 복사해 쓸 수 있어야 한다 — 프로젝트 고유 클래스(PlayerManager 등)·설계 문서 경로·씬/프리팹 이름을 참조하거나 주석에 남기지 않는다. 허용 의존: Unity/DOTween/TMP 같은 범용 패키지뿐. 프로젝트 연동이 필요한 지점은 Glory 밖(프로젝트 코드)에서 상속/호출로 연결한다. (예외로 이미 어긋난 곳: UIAssetBox → PlayerManager 참조, GlobalEnum의 프로젝트 재화, UIManager → UITable/UIRecord 참조(2026-07-15, 사용자 요청) — 라이브러리로 역동기화할 때 정리 필요)
+**프로젝트 비의존 원칙**: Glory 폴더 코드는 다른 프로젝트에 그대로 복사해 쓸 수 있어야 한다 — 프로젝트 고유 클래스(PlayerManager 등)·설계 문서 경로·씬/프리팹 이름을 참조하거나 주석에 남기지 않는다. 허용 의존: Unity/DOTween/TMP 같은 범용 패키지뿐. 프로젝트 연동이 필요한 지점은 Glory 밖(프로젝트 코드)에서 상속/호출로 연결한다. (예외로 이미 어긋난 곳: UIAssetBox → PlayerManager 참조, GlobalEnum의 프로젝트 재화, UIManager → UITable/UIRecord 참조(2026-07-15, 사용자 요청), BaseScene.PlaySfx() → SoundTable/SoundRecord 참조(2026-07-29, 사용자 요청 — 씬 전역에서 "키로 SFX 재생"이 필요한 지점(UIButton 등)이 각자 SoundTable을 조회하지 않고 BaseScene으로 모으기 위함) — 라이브러리로 역동기화할 때 정리 필요)
 
 ## 싱글톤 (Partterns/Singleton)
 | 클래스 | 접근자 | 용도 |
@@ -47,6 +47,15 @@ Assets/Scripts/Glory/ 는 공용 라이브러리다. **새 유틸/패턴을 만�
 - **의존 주의**: 이 폴더(TextAnimation)는 Text Animator 패키지(com.febucci.text-animator-unity) 의존 — 패키지 없는 프로젝트로 Glory 복사 시 이 폴더는 제외할 것 (허용 의존 원칙의 조건부 예외, 2026-07-20). UIToastMessage도 타자기 출력용 TextAnimationPlayer(이 폴더의 컴포넌트)를 프리팹 부착 + 직렬화 참조하므로(2026-07-20, 사용자 요청) 제외 시 m_TextPlayer 필드/컴포넌트를 제거하고 SetText로 되돌려야 한다.
 - TextAnimator_TMP가 붙은 TMP에는 `text` 직접 대입 금지 — 태그 미파싱/미갱신 위험, 반드시 유틸 경유.
 
+## 사운드 (Sound/SoundManager)
+- `SoundManager : MonoSingleton<SoundManager>` — BGM/Ambience(루프, `SoundFadeData` 커브 기반 크로스페이드)와 Sfx(단발, 클립별 동시 재생 수 제한 — 초과 시 가장 오래된 것부터 정지)를 담당. `SoundComponent`(AudioSource 래퍼, FactoryObject 풀링)/`SoundFadeData`(ScriptableObject 페이드 커브)와 세트.
+- API: `PlayBgm(clip)`/`StopBgm()`, `PlayAmbience(clip 또는 List<clip>)`/`StopAmbience(clip = null)`, `PlaySfx(clip, position?, maxConcurrent = 0)`/`StopAllSfx()`, `SetCategoryVolume(eSoundCategory, float)`/`GetCategoryVolume(...)`/`SetMute(bool)`.
+- **볼륨 옵션 시스템과는 의도적으로 분리**돼 있음 — Glory는 프로젝트별 Option/PlayerData 구조를 모르므로, 프로젝트가 자기 옵션 UI/저장 데이터에서 `SetCategoryVolume()`을 호출해 연결해야 한다(직접 프로젝트 클래스를 참조하지 않음).
+- **일시정지는 `BaseScene.Current.isPaused`를 자동으로 따라간다**(같은 Glory 소속이라 참조해도 프로젝트 비의존 원칙 위반 아님) — 값이 바뀌는 프레임에만 재생 중인 사운드를 전부 Pause/UnPause, 정지 중엔 SFX 정리/페이드도 건너뜀. `Time.timeScale` 기반으로 일시정지를 구현하는 프로젝트라면 이 로직이 사실상 아무 일도 안 해도 무해함(AudioSource는 원래 `Time.timeScale`과 무관하게 재생되므로 별도 처리 없이도 안 멈추는 게 기본 동작이라, `BaseScene.isPaused`가 계속 false로 유지되는 프로젝트에서는 이 코드 경로 자체가 안 타짐).
+  - **구현(2026-07-29부터)**: 전환 프레임 감지(`SetAllSoundsPaused` 트리거) + BaseScene 재등록 부트스트랩은 SoundManager 자신의 Update()에 남아 매 프레임 무조건 돈다(정지 중에도 전환 감지는 계속 필요하므로). 실제 SFX 정리/페이드 갱신은 `UpdateLogic()`으로 옮겨 BaseScene 중앙 루프가 대신 호출 — `isPaused==true`면 BaseScene.Update() 자체가 호출을 건너뛰므로 별도 가드 불필요. 위 "씬 진입점 베이스" 섹션의 "예외의 예외" 참고.
+- 셋업: 씬에 `SoundManager` 배치 → AudioSource+`SoundComponent`가 붙은 **비활성** 자식을 만들어 `m_SoundTemplate`에 연결(풀링 템플릿, 직접 재생 안 됨) → (선택) `Assets > Create > Glory > Sound > SoundFadeData`로 페이드 커브 에셋 생성해 `m_BgmFadeData`/`m_AmbienceFadeData`에 연결(비워두면 즉시 전환).
+- 상세: `.claude/class/SoundManager.md`(원본과의 차이, "가져온 개념 vs 뺀 것" 근거 포함).
+
 ## 리소스 (Resource/ResUtil)
 - `Resources.Load`/`Instantiate` 직접 호출 대신 ResUtil 사용 (실패 시 에러 로그 + null 반환, 로컬 트랜스폼 초기화 포함).
 - **생성 함수 네이밍은 전부 `Create`로 통일** (2026-07-19, 사용자 확정 규칙 — 기존 `AddChild` 계열은 `Create`로 리네임/흡수):
@@ -81,8 +90,10 @@ MonoBehaviour의 `[SerializeField]` 필드 이름을 바꾸면, 씬/프리팹에
   - 그 외 일반 MonoBehaviour → `UpdatableBehaviour` 상속(TitleSquareEffect/TowerController/SpawnManager/TowerColorEffect 등).
 - **등록 지점이 왜 OnEnable/OnDisable인가, 그리고 왜 `[DefaultExecutionOrder]`가 필수인가**: `OnEnable`/`OnDisable`은 `SetActive` 토글(예: `UIBase.Show()`/`Close()`)마다 다시 호출되므로, 비활성화된 동안 자동으로 갱신 목록에서 빠지고 재활성화 시 자동 재등록된다는 이점이 있어 채택했다(`Start()`/`OnDestroy()`는 각 1회뿐이라 이게 안 됨). **주의 — "모든 오브젝트의 Awake가 끝난 뒤에야 OnEnable이 불린다"는 보장은 Unity에 없다(이건 Start에만 있는 보장, 2026-07-24 실사용 NRE로 확인)** — 즉 BaseScene 자신의 Awake(Current 설정)보다 다른 스크립트의 OnEnable(Register 호출)이 먼저 도는 경우가 실제로 생긴다. 그래서 `BaseScene` 파생 클래스에 `[DefaultExecutionOrder(-1000)]`를 강제로 붙여, 이 둘이 항상 다른 모든 스크립트보다 먼저 Awake/OnEnable을 마치도록 순서 자체를 고정한다 — 이 attribute 없이 "Awake가 먼저 실행되니 안전하다"고 가정하지 말 것.
 - 파생 클래스가 `Awake()`/`OnEnable()`/`OnDisable()`/`OnDestroy()`를 추가로 쓰면 반드시 `base.XXX()`를 호출해야 등록/해제/Current 관리가 유지된다 — `override` 없이 이름만 같은 메서드를 선언(hiding)하면 베이스 로직이 조용히 안 불린다(과거 DifficultyManager에서 실제로 겪은 버그, `Current`가 파괴 후에도 null로 안 풀렸음).
-- **예외**: `MonoSingleton<T>` 기반 전역 매니저(SceneManager 등 씬을 넘어 유지되는 것)는 이 패턴을 타지 않고 계속 자기 자신의 Update()로 스스로 구동한다(2026-07-21 사용자 확정) — 위 3개 베이스 중 어느 것도 상속하지 않으면 되므로 별도 분기 코드 불필요.
+- **예외**: `MonoSingleton<T>` 기반 전역 매니저(SceneManager 등 씬을 넘어 유지되는 것)는 이 패턴을 타지 않고 계속 자기 자신의 Update()로 스스로 구동하는 게 기본값이다(2026-07-21 사용자 확정) — 위 3개 베이스 중 어느 것도 상속하지 않으면 되므로 별도 분기 코드 불필요.
+  - **예외의 예외(2026-07-29, 사용자 요청)**: SoundManager는 `IUpdatable`을 구현해 실제 로직(`UpdateLogic()`)은 BaseScene 중앙 루프가 호출하지만, MonoSingleton(씬 넘어 생존)과 BaseScene(SceneSingleton, 씬마다 파괴/재생성)의 생명주기가 다르므로 **자기 자신의 Update()는 남겨두고 매 프레임 `BaseScene.Current != 등록된 씬`을 비교해 재등록**한다. 등록 대상이 씬 전환 중 사라질 수 있는 `SceneSingleton` 기반일 때 `MonoSingleton` 소비자가 이 패턴을 타려면 이 재등록 부트스트랩이 필수 — 상세는 [[SoundManager]] 참고.
 - 새 씬 진입점이나 씬 로컬 매니저를 추가할 때 이 패턴부터 재사용할 것(특히 `[DefaultExecutionOrder]` 빠뜨리지 말 것) — 상세는 .claude/class/BaseScene.md, .claude/class/IUpdatable.md, .claude/class/SceneSingleton.md, .claude/class/UpdatableBehaviour.md, .claude/class/UIManager.md.
+- **`BaseScene.isPaused` 위에 프로젝트가 자체 일시정지 API(예: `SetPaused(bool)`)를 얹을 때는 단일 bool로 마지막 호출값만 저장하지 말 것.** 여러 팝업(카드 드래프트/치트/일시정지 메뉴 등)이 각자 독립적으로 자기 `Show()`/`Close()`에서 `true`/`false`를 호출하는 구조라면, 두 팝업이 동시에 열린 상태에서 하나만 닫혀도 다른 팝업이 아직 떠 있는데 게임이 재개되는 버그가 생긴다(2026-07-29, `InGameScene.SetPaused`에서 실제로 재현·확인 — `.claude/qa/client-issues.md` 2026-07-29-0 참고). 여러 호출자가 공유하는 일시정지 플래그는 참조 카운터(요청 시 ++, 해제 시 --, 0 이하일 때만 실제로 재개)로 관리하거나, 열려있는 정지 유발 팝업 집합을 추적해 마지막 하나가 닫힐 때만 실제로 풀리도록 설계할 것.
 
 ## 테이블 (Table/)
 - 흐름: `TableManager.instance.init()` (GameManager.Awake에서 호출) → `GetTable<T>()`.

@@ -6,6 +6,187 @@
 
 ---
 
+## 2026-07-29-0 — 치트/카드드래프트/일시정지 팝업이 공유하는 InGameScene.m_isPaused가 스택 안 됨 → 팝업이 겹치면 하나만 닫혀도 게임이 조용히 재개됨
+
+### 개요
+사용자 리포트("치트에 배속증가가 나만 빼고 증가더라" — 치트 창 시간 배속 버튼을 눌러도 타워 관련 무언가만 안 빨라지는 느낌) 조사 중 발견. 조사 도중 사용자가 직접 "치트랑 렙업이랑 같이 섞여서 QA가 작동안하는거 같아"라고 지적했고, 실제로 재현됨.
+
+### 재현 (Play Mode, TitleScene→Btn_Play→Item_Normal 실제 클릭 흐름으로 InGameScene 진입)
+1. 치트로 몬스터를 다수 스폰해 자연 진행시키던 중, XP 누적으로 `UICardDraft(Clone)`(레벨업 카드 선택 팝업)이 자동으로 열림.
+2. 이 상태에서 `Btn_Cheat`을 눌러 `UICheatWindow(Clone)`도 추가로 오픈 — `execute_code`로 두 팝업 모두 `activeInHierarchy=true`임을 직접 확인(카드드래프트+치트 창 동시 개방).
+3. 치트 창의 시간 배속 버튼(1x/3x)을 눌러본 뒤 치트 창의 `Btn_Close`만 클릭(카드드래프트는 그대로 열어둔 채).
+4. `InGameScene`의 private 필드 `m_isPaused`를 리플렉션으로 직접 조회 — 치트 창을 닫는 즉시 `true → false`로 바뀜. 아직 화면엔 카드드래프트 팝업이 떠 있는데도 `BaseScene`의 중앙 Update 루프(`IUpdatable` 전체 — ActorPlayer/SpawnManager/TimerManager/MonsterManager 등)와 ECS `SimulationSystemGroup.Enabled`가 재개됨. 실제로 그 직후 `ActorPlayer` 무기의 `CooldownTimer`가 고정값에서 벗어나 실제로 감소하기 시작하는 것을 확인.
+
+### 원인 (코드 레벨 특정)
+`Assets/Scripts/InGame/InGameScene.cs:64-88` — `SetPaused(bool)`가 `m_isPaused` **단일 bool**을 그대로 덮어쓰고 `ApplyFreezeState()`로 `BaseScene.isPaused` + ECS `SimulationSystemGroup.Enabled`를 갱신한다. 카운터/스택이 아니라 **마지막 호출값으로 완전히 대체**되는 구조.
+
+이 `SetPaused(true)`/`SetPaused(false)`를 서로의 존재를 모른 채 각자 독립적으로 호출하는 팝업이 3개 있다:
+- `Assets/Scripts/UI/UICardDraft.cs:31`(Show→true) / `:41`(Close→false)
+- `Assets/Scripts/UI/UICheatWindow.cs:54`(Show→true) / `:62`(Close→false)
+- `Assets/Scripts/UI/UIPause.cs:18`(Show→true) / `:31`(Close→false)
+
+두 팝업이 겹쳐 열린 상태에서 하나가 먼저 닫히면, 아직 열려있는 다른 팝업의 의도(계속 정지)와 무관하게 게임이 재개된다 — 정지 요청 "개수"가 아니라 "가장 최근 이벤트"만 반영되는 게 근본 원인.
+
+### 사용자가 겪은 증상과의 연결
+- 원 리포트("배속 올렸는데 나만 안 빨라진다")를 치트 창을 계속 연 채로 관찰한 경우라면: 치트 창이 열려있는 동안은 `SetPaused(true)` 상태라 애초에 `BaseScene` 전체(타워+몬스터+스폰 전부)가 100% 정지 — "느리다"가 아니라 "아예 안 움직인다"가 맞는 상태다. 실측(치트 창을 연 채로 1x/3x 각각 ~15초씩 `CooldownTimer`를 샘플링)에서 두 구간 모두 정확히 동일한 값(0.335)에 고정되어 전혀 감소하지 않음을 확인 — 반면 같은 구간 `Time.time` 자체는 정상적으로 스케일링됨(3x 구간 실측 약 2.84배, 라운드트립 오버헤드 감안 시 3배에 근접). 즉 `Time.timeScale`은 정상 반영되고 있는데, 치트 창이 열려있는 동안은 그게 애초에 무의미한 상태였던 것.
+- 카드드래프트와 겹쳐서 치트만 먼저 닫히는 위 재현 케이스는 정반대 방향의 혼란도 만든다 — 사용자는 카드드래프트가 떠 있으니 "정지 중"이라 인지하지만, 실제로는 위 버그로 게임이 백그라운드에서 이미 재개되어 진행되고 있다. 두 방향 다 "치트/레벨업 팝업 상호작용에 따라 체감 속도가 뒤죽박죽"이라는 사용자 정황과 일치한다.
+- 참고로 `ActorPlayer.UpdateFire()`/`UpdateLaserWeapon()`, ECS `MoveSystem`/`ProjectileMoveSystem` 전부 `Time.deltaTime`(스케일 반영)만 사용하고 있어 "발사/이동 로직 자체가 `Time.timeScale`을 못 받는다"는 별도 결함은 코드상 확인되지 않았다 — 문제는 발사 로직이 아니라 일시정지 상태 관리 쪽으로 특정된다.
+
+### 추가 검증 (재검사 요청으로 진행, clean 1x vs 3x)
+사용자 재검사 요청으로, 카드드래프트가 뜰 때마다 즉시 클릭으로 넘기며 팝업 개입 없는 clean 상태에서 재측정 완료:
+- **1x**: `paused=False` 상태에서 `CooldownTimer`가 0.329→0.100로 실제로 흐름(약 10.7초 게임시간 경과), 같은 구간 wall time 대비 gameTime 비율 ≈0.92(오버헤드 감안 시 1x에 부합).
+- **3x**: 같은 방식으로 `CooldownTimer` 0.356→0.186로 흐름, gameTime/wall 비율 ≈2.74(3x에 근접).
+- 결론: 치트/카드드래프트 팝업이 전혀 개입하지 않는 상태에서는 `Time.timeScale`이 타워 쿨다운에 정상적으로 비례 반영된다 — 위에서 특정한 "3개 팝업 공유 `m_isPaused` 미스택" 문제가 유일한 원인이며, 발사 로직 자체의 결함은 최종적으로 배제됨.
+
+### 영상 확보 완료 — 시각적 확인 (2026-07-29)
+`QA_Recordings/qa_20260729_074129.mp4`(93.7초, 720×1280, 2583프레임, ffprobe로 프레임 수 확인 완료). Python 미설치로 `watch` 스킬 스크립트 대신 ffmpeg로 6초 간격 프레임을 직접 추출해 확인. **이번엔 인위적으로 두 팝업을 동시에 열지 않고, 정상적인 치트(1x→3x 배속 변경) 조작만 반복하는 도중 자연스럽게 재현됨**:
+- `t=0:12`(킬 6, HP 150/150) — "레벨업 카드를 선택하세요" 드래프트 팝업 표시.
+- `t=0:19`(킬 11) → `t=0:24`(킬 16) → `t=0:31`(킬 21, **카드 목록 자체가 밸로시티/보강/불사조 → 퀵파이어/필살의조준/더 날카로운 날로 교체됨** — 드래프트 팝업이 계속 새로 열리고 있었다는 뜻) → `t=0:43`(킬 27) — **드래프트 화면이 계속 떠 있는 동안** 몬스터가 화면에 등장/이동하고 타이머·킬카운트가 계속 진행.
+- `t=1:01`(킬 27 유지, **HP 150→50으로 급감**) → `t=1:09` **런 종료(HP 0/150, 생존시간 01:09, 처치 27)**.
+- 즉 플레이어가 카드를 고르는 중이라고 인지하는 화면 뒤에서 게임이 끝까지(타워 사망) 진행돼버리는 것을 프레임으로 직접 확인 — 위 코드 원인 분석과 정확히 일치하는 실제 플레이 결과.
+
+### 남은 한계
+- 두 팝업이 정확히 어떤 조합/순서로 실제 플레이 중 자연스럽게 겹치는지(예: 카드드래프트가 뜬 상태에서 치트 버튼이 실제로 클릭 가능한지, UIPause와의 조합은 어떤지)까지는 전부 확인 못함 — 이번엔 치트+카드드래프트 조합만 재현.
+- 세션 중 별개로 `World.DefaultGameObjectInjectionWorld null`(2026-07-23-0/2026-07-27-2와 동일, 기존에 이미 문서화된 미해결 이슈)이 Stop→Play 반복 중 한 세션에서 재현됨 — 이번 조사와는 무관하나 참고용으로 기록.
+
+### 수정 완료 (2026-07-29, 사용자 승인 후 적용)
+`m_isPaused`(단일 bool) → `m_PauseRequestCount`(참조 카운터, int)로 교체. `SetPaused(true)`는 ++, `SetPaused(false)`는 --(0 이하로는 안 내려가게 방어), `ApplyFreezeState()`는 `m_PauseRequestCount > 0 || m_isGameOver == true`로 판정. `SetPaused(bool)` 시그니처는 그대로라 `UICardDraft`/`UICheatWindow`/`UIPause`의 호출부(`Show()`/`Close()`)는 수정 불필요 — `Assets/Scripts/InGame/InGameScene.cs:64-103` 참고. `refresh_unity(compile: request)`로 재컴파일 확인, 컴파일 에러 0건.
+- **검증**: 컴파일 확인에 더해, Play Mode 실측(TitleScene→Btn_Play→Item_Normal 실제 클릭으로 InGameScene 진입)으로 `InGameScene.Current`에 리플렉션으로 `SetPaused`를 직접 호출하며 `m_PauseRequestCount`/`BaseScene.isPaused`를 단계별 샘플링 — `count=0/False`(초기) → `SetPaused(true)` 2회로 `count=2/True`(카드드래프트+치트 동시 오픈 시뮬레이션) → `SetPaused(false)` 1회로 `count=1/True`(치트만 닫힘, **수정 전이라면 여기서 재개됐을 지점 — 정지가 유지됨을 직접 확인**) → `SetPaused(false)` 1회 더로 `count=0/False`(카드드래프트도 닫힘) → `SetPaused(false)` 재호출해도 `count=0`(음수 방어 확인). 실제 `UICheatWindow`/`UICardDraft` 팝업을 동시에 띄우는 것까지는 성공했으나, 이어지는 검증 도중 사용자가 에디터에서 직접 오브젝트를 삭제해 세션 상태가 흐트러져 "치트만 닫기 → 카드드래프트 유지" 최종 단계는 재시도하지 않고 위 리플렉션 결과로 갈음함. 상세는 [InGameScene.md](../class/InGameScene.md) 2026-07-29-0 참고.
+
+### 관련 클래스
+- [InGameScene.md](../class/InGameScene.md) — `SetPaused`/`ApplyFreezeState`/`m_isPaused`
+- [UICheatWindow.md](../class/UICheatWindow.md)
+- [UICardDraft.md](../class/UICardDraft.md)
+- [UIPause.md](../class/UIPause.md)
+- [ActorPlayer.md](../class/ActorPlayer.md) — 쿨다운 로직 자체는 정상(Time.deltaTime 사용) 확인용으로 대조
+
+---
+
+## 2026-07-29-1 — TowerColorEffect.UpdateLogic()이 InGameScene.Current null 체크 누락으로 NRE
+
+### 개요
+위 2026-07-29-0 조사를 위해 반복적으로 Stop→Play를 돌리던 중 사용자가 Unity 콘솔에서 직접 확인해 전달:
+```
+NullReferenceException: Object reference not set to an instance of an object
+TowerColorEffect.UpdateLogic () (at Assets/Scripts/InGame/TowerColorEffect.cs:63)
+BaseScene.Update () (at Assets/Scripts/Glory/Scene/BaseScene.cs:50)
+```
+직후 `execute_code`로 세션 상태를 확인해보니 `SceneManager.GetActiveScene().name == "InGameScene"`이고 `EditorApplication.isPlaying == true`인데 `InGameScene.Current == null`인 상태였다 — `InGameScene.cs` 자신의 주석(11~16행)이 이미 명시한 "TitleScene↔InGameScene 전환 중 `Current`가 널로 바뀌는 레이스"(2026-07-23-0/2026-07-27-2에 기록된 `World.DefaultGameObjectInjectionWorld null`과 같은 계열의 씬 전환 레이스)가 실제로 이 세션에서도 발생 중이었다.
+
+### 원인 (코드 레벨 특정)
+`Assets/Scripts/InGame/TowerColorEffect.cs:63`
+```csharp
+public override void UpdateLogic()
+{
+    if (m_RegisteredObservable != null)
+        return;
+
+    if (InGameScene.Current.towerController == null)   // ← InGameScene.Current 자체가 null이면 여기서 NRE
+        return;
+    ...
+}
+```
+`InGameScene.Current.towerController`에서 `.towerController`만 null 체크하고 `InGameScene.Current` 자체는 체크하지 않는다. `grep`으로 프로젝트 전체의 `InGameScene.Current.XXX` 호출부를 전수 조사한 결과, 씬 전환 레이스에 노출될 수 있는 다른 모든 호출부(`UIInGameHUD.cs`, `UIPause.cs`, `ECS/HealthSystem.cs`, `ECS/ProjectileCollisionSystem.cs`, `UICardDraft.cs`/`UICheatWindow.cs`의 `SetPaused` 등)는 전부 `InGameScene.Current == null ||`나 `?.`로 먼저 가드하고 있는데, **`TowerColorEffect`만 이 가드가 빠져 있다.** `UpdatableBehaviour`(`OnEnable`에 `BaseScene.Current.Register`) 기반이라 매 프레임 `UpdateLogic()`이 불리므로, 씬 전환 레이스 창(TitleScene 로드가 InGameScene 언로드보다 먼저 시작되는 구간, `InGameScene.OnDestroy()`가 `Current = null`을 이미 실행한 뒤에도 해당 프레임 동안 이 컴포넌트가 아직 살아있어 `UpdateLogic()`이 한 번 더 불리는 경우)에 걸리면 곧바로 NRE.
+
+### 실사용자 영향
+이번 세션처럼 Stop→Play를 빠르게 반복하는 QA/개발 환경뿐 아니라, **실제 플레이 중 InGameScene → TitleScene(런 종료/타이틀 복귀) 전환 시점에도 이론상 동일하게 재현 가능** — 이미 알려진 씬 전환 레이스가 트리거되는 매 순간마다 다른 호출부는 안전하게 넘어가는데 이 한 곳만 예외를 던진다는 점에서 별개로 기록할 가치가 있는 버그.
+
+### 수정 (사용자가 직접 적용)
+`Assets/Scripts/InGame/TowerColorEffect.cs` — 사용자가 직접 두 지점 모두 수정:
+- 63행(`UpdateLogic`): `InGameScene.Current.towerController == null` → `InGameScene.Current?.towerController == null`.
+- 72행(`OnHpChanged`): `InGameScene.Current.towerController == null || ...` → `InGameScene.Current?.towerController == null || ...`. 같은 줄의 `InGameScene.Current.towerController.maxHp <= 0`과 75행의 `InGameScene.Current.towerController.maxHp` 참조는 `||`/앞선 return의 단락 평가로 이미 `Current`/`towerController`가 non-null임이 보장된 뒤에만 도달하므로 별도 수정 없이 안전.
+
+### 검증
+`refresh_unity(compile: request)`로 재컴파일 요청, 컴파일 에러 없음 확인. Play Mode 실측(재현 조건인 씬 전환 레이스를 다시 강제로 맞추는 것)은 별도로 하지 않음 — 변경 자체가 단순 null 조건 추가라 회귀 위험이 낮다고 판단.
+
+### 관련 클래스
+- [TowerColorEffect.md](../class/TowerColorEffect.md)
+- [InGameScene.md](../class/InGameScene.md) — `Current` null 레이스의 배경 설명
+
+---
+
+## 2026-07-29-2 — 2026-07-29-0 수정(m_PauseRequestCount) + ShowToast SetAsLastSibling 수정 최종 Play Mode 실측 검증 (버그 아님, 수정 정상 동작 확인)
+
+### 개요
+2026-07-29-0에서 적용한 `InGameScene.m_PauseRequestCount`(참조 카운터) 수정과, 같은 세션에 별도로 적용된 `UIManager.ShowToast()`의 `SetAsLastSibling()` 수정을 실제 Play Mode(TitleScene→Btn_Play 실제 클릭→Item_Normal 실제 클릭→InGameScene)로 최종 재검증. `UICheatWindow`는 지침대로 전혀 사용하지 않고 `Time.timeScale` 직접 대입만 사용.
+
+### 검증 1 — 배속 자체가 타워 무기에 실제로 반영되는지 (직접 측정)
+`ActorPlayer.m_WeaponList[0].CooldownTimer`를 리플렉션으로 직접 읽어 1x/3x 각각 측정(카드드래프트 개입을 배제하기 위해 측정 구간에서만 `XpManager.m_XpMultiplier`를 0으로 낮췄다가 종료 후 1로 원복):
+- **1x**: `CooldownTimer` 100→89.54 (게임시간 10.46초 경과, 실측 wall time 11.24초 대비 비율 0.93)
+- **3x**: `CooldownTimer` 100→58.68 (게임시간 41.32초 경과, 실측 wall time 14.59초 대비 비율 2.83)
+- 정규화 비율(3x비율/1x비율) ≈ **3.04배** — 기대값(3배)에 근접. 무기 쿨다운이 `Time.timeScale`에 정상 비례함을 재확인(2026-07-29-0의 기존 결론과 일치).
+
+### 검증 2 — 팝업 겹침 회귀 재확인 (UICardDraft + UIPause, 실제 팝업으로 재현)
+`XpManager.LevelUp()`을 리플렉션으로 직접 호출해 `UICardDraft` 오픈(`pauseRequestCount=1`) → `UIManager.instance.Get<UIPause>()`로 `UIPause` 추가 오픈(`pauseRequestCount=2`) → `UIPause.Close()`만 호출:
+- `pauseRequestCount=1` 유지, `isPaused=True` 유지, `TimerManager.elapsedTime`이 3초간 완전히 고정(162.7942 → 162.7942, 변화 없음) — **카드드래프트가 열려있는 동안 게임이 재개되지 않음을 확인, 수정 전이었다면 여기서 재개됐을 지점.**
+- 이어서 카드 선택으로 `UICardDraft`도 닫음 → `pauseRequestCount=0`, `isPaused=False`, `elapsedTime`이 다시 정상 진행(162.7942 → 171.9169, 약 2초 경과분 반영) — 정상 재개 확인.
+
+### 검증 3 — 일반 플레이 배속 체감 (원 증상 "타워만 안 빨라진다" 재현 여부)
+자연 처치 수(`MonsterManager.killCount`) / `elapsedTime` 경과분으로 1x·3x 비교 시도 — **이 항목은 방법론적 한계로 결론 보류**:
+- 초반 XP 획득 속도가 매우 빨라(레벨업 1회 만에 바로 다음 레벨업 대기 상태) 자연 플레이 구간 대부분이 `UICardDraft`로 막혀 있어(한 관측 구간은 4초 내내 `elapsedTime` 변화가 0 — 그 구간 전체가 팝업으로 막혀있었다는 뜻), `m_XpMultiplier=0`으로 낮춰 인위적으로 드래프트를 억제한 뒤에야 유효 표본을 얻음.
+- 그렇게 얻은 값: 1x 구간 12킬/13.54게임초(0.886킬/초), 3x 구간 27킬/41.05게임초(0.658킬/초) — 3x 쪽이 게임초당 킬레이트가 오히려 낮게 나옴.
+- **이 차이를 배속 회귀로 결론 내리지 않음** — 3x 측정 구간이 게임 경과시간상 1x 구간보다 뒤(더 어려워진 시점)였고, 표본이 각 12/27킬로 적어 노이즈 폭이 크다. 검증 1(무기 쿨다운 직접 측정, confound 없는 측정)이 훨씬 깨끗하게 ~3.04배로 나온 것과 모순되므로, 이 차이는 웨이브 난이도 상승에 따른 자연 감소로 보는 게 더 타당하다고 판단. **원 증상("타워만 안 빨라진다")은 검증 1·2로 재현되지 않음 — 재발 없음으로 결론.**
+- 참고용 짧은 녹화도 확보: `QA_Recordings/qa_20260729_082504.mp4`(903프레임, 1x 구간+3x 구간 각각 포함). 이 환경엔 `watch` 스킬이 요구하는 Python 인터프리터가 PATH에 없어(`python`/`python3`/`py` 전부 미발견) 스킬을 통한 프레임 분석은 수행하지 못함 — ffmpeg(`%LOCALAPPDATA%\ffmpeg\...\bin\ffmpeg.exe`, 직접 탐색으로 확인됨)로 원시 프레임 추출만 시도하다 세션 인터럽트로 중단, 시각 분석은 미완료로 남김.
+
+### 검증 4 — UIManager.ShowToast() SetAsLastSibling 회귀 확인 (간단 확인, 배속과 무관)
+`XpManager.LevelUp()`으로 `UICardDraft`를 띄운 상태에서 `UIManager.instance.ShowToast(...)` 호출 후 `PopupCanvas` 자식 sibling index 확인 — `UICardDraft`가 index 2인데 활성 토스트가 index 7로 그 위에 배치됨(토스트 유효구간 = 인덱스 3~7, 5개는 `MemoryPooling` prewarm으로 미리 생성된 비활성 인스턴스). 카드드래프트 위로 토스트가 정상적으로 가려지지 않고 표시됨 — 회귀 없음.
+
+### 부수적으로 발견한 것 (버그 아님/기존 이슈 재확인, 참고용 기록)
+1. **`UIErrorWindow` 오탐 팝업**: `Tools/QA/Stop Recording` 직후 콘솔에 `Failed to store screen shot (...qa_20260729_082504_frames\frame_00903.png)` 에러가 1건 발생 — Stop Recording이 마지막(903번째) 프레임을 저장하는 도중 이미 frames 폴더가 정리(삭제)되기 시작해 경로가 사라진 것으로 추정되는 QARecorder 자체의 타이밍성 harmless 에러. `ErrorLogManager`(`Application.logMessageReceived` 구독)가 이 에러를 잡아 `UIErrorWindow(Clone)`을 자동으로 화면에 띄웠음 — `UIErrorWindow`는 `UIPopup`을 상속하지만 `SetPaused`를 호출하지 않아(코드 확인) `pauseRequestCount`에는 영향 없음, 화면을 시각적으로 가릴 뿐. `errorWindow.Close()`로 정상 닫힘. 배속 검증과 무관, QARecorder의 마지막 프레임 저장/정리 순서 관련 사소한 개선 여지로만 기록.
+2. **세션 중 1회, Febucci 핫 리로드 NRE 플러드 + Play Mode 자동 정지 관찰**: 검증 도중 한 Play 세션에서 `TypewriterComponent`/`TextAnimatorComponentBase` 관련 NRE가 다수 반복 발생(이미 알려진 핫 리로드 잔재 이슈, `.claude/UNFINISHED.md`나 기존 기록 참고)했고, 같은 세션에서 `ActorPlayer.m_WeaponList`가 비어있는(`weaponCount=0`) 상태를 관찰, 그 직후 아무 콘솔 에러 로그 없이 `EditorApplication.isPlaying`이 `False`로 바뀌어 있었다(Play Mode가 스스로 종료됨). Stop→Play로 재진입한 클린 세션에서는 NRE도 없었고 `weaponCount=1`로 정상, 이후 재발 없음 — 지침대로 알려진 Febucci 이슈로 처리하고 넘어감. **다만 "Play Mode가 원인 로그 없이 스스로 정지"라는 현상 자체는 이번에 처음 관찰**되어 참고용으로만 남김(재현 조건 불명, 별도 조사 필요 시 참고).
+
+### 결론
+**배속 정상 작동 여부: 정상.** 검증 1(무기 쿨다운 직접 측정, ~3.04배)과 검증 2(팝업 겹침 시 정지 유지·해제 정확)로 2026-07-29-0 수정이 실제로 의도대로 동작함을 확인. 검증 3(자연 킬레이트)은 confound(난이도 상승) 때문에 판단 보류로 남기며, 이를 회귀로 보지 않는 근거는 검증 1의 훨씬 깨끗한 직접 측정 결과와의 모순.
+
+### 관련 클래스
+- [InGameScene.md](../class/InGameScene.md) — `m_PauseRequestCount` 참고
+- [ActorPlayer.md](../class/ActorPlayer.md) — `CooldownTimer` 측정 대상
+- [UICardDraft.md](../class/UICardDraft.md), [UIPause.md](../class/UIPause.md)
+- [QARecorder.md](../class/QARecorder.md) — `UIErrorWindow` 유발 에러 관련 참고
+
+---
+
+## 2026-07-29-3 — 투사체 터널링(스냅샷 충돌 판정) + 크리티컬 0데미지 버그 수정, Play Mode 5회 반복 재검증 (버그 아님, 수정 정상 동작 확인)
+
+### 개요
+사용자 보고("5배속으로 테스트하면 타워가 6분(게임시간 30분 상당)만에 죽는데, 1배속으로는 60분 넘게 안 죽는다")로 시작된 조사에서 이번 세션에 이미 적용된 두 가지 수정을 실제 Play Mode로 검증. 컴파일 에러는 사전에 0건 확인됐고, 이 작업은 Play Mode 실측만 담당.
+
+### 수정 1 — 투사체 충돌 판정 터널링 (배속 불일치의 핵심 원인)
+`ProjectileCollisionSystem`이 "현재 프레임 위치가 몬스터 반경 안인지"만 스냅샷으로 검사하던 것을, `ProjectileMoveSystem`이 매 프레임 기록하는 `ProjectileMotion.PreviousPosition`을 이용해 "직전 위치→현재 위치 선분"과 몬스터 원의 최근접 거리로 판정하는 스윕 충돌로 변경. 상세는 [ProjectileCollisionSystem.md](../class/ProjectileCollisionSystem.md) 2026-07-29-0, [ProjectileMoveSystem.md](../class/ProjectileMoveSystem.md) 2026-07-29-0 참고.
+
+### 수정 2 — 크리티컬 배율 0인 무기(ChainCoil 등)의 0데미지
+`ActorPlayer.Fire()`의 `critMul` 계산을 `weapon.Record.CritMultiplier + m_CardCritMultiplier`에서 `Mathf.Max(1f, ...)`로 최소 1배 보장하도록 변경 — 전역 크리 확률 카드만 있고 크리 배율 카드가 없는 상태에서 자체 CritMultiplier=0인 무기(ChainCoil/Archer/Mage/HomingPod)가 크리를 띄우면 데미지가 정확히 0으로 계산되던 버그. 상세는 [ActorPlayer.md](../class/ActorPlayer.md) 2026-07-29-1 참고.
+
+### 검증 방법 (Play Mode, 5회 반복)
+매회 Unity MCP로 TitleScene→`Btn_Play`(실제 `Button.onClick`)→`Item_Normal`(실제 `ExecuteEvents.pointerClickHandler`)→InGameScene 진입, `Time.timeScale=5` 설정 후:
+- **수정 1**: `MoveData` 없는 정지 몬스터(HP=100)를 원격 좌표에 생성 + 몬스터를 한 프레임에 확실히 지나치는 속도(Speed=60)로 발사되는 합성 투사체를 생성해 터널링 상황 재현.
+- **수정 2**: `AddWeapon(4)`(ChainCoil)로 무기 해금 + `AddCardCritChance(100f)`(크리 배율 카드는 미적용) 적용 후, 리플렉션으로 `Fire(TowerWeapon, Entity)`를 직접 호출해 생성된 투사체의 `ProjectileStats`를 즉시 조회.
+- 매 폴링마다 `UICardDraft`(레벨업 카드 드래프트) 오픈 여부를 확인해 열려있으면 즉시 카드 선택으로 닫음.
+- Play 종료 후 매회 OS 레벨로 Unity 창 포커스를 재설정한 뒤 재진입(포커스 없이 재진입 시 씬 전환이 몇 초씩 멈추는 현상 관찰, 아래 "부수 발견" 참고).
+
+### 결과 (5회 전부)
+| 회차 | 수정 1 (몬스터 HP 100→) | 수정 1 (Damage 정확히 일치) | 수정 2 (Damage, IsCrit) | 킬카운트 | 타워 HP | 콘솔 에러 |
+|---|---|---|---|---|---|---|
+| 1 | 63 | Damage=37 | 16, true | 56 | 150/150 | 0건 |
+| 2 | 59 | Damage=41 | 10, true | 17 | 150/150 | 0건 |
+| 3 | 47 | Damage=53 | 10, true | 17 | 150/150 | 0건 |
+| 4 | 71 | Damage=29 | 10, true | 17 | 150/150 | 0건 |
+| 5 | 33 | Damage=67 | 12, true | 17 | 150/150 | 0건 |
+
+**결론: 두 수정 모두 정상 동작, 5회 전부 재현(회귀) 없음.** 수정 1: 몬스터가 순간이동하듯 통과한 투사체에도 정확히 명중·정확한 데미지 적용(수정 전이라면 스냅샷 판정상 완전히 미스했을 상황). 수정 2: 크리티컬이 뜬(`IsCrit=true`) 상태에서도 5회 전부 Damage가 0이 아님(수정 전이었다면 이 조건에서 매번 정확히 0이 나왔어야 함). 실 게임플레이도 매회 킬카운트 정상 상승, 타워 HP 5회 전부 무손상.
+
+### 부수 발견 (버그 아님, 참고용 기록)
+1. **`UICardDraft`가 열려있는 동안 ECS 전체가 완전히 정지된다**: `InGameScene.ApplyFreezeState()`가 `SimulationSystemGroup.Enabled=false`로 이 시스템 그룹에 속한 모든 `ISystem`(ProjectileMoveSystem/ProjectileCollisionSystem/HealthSystem/MoveSystem 등)을 통째로 멈춘다. `Time.timeScale`/`Time.frameCount`/`World.Time.ElapsedTime`은 계속 흐르기 때문에, 처음엔 합성 테스트 엔티티가 전혀 안 움직이는 걸 보고 회귀로 의심했으나 카드 드래프트가 열려있던 게 원인이었다 — 의도된 동작. QA 시 이걸 놓치면 관찰이 완전히 왜곡되므로 반드시 매 폴링마다 확인/해소할 것.
+2. **Play Mode 재진입 시 OS 포커스가 없으면 씬 전환이 지연될 수 있음**: 세션 2회차 초반, Unity 창을 재포커스하지 않고 재진입했을 때 `Btn_Play`/`Item_Normal` 클릭 후 `InGameScene.Current`가 수천 프레임(초 단위)이 지나도 계속 null로 남는 현상을 관찰(씬 자체는 `SceneManager.GetActiveScene().name`상 이미 InGameScene으로 바뀌어 있었음 — 오브젝트는 존재하고 활성 상태인데 `Awake()`가 실행된 흔적이 없었음). OS 레벨로 창을 재포커스한 뒤 재진입하니 즉시(약 900프레임) 정상화됨 — 기존에 문서화된 "Play Mode인데 프레임이 안 흐르는" 증상과는 다른 결이지만, 포커스 부재가 씬 전환류 비동기 처리에 영향을 줄 수 있다는 새 사례로 기록. `.claude/agents/qa-tester.md`의 "매번 습관적으로 먼저 포커스" 지침이 이번에도 유효했음(재확인).
+3. **세션 초반 1회, Febucci Text Animator 핫 리로드 NRE 재현** — 기존에 문서화된 알려진 이슈(재컴파일 이력이 있는 세션에서 발생) 그대로. 즉시 Stop→Play로 재진입해 클린 세션으로 넘어감, 이후 재발 없음. 카운트에서 제외.
+
+### 관련 클래스
+- [ProjectileCollisionSystem.md](../class/ProjectileCollisionSystem.md) 2026-07-29-0
+- [ProjectileMoveSystem.md](../class/ProjectileMoveSystem.md) 2026-07-29-0
+- [ActorPlayer.md](../class/ActorPlayer.md) 2026-07-29-1
+
+---
+
 ## 2026-07-27-1 — Play 중 스크립트 재컴파일 후 BaseScene.Current 영구 null → SceneSingleton 전원 NRE
 
 ### 개요

@@ -1,5 +1,58 @@
 # ProjectileManager
 
+## 2026-07-30-3 — Orbital Ring 오브에 주황 Glow + 주황↔노랑 색상 Tween
+사용자 요청("오비탈 링도 주황색으로 Glow효과, Tween효과 빨강-주황으로" → "빨강을 빼고 노랑으로") — [[ActorPlayer]] 2026-07-30-4(Frost Orb Turret)와 동일한 `Material._GlowAmount`/`DOColor` Yoyo 루프 방식을 재사용. 색상 트윈은 최종적으로 주황(1,0.55,0) ↔ 노랑(1,0.9,0.1).
+
+### 파일
+- Assets/Scripts/InGame/ProjectileManager.cs
+- Assets/Scripts/InGame/Actor/ActorProjectile.cs
+
+### 수정
+- `SpawnVisual(Entity, ProjectileRecord, float)`: 반환형 `void`→`ActorProjectile`(생성된 인스턴스 반환, 실패 시 null). 기존 `Fire()` 호출부는 반환값을 그냥 버리므로 무수정 호환.
+- 신규 `ApplyOrbitalGlowEffect(ActorProjectile)`: 주황(`1,0.55,0`) 기본색 설정 후 `TweenUtil.Color(material, 빨강.linear, ORBITAL_RING_COLOR_TWEEN_DURATION).SetLoops(-1, Yoyo)` + `TweenUtil.Float(material, "_GlowAmount", ORBITAL_RING_GLOW_MAX, ORBITAL_RING_GLOW_PULSE_DURATION).SetLoops(-1, Yoyo)`. `SpawnOrbitals()`에서 각 오브 생성 직후 호출.
+- **풀링 오염 주의**: Orbital Ring의 오브는 Frost Orb Turret 비주얼(비영구, `ResUtil.Create` 1회성)과 달리 `MemoryPoolFactory`로 풀링되는 인스턴스라, 무한 루프 Tween을 건 채로 반납되면 다음에 그 오브젝트를 재사용하는 **전혀 다른 투사체**가 엉뚱하게 계속 반짝이게 된다. `ActorProjectile.Close()`(반납 시 항상 호출)에 `DOTween.Kill(material)` + `_GlowAmount`를 기본값(1)으로 복귀시키는 정리 코드를 추가해 방지.
+- 신규 GameConfigTable 상수: `ORBITAL_RING_GLOW_MIN`(1)/`MAX`(2.5)/`GLOW_PULSE_DURATION`(1초)/`COLOR_TWEEN_DURATION`(1.5초) — Frost Orb Turret의 `ORBITAL_SLOW_*`와 별개 상수(서로 다른 기능이라 분리).
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — Orbital Ring 오브가 주황~빨강으로 반짝이는지, 만료/재사용 후 다른 투사체가 반짝임을 물려받지 않는지 확인 필요.
+
+---
+
+## 2026-07-30-2 — SpawnOrbitals/SpawnVisual에 시각 크기 배율 파라미터 추가
+사용자 요청("오비탈링도... 좀 살짝 더 크게") — `SpawnOrbitals(..., float _visualScaleMultiplier = 1f)`/`SpawnVisual(Entity, ProjectileRecord, float _visualScaleMultiplier = 1f)` 둘 다 선택적 배율 파라미터 신설(기본값 1이라 기존 호출부는 무수정 호환). `visualScale` 계산식 끝에 배율을 곱함. [[CardManager]] 2026-07-30-4에서 Orbital Ring 카드 호출 시 1.3 전달.
+
+---
+
+## 2026-07-30-1 — Mortar 전용 투사체 타입 신설
+[[ActorPlayer]] 2026-07-30-3(신규 무기 Mortar #8) 참고. `eProjectileType`에 `Mortar` 추가(2026-07-29-0에서 실측으로 확인된 함정과 동일 — enum에 값이 없으면 해당 CSV 행 전체가 조용히 로드 실패하므로 반드시 함께 추가). `ProjectileTable.csv` Id=7(청동색 #C77B3D, Size 0.35로 다른 투사체보다 크게, TrailDuration 0.3으로 "묵직한 포탄" 느낌) 신설, `TowerTable.csv` Mortar 행의 `ProjectileId=7`로 연결.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — `ProjectileTable.GetRecordById(7)`가 정상 조회되는지(enum 누락 시 조용히 null이 되는 함정 재확인).
+
+---
+
+## 2026-07-30-0 — Orbital Ring이 화면에서 안 움직이던 버그 수정 (ProjectileVisualSyncSystem 쿼리 누락)
+
+### 개요
+사용자 피드백("오비탈 링 버그있음 움직이도 않고 뭘 하는건지 모르겠음"). 원인: `ProjectileVisualSyncSystem`이 `ProjectileTag`를 가진 엔티티만 쿼리해서 시각 Transform에 위치를 복사하는데, `SpawnOrbitals()`가 만드는 엔티티는 `OrbitalTag`만 갖고 `ProjectileTag`는 없다. `OrbitalSystem` 자체는 `LocalTransform.Position`을 매 프레임 정확히 회전 궤도로 갱신하고 있었지만, 그 값을 실제 화면의 `ActorProjectile` GameObject로 복사해주는 시스템이 없어 시각 오브젝트가 스폰 위치(Center)에 정지된 채로 보였던 것 — 데이터/로직은 정상, 시각 동기화만 누락된 케이스.
+
+### 파일
+- Assets/Scripts/InGame/ECS/ProjectileVisualSyncSystem.cs
+
+### 수정
+`OnCreate()`의 쿼리를 `GetEntityQuery(LocalTransform, ProjectileTag)`(AND) → `EntityQueryDesc { All = [LocalTransform], Any = [ProjectileTag, OrbitalTag] }`로 변경 — 두 태그 중 하나만 있어도 동기화 대상에 포함되도록 완화.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증 — Orbital Ring 카드 획득 후 실제로 타워 주위를 도는지, 몬스터 접촉 시 데미지 틱이 들어가는지 확인 필요.
+
+---
+
+## 2026-07-29-0 — Archer 전용 투사체 타입(Rapid) 신설 (색상 불일치 수정)
+사용자 요청("래피드 무기는 색상 변경해야할듯?") 조사 중 발견 — `TowerTable.csv`의 Archer(Id=1) `ColorHex`(무기 쿨다운 게이지 색)를 바꿔도, 실제 날아가는 투사체 색은 `ProjectileId=1`(Basic)을 CentralTower와 공유하고 있어 그대로 시안색(`#00e5ff`)이었다 — 게이지 색과 실제 총알 색이 어긋나는 불일치. `ProjectileTable.csv`에 Archer 전용 행(Id=6, Type=Rapid, ColorHex=#FF5E3A, Size=0.18/TrailDuration=0.15 — 다른 투사체보다 작고 트레일이 짧아 "가볍고 빠른" 연사 느낌) 신설, `TowerTable.csv` Archer 행의 `ProjectileId`를 1→6으로 변경. `ProjectileRecord.cs`의 `eProjectileType` enum에 `Rapid` 값 추가 필요(CSV의 `Type` 컬럼이 이 enum으로 파싱되는데, 정의에 없는 문자열이면 **해당 행 자체가 통째로 로드 실패**하는 걸 실측으로 확인 — 에러 로그도 없이 조용히 스킵됨, CLAUDE.md 데이터 레이어 버그 유형 (1)과 유사한 함정).
+
+### 검증
+Play Mode(TitleScene→Play→Normal 실클릭) — `ProjectileTable.list.Count=6` 확인, `TowerTable.GetRecordById(1).ProjectileId=6` → `ProjectileTable.GetRecordById(6)`가 정상 조회됨(`ColorHex=#FF5E3A`, `Type=Rapid`) 확인. 처음엔 enum 값 추가를 빠뜨려 6번 레코드가 통째로 `null`이 되는 걸 실측으로 발견 → enum 추가 후 재확인해 해결. 콘솔 에러 0건.
+
 ## 2026-07-27-2 — 효과 아이콘 오버레이 호출부 제거 (2026-07-23-4 되돌림)
 사용자 요청("아이콘 오버레이 없애줘") — [[ActorProjectile]] 2026-07-27-1과 세트. `SpawnVisual()`에서 `actorProjectile.SetEffectIcons(...)` 호출 삭제, 이제 이 메서드 안에서 `_cardEffects`를 전혀 안 쓰게 되어 매개변수 자체도 제거(`SpawnVisual(Entity, ProjectileRecord)`로 시그니처 축소). `Fire()`의 호출부도 `SpawnVisual(entity, record, _cardEffects)` → `SpawnVisual(entity, record)`로 인자 축소. `Fire()`가 `m_EntityManager.AddComponentData(entity, _cardEffects)`로 ECS 쪽에 카드 효과를 붙이는 부분은 그대로 유지(관통/스플래시/체인/호밍 실제 게임 로직은 무관 — 시각 아이콘만 제거).
 
@@ -67,7 +120,7 @@ Assets/Scripts/InGame/ProjectileManager.cs
 ## ECS 시스템 개요 (Assets/Scripts/InGame/ECS/)
 - `ProjectileMoveSystem`(`ISystem`, `MoveSystem`과 동일 스타일): `Direction×Speed×deltaTime`만큼 이동, `SpawnPosition`에서 `MaxDistance` 넘으면 `ProjectileExpiredTag` 부여.
 - `ProjectileCollisionSystem`(`ISystem`, `HealthSystem`과 동일 스타일): naive O(N×M) 원형 거리 판정(`ProjectileStats.Radius + CombatRadius.Value`). 명중 시 대상의 기존 `DamageRequest` 버퍼에 Add(새 데미지 파이프라인 안 만들고 몬스터 쪽 기존 시스템 재사용) + 투사체에 `ProjectileExpiredTag` 부여. **Spatial Hash Grid 최적화는 안 함**(기획서도 "후반부before" 최적화로 명시, 지금 규모에 naive로 충분 — 후속 작업).
-- `ProjectileVisualSyncSystem`: `VisualSyncSystem`을 `ProjectileTag` 대상으로 그대로 복제.
+- `ProjectileVisualSyncSystem`: `VisualSyncSystem`을 `ProjectileTag` 대상으로 그대로 복제(2026-07-30부터 `OrbitalTag`도 Any 조건으로 포함 — 아래 2026-07-30-0 참고, 안 그러면 Orbital 엔티티가 시각적으로 안 움직임).
 - `CombatRadius`(`IComponentData`): 몬스터의 충돌 반경. `MonsterManager.Spawn()`에서 `EnemyRecord.VisualSize * 0.5f`로 근사 계산해 추가(2026-07-22, 투사체 충돌용으로 신설 — 정확한 스프라이트 바운즈 대신 근사치).
 
 ## 흐름

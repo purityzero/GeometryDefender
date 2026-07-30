@@ -115,9 +115,9 @@
     </p>
 
     <div class="card-grid">
-      <div class="card"><h4 style="margin-top: 0; color: var(--neon-cyan);">OFFENSE</h4><p style="margin: 0;">데미지·치명타·관통 — 8장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-cyan);">OFFENSE</h4><p style="margin: 0;">관통·대상 조건부 데미지 — 7장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: var(--neon-yellow);">SPEED</h4><p style="margin: 0;">공격 속도·투사체 속도 — 5장</p></div>
-      <div class="card"><h4 style="margin-top: 0; color: var(--neon-magenta);">UTILITY</h4><p style="margin: 0;">사거리·관통·체인·레이저 지속시간 — 6장</p></div>
+      <div class="card"><h4 style="margin-top: 0; color: var(--neon-magenta);">UTILITY</h4><p style="margin: 0;">사거리·무기별 전용 강화(치명타 포함) — 9장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: var(--neon-green);">DEFENSE</h4><p style="margin: 0;">HP·회복·실드 — 6장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: #ff6600;">SPECIAL</h4><p style="margin: 0;">빌드 정의 (Legendary) — 4장</p></div>
       <div class="card"><h4 style="margin-top: 0; color: #FFD54F;">WEAPON</h4><p style="margin: 0;">독립 쿨다운 무기 슬롯 해금 — 5장</p></div>
@@ -128,9 +128,10 @@
       <p style="margin-bottom: 0;">
         중앙 타워 외에 <strong>독립 쿨다운/타겟팅을 갖는 추가 무기</strong>를 WEAPON 카드로
         해금할 수 있다(Archer/Mage/ChainCoil/HomingPod/Laser). 상세 스탯은
-        <a href="02_combat.html#weapons">02 Combat — 무기 시스템</a> 참고. Splash/Chain/Homing
-        Utility 카드(#303~305, #308)는 해당 무기를 아직 안 뽑았으면 드래프트 풀에서 제외된다
-        — 예를 들어 Mage를 안 뽑았으면 Splash I(#303)는 안 나온다.
+        <a href="02_combat.html#weapons">02 Combat — 무기 시스템</a> 참고. Splash/Chain
+        Utility 카드(#303/#304, #308)는 해당 무기를 아직 안 뽑았으면 드래프트 풀에서 제외된다
+        — 예를 들어 Mage를 안 뽑았으면 Splash I(#303)는 안 나온다. Homing Missile(#305)은
+        실제 강화 효과가 없는 죽은 카드로 판명돼 제거됨(2026-07-29).
       </p>
     </div>
 
@@ -156,46 +157,22 @@
     <div class="cat-header">
       <span class="cat-header-icon" style="color: var(--neon-cyan); border-color: var(--neon-cyan);">OFFENSE</span>
       <h3>공격 카드</h3>
-      <span class="cat-header-count">8장</span>
+      <span class="cat-header-count">7장</span>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">2026-07-29 — 전체 공격력/치명타 카드 제거</div>
+      <p style="margin-bottom: 0;">
+        모든 무기에 무조건 적용되는 블랭킷 데미지(#101/#102)·치명타(#103/#104) 카드를
+        제거했다. 데미지 스케일링은 이제 (1) 무기별 전용 강화 카드(아래 UTILITY 참고,
+        Archer/HomingPod/CentralTower)와 (2) 대상 몬스터 조건부 데미지(아래 신규 3장 —
+        일반/엘리트/보스) 두 축으로만 늘어난다. 치명타는 CentralTower의 고유 정체성으로
+        재정의(원래 크리 스탯을 가진 유일한 무기) — <a href="02_combat.html#weapons">02
+        Combat</a> 및 신규 #311/#312(UTILITY) 참고.
+      </p>
     </div>
 
     <div class="gcard-grid">
-
-      <div class="gcard" data-rarity="common">
-        <div class="gcard-id-badge">#101</div>
-        <div class="gcard-rarity-badge">Common</div>
-        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
-        <div class="gcard-name">Sharp Edges</div>
-        <div class="gcard-effect">Damage +20%</div>
-        <div class="gcard-category">Offense</div>
-      </div>
-
-      <div class="gcard" data-rarity="rare">
-        <div class="gcard-id-badge">#102</div>
-        <div class="gcard-rarity-badge">Rare</div>
-        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
-        <div class="gcard-name">Sharper Edges</div>
-        <div class="gcard-effect">Damage +40%</div>
-        <div class="gcard-category">Offense</div>
-      </div>
-
-      <div class="gcard" data-rarity="common">
-        <div class="gcard-id-badge">#103</div>
-        <div class="gcard-rarity-badge">Common</div>
-        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
-        <div class="gcard-name">Precision</div>
-        <div class="gcard-effect">Crit Chance +5%</div>
-        <div class="gcard-category">Offense</div>
-      </div>
-
-      <div class="gcard" data-rarity="rare">
-        <div class="gcard-id-badge">#104</div>
-        <div class="gcard-rarity-badge">Rare</div>
-        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
-        <div class="gcard-name">Deadly Aim</div>
-        <div class="gcard-effect">Crit Multiplier +0.5</div>
-        <div class="gcard-category">Offense</div>
-      </div>
 
       <div class="gcard" data-rarity="epic">
         <div class="gcard-id-badge">#105</div>
@@ -230,6 +207,33 @@
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
         <div class="gcard-name">Triangle Hunter</div>
         <div class="gcard-effect">Triangle 적에게 DMG +50%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="common">
+        <div class="gcard-id-badge">#109</div>
+        <div class="gcard-rarity-badge">Common</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Grunt Buster</div>
+        <div class="gcard-effect">일반 몬스터에게 DMG +20%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#110</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Elite Slayer</div>
+        <div class="gcard-effect">엘리트 몬스터에게 DMG +30%</div>
+        <div class="gcard-category">Offense</div>
+      </div>
+
+      <div class="gcard" data-rarity="rare">
+        <div class="gcard-id-badge">#111</div>
+        <div class="gcard-rarity-badge">Rare</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Boss Slayer</div>
+        <div class="gcard-effect">보스에게 DMG +40%</div>
         <div class="gcard-category">Offense</div>
       </div>
 
@@ -299,7 +303,7 @@
     <div class="cat-header">
       <span class="cat-header-icon" style="color: var(--neon-magenta); border-color: var(--neon-magenta);">UTILITY</span>
       <h3>유틸리티 카드</h3>
-      <span class="cat-header-count">6장</span>
+      <span class="cat-header-count">9장</span>
     </div>
 
     <div class="gcard-grid">
@@ -341,20 +345,47 @@
       </div>
 
       <div class="gcard" data-rarity="epic">
-        <div class="gcard-id-badge">#305</div>
-        <div class="gcard-rarity-badge">Epic</div>
-        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
-        <div class="gcard-name">Homing Missile</div>
-        <div class="gcard-effect">HomingPod 무기 보유 확인용 (보유 시에만 등장, 강화 수치 없음)</div>
-        <div class="gcard-category">Utility</div>
-      </div>
-
-      <div class="gcard" data-rarity="epic">
         <div class="gcard-id-badge">#308</div>
         <div class="gcard-rarity-badge">Epic</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAxNTgsOTggMjQwLDk4IDE3NCwxNDggMTk5LDIyOCAxMjgsMTgwIDU3LDIyOCA4MiwxNDggMTYsOTggOTgsOTgiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
         <div class="gcard-name">Laser Overdrive</div>
         <div class="gcard-effect">Laser 무기 회전 지속시간 증가 (보유 시에만 등장)</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#309</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwxNSAyNDAsMjI1IDE2LDIyNSIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Rapid Overclock</div>
+        <div class="gcard-effect">래피드 오토캐논 공격 속도 +50% (보유 시에만 등장)</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#310</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzAsOTQgMTkxLDIxMyA2NSwyMTMgMjYsOTQiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
+        <div class="gcard-name">Homing Overdrive</div>
+        <div class="gcard-effect">HomingPod 유도 회전율 강화 (보유 시에만 등장)</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#311</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Focused Aim</div>
+        <div class="gcard-effect">CentralTower 치명타 확률 +10% (보유 시에만 등장)</div>
+        <div class="gcard-category">Utility</div>
+      </div>
+
+      <div class="gcard" data-rarity="epic">
+        <div class="gcard-id-badge">#312</div>
+        <div class="gcard-rarity-badge">Epic</div>
+        <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48Y2lyY2xlIGN4PSIxMjgiIGN5PSIxMjgiIHI9IjEwOCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=');"></div></div>
+        <div class="gcard-name">Devastating Blow</div>
+        <div class="gcard-effect">CentralTower 치명타 배율 +1.0 (보유 시에만 등장)</div>
         <div class="gcard-category">Utility</div>
       </div>
 
@@ -394,7 +425,7 @@
         <div class="gcard-rarity-badge">Rare</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9Ijg2LDIwIDE3MCwyMCAyMzYsODYgMjM2LDE3MCAxNzAsMjM2IDg2LDIzNiAyMCwxNzAgMjAsODYiIGZpbGw9IndoaXRlIi8+PC9zdmc+');"></div></div>
         <div class="gcard-name">Regeneration</div>
-        <div class="gcard-effect">HP +1 / 초</div>
+        <div class="gcard-effect">HP +1 / 10초</div>
         <div class="gcard-category">Defense</div>
       </div>
 
@@ -412,7 +443,7 @@
         <div class="gcard-rarity-badge">Epic</div>
         <div class="gcard-icon"><div class="gcard-icon-shape" style="--mask: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cG9seWdvbiBwb2ludHM9IjEyOCwyMCAyMzYsMTI4IDEyOCwyMzYgMjAsMTI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==');"></div></div>
         <div class="gcard-name">Vampire</div>
-        <div class="gcard-effect">처치 시 1% 확률 HP +1</div>
+        <div class="gcard-effect">처치 시 0.1% 확률 HP +1</div>
         <div class="gcard-category">Defense</div>
       </div>
 

@@ -163,3 +163,26 @@ Title→Btn_Play→InGame 실제 흐름으로 확인. `GameConfigTable.SPAWN_BAS
 
 ### 검증
 Unity MCP 미연결, IDE 진단(mcp__ide__getDiagnostics)으로 컴파일 에러 0건만 확인 — Play Mode 실측(실제로 초반 생존이 나아졌는지) 미완료.
+
+---
+
+## 2026-07-29-0 — WaveTable 페이즈 세분화 (0~120초 단조로움 해소)
+
+### 개요
+qa-tester 세션 중 발견된 관찰("초반 120초 동안은 계속 WaveTable Wave1(Normal 100%)만 나오는 구조") → 사용자에게 우선순위/방향 확인(AskUserQuestion) 후 "120초 전환 구간을 더 잘게 쪼갠다" 방향으로 확정. 코드(`SpawnManager.cs`/`WaveRecord.cs`)는 건드리지 않음 — `WaveTable.GetActivePhase()`가 이미 임의 행 수에 대해 범용으로 동작하고, `UICheatWindow`/`CombatDebugWindow`의 Wave 버튼 목록도 `waveTable.list`를 순회하며 동적으로 그리므로 데이터만 바꿔도 전부 그대로 작동함(코드 리뷰로 확인).
+
+### 파일
+- Assets/Resources/Table/WaveTable.csv
+
+### 수정
+- 전: 5행, 120초 간격(StartTime 0/120/240/360/480), 각 구간 내부는 완전히 고정된 종족 구성.
+- 후: 9행, 기존 5개 앵커(StartTime 0/120/240/360/480)는 수치 그대로 유지하고 그 사이에 보간한 중간 웨이브를 1개씩 추가(StartTime 60/180/300/420) — 각 중간 웨이브는 앞뒤 앵커의 가중치/EliteChance를 산술 평균한 값. **마지막 행(Id=9, StartTime=480, Duration=120)은 값·시각 전부 기존과 동일하게 유지** — `DifficultyManager`의 클리어 판정(`GetFinalPhaseEndTime()`=600초)과 Infinite 배율 공식(`GetFinalPhaseStartTime()`=480초 기준)이 전부 `WaveTable`에서 동적으로 읽어오는 값이라, 이 두 값만 안 바뀌면 `08_balance.html`에 문서화된 "10분(600초) 시점 클리어" 밸런스 목표와 Infinite 공식이 그대로 유지된다(코드 확인: `DifficultyManager.cs:67,112`).
+
+### 검증 (Play Mode, Unity MCP execute_code)
+TitleScene→Play 후 `TableManager.instance.GetTable<WaveTable>()`로 직접 조회:
+- `rowCount=9`, `finalStart=480`, `finalEnd=600` — 기존과 동일한 클리어 타이밍 확인.
+- 샘플 시각별 `GetActivePhase()` 결과가 설계대로 나옴: t=0~59는 Wave1(Normal100/Elite0), **t=60부터 Wave2(Normal80/Swift20/Elite0.025)로 전환**(기존엔 t=120까지 계속 Normal100이었음 — 목표한 단조로움 해소 확인), t=120/240/360/480 앵커 지점은 기존 수치와 정확히 일치, t=599/600은 여전히 Wave9(마지막 웨이브) 유지.
+- 컴파일 에러 0건.
+
+### 미검증
+실제 플레이 체감(초반 몬스터 구성 변화가 자연스럽게 느껴지는지), Card/MetaTree 전수 검사·무기별 수치 재조정(이어서 진행 예정)과 합쳐졌을 때의 전체 밸런스.

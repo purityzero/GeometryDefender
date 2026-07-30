@@ -12,12 +12,11 @@ Id,Key,Kr,En,Cn,Jp
 11,MetaTreeNode202,스플래시 해금,Unlock Splash,解锁溅射,スプラッシュ解放
 12,MetaTreeNode203,글래스 캐논 해금,Unlock GlassCannon,解锁玻璃大炮,グラスキャノン解放
 13,MetaTreeNode204,오비탈 해금,Unlock Orbital,解锁轨道环,オービタル解放
-14,MetaTreeNode301,경험치 자석,XP Magnet,经验磁铁,経験値マグネット
 15,MetaTreeNode302,경험치 증가,XP Boost,经验加成,経験値ブースト
 16,MetaTreeNode303,샤드 보너스,Shard Bonus,碎片加成,シャードボーナス
 17,MetaTreeNode401,리롤 토큰,Reroll Token,重掷代币,リロールトークン
 18,MetaTreeNode402,리롤 II,Reroll II,重掷 II,リロール II
-19,MetaTreeNode403,스킵 토큰,Skip Token,跳过代币,スキップトークン
+19,MetaTreeNode403,리롤 부스트,Reroll Boost,重掷强化,リロールブースト
 20,MetaTreeBranchStartingPower,시작 능력치,STARTING POWER,初始属性,初期ステータス
 21,MetaTreeBranchCardPool,카드 풀,CARD POOL,卡牌池,カードプール
 22,MetaTreeBranchEconomy,경제,ECONOMY,经济,エコノミー
@@ -40,9 +39,8 @@ Id,Key,Kr,En,Cn,Jp
 39,TitleSettingsButton,설정,Settings,设置,設定
 40,SettingsTitle,설정,SETTINGS,设置,設定
 41,SettingsLanguageLabel,언어,Language,语言,言語
-42,SettingsSoundLabel,사운드,Sound,音效,サウンド
+42,SettingsBgmLabel,BGM,BGM,BGM,BGM
 43,SettingsHapticLabel,진동,Haptic,震动,バイブレーション
-44,SettingsLeftHandLabel,왼손 모드,Left-hand Mode,左手模式,左手モード
 45,SettingsFpsLabel,FPS,FPS,FPS,FPS
 46,SettingsOn,ON,ON,开,ON
 47,SettingsOff,OFF,OFF,关,OFF
@@ -56,21 +54,12 @@ Id,Key,Kr,En,Cn,Jp
 55,PauseBuildLabel,현재 빌드,CURRENT BUILD,当前版本,現在のビルド
 56,CardDraftTitle,레벨 업 - 카드를 선택하세요,LEVEL UP - CHOOSE ONE,升级 - 请选择一张,レベルアップ - 選択してください
 57,CardDraftRerollButton,리롤,REROLL,重掷,リロール
-58,CardDraftSkipButton,스킵 (+5),SKIP (+5),跳过 (+5),スキップ (+5)
 59,CardDraftNoCards,-,-,-,-
 60,CardCategoryOffense,공격,OFFENSE,攻击,攻撃
 61,CardCategorySpeed,속도,SPEED,速度,速度
 62,CardCategoryUtility,유틸리티,UTILITY,实用,ユーティリティ
 63,CardCategoryDefense,방어,DEFENSE,防御,防御
 64,CardCategorySpecial,특수,SPECIAL,特殊,特殊
-65,Card101Name,날카로운 날,Sharp Edges,锋利刀刃,鋭い刃
-66,Card101Effect,데미지 +20%,Damage +20%,伤害 +20%,ダメージ +20%
-67,Card102Name,더 날카로운 날,Sharper Edges,更锋利刀刃,より鋭い刃
-68,Card102Effect,데미지 +40%,Damage +40%,伤害 +40%,ダメージ +40%
-69,Card103Name,정밀함,Precision,精准,精密
-70,Card103Effect,치명타 확률 +5%,Crit Chance +5%,暴击率 +5%,クリティカル率 +5%
-71,Card104Name,필살의 조준,Deadly Aim,致命瞄准,必殺の狙い
-72,Card104Effect,치명타 배율 +0.5,Crit Multiplier +0.5,暴击倍率 +0.5,クリティカル倍率 +0.5
 73,Card105Name,관통 I,Pierce I,穿透 I,貫通 I
 74,Card105Effect,투사체가 적 1체를 관통합니다,Projectile pierces 1 enemy,弹药可穿透1个敌人,弾が敵1体を貫通します
 75,Card106Name,관통 II,Pierce II,穿透 II,貫通 II
@@ -78,7 +67,7 @@ Id,Key,Kr,En,Cn,Jp
 77,Card107Name,더블 샷,Double Shot,双重射击,ダブルショット
 78,Card107Effect,한 번에 투사체 2개를 발사합니다,Fires 2 projectiles at once,一次发射2枚弹药,一度に弾を2発発射します
 79,Card108Name,트라이앵글 헌터,Triangle Hunter,三角猎手,トライアングルハンター
-80,Card108Effect,Triangle 적에게 데미지 +50%,+50% DMG to Triangle enemies,对三角形敌人伤害 +50%,トライアングル敵にダメージ +50%
+80,Card108Effect,Triangle 적에게 데미지 +5,+5 DMG to Triangle enemies,对三角形敌人伤害 +5,トライアングル敵にダメージ +5
 81,Card201Name,퀵 파이어,Quick Fire,快速射击,クイックファイア
 82,Card201Effect,공격 속도 +15%,Attack Speed +15%,攻击速度 +15%,攻撃速度 +15%
 83,Card202Name,래피드 파이어,Rapid Fire,急速射击,ラピッドファイア
@@ -97,18 +86,16 @@ Id,Key,Kr,En,Cn,Jp
 96,Card303Effect,적중 시 반경 1.5 폭발,Explodes in radius 1.5 on hit,命中时在半径1.5内爆炸,命中時に半径1.5で爆発
 97,Card304Name,체인 라이트닝,Chain Lightning,连锁闪电,チェインライトニング
 98,Card304Effect,3체까지 연쇄 (반경 2.0),Chains to 3 enemies (radius 2.0),连锁3个敌人 (半径2.0),3体まで連鎖 (半径2.0)
-99,Card305Name,호밍 미사일,Homing Missile,追踪导弹,ホーミングミサイル
-100,Card305Effect,투사체가 목표를 추적합니다,Projectiles home in on targets,弹药会追踪目标,弾が目標を追尾します
 105,Card401Name,보강,Reinforce,加固,補強
 106,Card401Effect,최대 체력 +20,Max HP +20,最大生命值 +20,最大HP +20
 107,Card402Name,강화,Fortify,强化,強化
 108,Card402Effect,최대 체력 +50 즉시 회복,Max HP +50 instant heal,最大生命值 +50 立即恢复,最大HP +50 即時回復
 109,Card403Name,재생,Regeneration,再生,再生
-110,Card403Effect,초당 체력 +1 회복,Heals +1 HP per second,每秒恢复1点生命值,毎秒HP +1 回復
+110,Card403Effect,10초마다 체력 +1 회복,Heals +1 HP every 10 seconds,每10秒恢复1点生命值,10秒ごとにHP +1 回復
 111,Card404Name,실드 버스트,Shield Burst,护盾爆发,シールドバースト
 112,Card404Effect,체력 30% 이하 시 반경 3 폭발,Explodes radius 3 below 30% HP,生命值低于30%时半径3内爆炸,HP30%以下で半径3に爆発
 113,Card405Name,뱀파이어,Vampire,吸血鬼,ヴァンパイア
-114,Card405Effect,처치 시 1% 확률로 체력 +1,1% chance to heal 1 HP on kill,击杀时1%概率恢复1点生命值,撃破時1%の確率でHP +1
+114,Card405Effect,처치 시 0.5% 확률로 체력 +1,0.5% chance to heal 1 HP on kill,击杀时0.5%概率恢复1点生命值,撃破時0.5%の確率でHP +1
 115,Card406Name,불사조,Phoenix,不死鸟,フェニックス
 116,Card406Effect,사망 시 1회 체력 50%로 부활,Revives once at 50% HP on death,死亡时1次以50%生命值复活,死亡時に1回HP50%で復活
 117,Card501Name,글래스 캐논,Glass Cannon,玻璃大炮,グラスキャノン
@@ -142,3 +129,39 @@ Id,Key,Kr,En,Cn,Jp
 145,Card605Effect,독립 쿨다운의 회전 빔 무기 슬롯 추가,Adds an independent spinning beam weapon slot,增加一个独立冷却的旋转光束武器槽,独立クールダウンの回転ビーム武器スロットを追加
 146,Card308Name,레이저 오버드라이브,Laser Overdrive,激光超载,レーザーオーバードライブ
 147,Card308Effect,레이저 회전 지속시간 증가,Increases laser spin duration,增加激光旋转持续时间,レーザーの回転持続時間が増加
+148,MetaTreeNode106,시작 체력 III,Starting HP III,初始生命值 III,初期HP III
+149,MetaTreeNode107,시작 공격력 III,Starting DMG III,初始伤害 III,初期攻撃力 III
+150,MetaTreeNode108,시작 사거리 II,Starting Range II,初始射程 II,初期射程 II
+151,MetaTreeNode109,시작 공격속도,Starting Attack Speed,初始攻速,初期攻撃速度
+152,MetaTreeNode304,경험치 증가 II,XP Boost II,经验加成 II,経験値ブースト II
+153,MetaTreeNode305,샤드 보너스 II,Shard Bonus II,碎片加成 II,シャードボーナス II
+154,MetaTreeNode404,리롤 III,Reroll III,重掷 III,リロール III
+155,Card109Name,잡몹 사냥꾼,Grunt Buster,杂兵猎手,雑魚ハンター
+156,Card109Effect,일반 몬스터에게 데미지 +2,Normal monsters DMG +2,对普通怪物伤害 +2,通常モンスターにダメージ +2
+157,Card110Name,엘리트 학살자,Elite Slayer,精英屠杀者,エリートスレイヤー
+158,Card110Effect,엘리트 몬스터에게 데미지 +4,Elite monsters DMG +4,对精英怪物伤害 +4,エリートモンスターにダメージ +4
+159,Card111Name,보스 사냥꾼,Boss Slayer,首领猎手,ボススレイヤー
+160,Card111Effect,보스에게 데미지 +8,Boss DMG +8,对首领伤害 +8,ボスにダメージ +8
+161,Card309Name,래피드 오버클럭,Rapid Overclock,速射超频,ラピッドオーバークロック
+162,Card309Effect,래피드 오토캐논 공격 속도 +50%,Rapid Autocannon Attack Speed +50%,速射机炮攻速 +50%,ラピッドオートキャノン攻撃速度 +50%
+163,Card310Name,호밍 오버드라이브,Homing Overdrive,追踪超载,ホーミングオーバードライブ
+164,Card310Effect,유도 미사일 회전율 증가,Increases homing missile turn rate,增加追踪导弹转向率,誘導ミサイルの旋回率が上昇
+165,Card311Name,집중 조준,Focused Aim,集中瞄准,集中照準
+166,Card311Effect,중앙 타워 치명타 확률 +10%,Central Tower Crit Chance +10%,中央塔暴击率 +10%,中央タワーのクリティカル率 +10%
+167,Card312Name,필살의 일격,Devastating Blow,毁灭一击,壊滅の一撃
+168,Card312Effect,중앙 타워 치명타 배율 +1.0,Central Tower Crit Multiplier +1.0,中央塔暴击倍率 +1.0,中央タワーのクリティカル倍率 +1.0
+169,SettingsSfxLabel,효과음,SFX,音效,SE
+170,MetaTreeNode405,무기 슬롯 확장,Extra Weapon Slot,额外武器槽,追加武器スロット
+171,Card606Name,냉기 오브,Frost Orb,冰霜之球,フロストオーブ
+172,Card606Effect,타워 주위를 공전하며 범위 내 적 이동속도 감소,Orbits the tower and slows enemies in range,环绕塔楼旋转并减速范围内的敌人,タワーの周りを周回し範囲内の敵の移動速度を低下させる
+173,Card607Name,박격포,Mortar,迫击炮,迫撃砲
+174,Card607Effect,사거리 끝의 적에게 광역 포격,Long-range splash strike on the farthest enemy,对射程末端的敌人进行范围炮击,射程の端の敵に範囲砲撃
+175,MetaTreeNode205,냉기 오브 해금,Unlock Frost Orb,解锁冰霜之球,フロストオーブ解放
+176,MetaTreeNode206,박격포 해금,Unlock Mortar,解锁迫击炮,迫撃砲解放
+177,MetaTreeNode406,래피드 오토캐논 정밀화,Autocannon Precision,速射炮精密化,ラピッドオートキャノン精密化
+178,MetaTreeNode407,마도포 증폭,Arcane Cannon Amplification,魔导炮增幅,魔導砲増幅
+179,MetaTreeNode408,중앙 타워 코어 과부하,Core Overload,中央塔核心过载,中央タワーコア過負荷
+180,MetaTreeNode409,체인코일 방전 강화,Discharge Overcharge,链圈放电强化,チェーンコイル放電強化
+181,MetaTreeNode410,유도포드 탄두 강화,Warhead Upgrade,追踪炮塔弹头强化,ホーミングポッド弾頭強化
+182,MetaTreeNode411,레이저 출력 증폭,Beam Amplifier,激光输出增幅,レーザー出力増幅
+183,MetaTreeNode413,박격포 포탄 강화,Heavy Shell,迫击炮弹强化,迫撃砲弾強化

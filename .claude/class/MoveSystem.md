@@ -11,6 +11,11 @@
 
 ## 작업 내역
 
+### 2026-07-30-0 — SlowAuraData 소비 (범위 슬로우 무기 지원)
+[[MonsterManager]] 2026-07-30-0/[[ActorPlayer]] 2026-07-30-2 참고 — 신규 무기 Frost Orb Turret용. 쿼리에 `RefRO<SlowAuraData>` 추가(전 몬스터가 스폰 시 기본값 1로 부착돼 있어 필수 컴포넌트로 안전하게 추가 가능), `moveDistance` 계산식에 `slowAura.ValueRO.SlowMultiplier`를 추가로 곱함(`MoveSpeed × timeSlowMultiplier × slowAuraMultiplier × deltaTime`) — Time Slow 카드(전역)와 완전히 독립적으로 곱연산되므로 동시에 걸려도 정상 중첩.
+
+검증: 컴파일 확인 필요. Play Mode 미검증.
+
 ### 2026-07-24-0
 [[card-draft]] Time Slow(#504) 카드 구현. ECS `ISystem`이 MonoBehaviour(`CardManager`)를 직접 참조할 수 없어, 정적 `CardEffectState.TimeSlowMultiplier`(1f 기본)를 매개로 사용 — `OnUpdate()` 시작부에서 값을 읽어 `moveDistance = MoveSpeed × timeSlowMultiplier × deltaTime`에 곱연산. 카드 보유 중 상시 적용(지속시간 없음, [[card-draft]] 확정 사항 참고). 미검증.
 

@@ -62,11 +62,17 @@ public partial struct ProjectileMoveSystem : ISystem
                     float3 targetPosition = SystemAPI.GetComponent<LocalTransform>(effects.ValueRO.HomingTarget).Position;
                     float3 desiredDirection = math.normalizesafe(targetPosition - localTransform.ValueRO.Position);
 
-                    // Homing Missile(#305) 카드 — 매 프레임 목표 방향으로 이 비율만큼 회전(1이면 완전 즉시 추적, 0이면 회전 없음)
-                    direction = math.normalizesafe(math.lerp(direction, desiredDirection, math.saturate(GameConfigTable.PROJECTILE_HOMING_TURN_RATE * deltaTime)));
+                    // 매 프레임 목표 방향으로 이 비율만큼 회전(1이면 완전 즉시 추적, 0이면 회전 없음)
+                    // Homing Overdrive 카드(HomingPod 전용 강화)가 있으면 기본 회전율에 가산치가 더해짐
+                    float turnRate = GameConfigTable.PROJECTILE_HOMING_TURN_RATE + effects.ValueRO.HomingTurnRateBonus;
+                    direction = math.normalizesafe(math.lerp(direction, desiredDirection, math.saturate(turnRate * deltaTime)));
                     motion.ValueRW.Direction = direction;
                 }
             }
+
+            // ProjectileCollisionSystem이 이 프레임의 이동 구간(직전→현재) 전체를 스윕 판정하는 데 쓴다
+            // — 이동 전 위치를 먼저 저장해야 배속이 높아 프레임당 이동거리가 커져도 충돌을 건너뛰지 않는다.
+            motion.ValueRW.PreviousPosition = localTransform.ValueRO.Position;
 
             localTransform.ValueRW.Position += direction * motion.ValueRO.Speed * deltaTime;
             motion.ValueRW.ElapsedTime += deltaTime;

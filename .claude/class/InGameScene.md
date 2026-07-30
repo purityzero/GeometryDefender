@@ -11,6 +11,13 @@
 
 ---
 
+## 2026-07-29-0 — InGameScene BGM 재생(무한 루프)
+사용자 요청("TitleScene, InGameScene 무한 반복되는 음악 레트로느낌으로") — `OnSetup()` 맨 끝(`m_CardManager.Init()` 이후)에 `PlayBgm()` 신규 추가. `SoundTable.GetRecordByKey("BattleTheme")` 경유. TitleScene(`TitleTheme` 재생 중)에서 넘어오면 `SoundManager.PlayBgm()`이 이전 BGM을 페이드아웃하고 새 BGM을 크로스페이드로 전환(같은 클립이면 무시하고 계속 재생, [[SoundManager]] 참고).
+`BattleTheme.wav`는 사용자 피드백 3회에 걸쳐 반복 재작업됨(1차: 단순 스퀘어 멜로디+베이스 → 2차 "좀 전투적인음악으로" 요청으로 킥/스네어/하이햇 드럼 추가 + Am 단조 텐션 코드 → 3차 "우리 타워디펜스야... 우주적느낌에 컬러감 좋은" 요청으로 어두운 단조 대신 **A 도리안**(밝고 모험적인 스페이스 사운드)으로 코드 진행 재작곡, 드럼은 유지하되 절제하고 반짝임(twinkle)+가벼운 에코를 다시 얹음 — 최종본은 "추진력 있는 드럼 + 밝은 코스믹 하모니"로 절충).
+검증: Play Mode(TitleScene→Btn_Play→Item_Normal 실클릭) — InGameScene 진입 시 BGM이 `BattleTheme`로 정상 전환, 12.8s 루프 클립 정상 로드 확인.
+
+---
+
 ## 2026-07-24-0 — XpManager/CardManager 배선
 
 ### 개요
@@ -458,6 +465,61 @@ protected override void OnDestroy() { base.OnDestroy(); if (Current == this) Cur
 ### 관련 클래스
 - [[BaseScene]] 2026-07-24-0 — `isPaused` 게이트 신설
 - [[UICardDraft]] 2026-07-24-0, [[UIPause]] 2026-07-24-0 — `Time.timeScale` 대신 `SetPaused()` 호출로 전환
+
+## 2026-07-29-0 — SetPaused 단일 bool → 참조 카운터 (팝업 겹침 시 조기 재개 버그 수정)
+
+### 개요
+사용자 리포트("치트에 배속증가가 나만 빼고 증가더라") 조사 중 QA에서 발견·재현: `UICardDraft`/`UICheatWindow`/`UIPause` 3개 팝업이 서로의 존재를 모른 채 각자 `Show()`/`Close()`에서 `SetPaused(true/false)`를 호출하는데, `m_isPaused`가 단일 bool이라 "마지막 호출값"만 남았다. 두 팝업이 겹쳐 열린 상태에서 하나만 먼저 닫혀도 다른 팝업이 아직 떠 있는데 게임이 조용히 재개되는 버그가 실제로 재현됨(영상 증거 포함, 카드드래프트가 떠 있는 동안 타워가 사망까지 진행). 상세 재현/원인 분석은 [client-issues.md 2026-07-29-0](../qa/client-issues.md) 참고.
+
+### 파일
+- Assets/Scripts/InGame/InGameScene.cs
+
+### 수정 (함수 단위)
+**필드**
+- 전: `private bool m_isPaused;`
+- 후: `private int m_PauseRequestCount;`
+
+**`SetPaused(bool)`**
+- 전: `m_isPaused = _isPaused; ApplyFreezeState();`
+- 후:
+```csharp
+public void SetPaused(bool _isPaused)
+{
+    if (_isPaused == true)
+    {
+        m_PauseRequestCount++;
+    }
+    else
+    {
+        if (m_PauseRequestCount > 0)
+            m_PauseRequestCount--;
+    }
+
+    ApplyFreezeState();
+}
+```
+
+**`ApplyFreezeState()`**
+- 전: `bool shouldFreeze = (m_isPaused == true || m_isGameOver == true);`
+- 후: `bool shouldFreeze = (m_PauseRequestCount > 0 || m_isGameOver == true);`
+
+`SetPaused(bool)` 시그니처는 그대로라 `UICardDraft`/`UICheatWindow`/`UIPause`의 `Show()`/`Close()` 호출부는 수정 불필요.
+
+### 검증
+1. **컴파일**: `refresh_unity(compile: request)` → `read_console` 에러 0건.
+2. **Play Mode 실측(수정 후, client-bugfixer 세션)**: TitleScene → `Btn_Play` → `Item_Normal` 실제 클릭으로 InGameScene 진입 후, `InGameScene.Current`를 대상으로 리플렉션으로 `SetPaused`를 직접 호출하며 `m_PauseRequestCount`/`BaseScene.isPaused`를 매 단계 샘플링:
+   - 초기: `count=0 isPaused=False`
+   - `SetPaused(true)` #1(카드드래프트 오픈 시뮬레이션): `count=1 isPaused=True`
+   - `SetPaused(true)` #2(치트창 오픈 시뮬레이션): `count=2 isPaused=True`
+   - `SetPaused(false)` #1(치트창만 닫힘, 카드드래프트는 여전히 열려있음): `count=1 isPaused=True` — **여기가 버그였던 지점, 수정 후 정지가 유지됨을 직접 확인**
+   - `SetPaused(false)` #2(카드드래프트도 닫힘): `count=0 isPaused=False`
+   - `SetPaused(false)` #3(음수 방어 테스트, 이미 0인데 또 호출): `count=0 isPaused=False` — 음수로 안 내려감 확인
+3. **실제 팝업 경유 확인(부분)**: 같은 세션에서 `Btn_Cheat` 실제 클릭(`UICheatWindow.Show()`) + `UIManager.instance.Get<UICardDraft>()`(`UICardDraft.Show()`)로 두 팝업을 실제로 동시에 띄우는 것까지는 성공 — 그 직후 사용자가 에디터에서 직접 오브젝트를 삭제("내가 삭제했어 일단")하면서 세션 상태가 예상과 달라져(TitleScene으로 되돌아감), "치트만 닫기 → 카드드래프트 유지 확인"까지 이어지는 최종 단계는 못 마침(코드 결함 아님, 사용자의 수동 편집이 원인). 위 2번 리플렉션 테스트로 핵심 로직(카운터 증감 + `ApplyFreezeState` 반영)은 이미 직접 확인됐기 때문에 추가로 재시도하지 않고 마무리함.
+
+콘솔에 남았던 일부 예외(Febucci TextAnimator NRE)는 기존에 이미 문서화된 별개의 환경 이슈이며 이번 변경과 무관.
+
+### 관련 클래스
+- [UICardDraft.md](./UICardDraft.md), [UICheatWindow.md](./UICheatWindow.md), [UIPause.md](./UIPause.md) — 호출부(변경 없음)
 
 ## 2026-07-28-0 — 난이도 클리어도 "런 종료"로 취급 (OnTowerDie → OnRunEnd 리네임)
 사용자 요청("인피니티 난이도 이전까지는 난이도 클리어 Popup 만들어서 정산해주고") — [[DifficultyManager]] 2026-07-28-0과 세트. `DifficultyManager.OnCleared`(신규 이벤트) 구독 추가: `m_DifficultyManager.OnCleared += OnRunEnd;`. 기존 `OnTowerDie()`는 타워 사망 전용 이름이었으나 이제 "타워 사망 OR 난이도 클리어(Infinite 제외)" 양쪽에서 호출되므로 `OnRunEnd()`로 리네임(로직은 완전히 동일 — `m_isGameOver=true` + `ApplyFreezeState()` + `UIManager.instance.Get<UIRunOver>()`, [[UIRunOver]] 그대로 재사용). `m_TowerController.OnDie += OnRunEnd;`도 같은 줄에서 리네임 반영.

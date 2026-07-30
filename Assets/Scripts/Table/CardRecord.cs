@@ -20,18 +20,19 @@ public enum eCardRarity
 
 public enum eCardEffectType
 {
-    DamagePercent,
     CritChance,
     CritMultiplier,
     PierceAdd,
     DoubleShot,
     SpeciesBonusDamage,
+    VariantBonusDamage,
     AttackSpeedPercent,
+    ArcherAttackSpeedPercent,
     ProjectileSpeedPercent,
     RangePercent,
     SplashEnable,
     ChainEnable,
-    HomingEnable,
+    HomingTurnRateAdd,
     MaxHpAdd,
     MaxHpPercent,
     HealInstant,

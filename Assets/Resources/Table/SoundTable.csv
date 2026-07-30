@@ -1,0 +1,13 @@
+Id,Key,ClipPath,MaxConcurrent
+1,EnemyDeath,Sound/Sfx/EnemyDeath,8
+2,CritHit,Sound/Sfx/CritHit,4
+3,WeaponFire,Sound/Sfx/WeaponFire,6
+4,SplashDamage,Sound/Sfx/SplashDamage,4
+5,RapidFire,Sound/Sfx/RapidFire,8
+6,HomingFire,Sound/Sfx/HomingFire,1
+7,LaserSizzle,Sound/Sfx/LaserSizzle,1
+8,TitleTheme,Sound/Bgm/TitleTheme,1
+9,BattleTheme,Sound/Bgm/BattleTheme,1
+10,ButtonClick,Sound/Sfx/ButtonClick,4
+11,MortarFire,Sound/Sfx/MortarFire,4
+12,OrbitalSlowActivate,Sound/Sfx/OrbitalSlowActivate,1

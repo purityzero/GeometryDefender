@@ -13,6 +13,15 @@
 
 ## 작업 내역
 
+### 2026-07-29-0 — TitleScene BGM 재생(무한 루프)
+사용자 요청("TitleScene, InGameScene 무한 반복되는 음악 레트로느낌으로 만들어 줄 수 있어?") — `OnSetup()`에 `PlayBgm()` 신규 추가. `SoundTable.GetRecordByKey("TitleTheme")` → `ResUtil.Load<AudioClip>` → `SoundManager.instance.PlayBgm(clip)`(내부적으로 loop=true). [[SoundManager]] 참고. 기존 "OnSetup에 초기화 로직 넣지 말 것" 경고는 `TableManager.init()` 같은 공용 시스템 중복 호출 이력 때문 — BGM 재생은 그런 공유 시스템과 무관한 이 씬 자체의 1회성 진입 연출이라 해당 사항 없음(주석으로 근거 남김).
+사운드 에셋(`TitleTheme.wav`)은 [[DamageTextManager]] 2026-07-29-0/1과 동일하게 코드로 파형 합성 — 상세는 그 문서 및 `.claude/rules/glory.md` Sound 섹션 참고.
+검증: Play Mode(TitleScene 진입, execute_code) — `SoundManager`의 활성 BGM이 `TitleTheme`, `loop=True`, 정상 재생 중임을 확인.
+
+**2026-07-29-1 재작업**: 사용자 피드백("타이틀음악은 좀 너무 평화적이야") — 120→138bpm으로 템포업, 4분음표 위주였던 멜로디를 더 활동적인 라인으로 재작곡, 부드러운 리듬 킥+하이햇을 얹어 진행감 부여, 에코는 기존보다 절제(몽환적인 느낌을 줄이되 우주적 반짝임은 유지). 컴파일/재로드 확인(13.91초 루프).
+
+---
+
 ### 2026-07-12-0
 - 개요: 프로젝트 전체 스캔으로 기본 정보 문서 초기 생성 (코드 수정 없음)
 

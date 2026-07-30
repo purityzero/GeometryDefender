@@ -137,6 +137,34 @@
         <text x="140" y="264" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">105</text>
         <text x="140" y="295" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Range+10% (40)</text>
 
+        <!-- 2026-07-29 신규: M-106/107/108(각각 102/104/105 심화), M-109(독립, 신규 AttackSpeedPercent) -->
+        <!-- M-102 → M-106 -->
+        <line x1="100" y1="182" x2="100" y2="228" stroke="#00e5ff" stroke-width="2" stroke-opacity="0.4"/>
+        <!-- M-104 → M-107 -->
+        <line x1="180" y1="182" x2="180" y2="228" stroke="#00e5ff" stroke-width="2" stroke-opacity="0.4"/>
+        <!-- M-105 → M-108 -->
+        <line x1="140" y1="282" x2="140" y2="328" stroke="#00e5ff" stroke-width="2" stroke-opacity="0.4"/>
+
+        <!-- M-106 -->
+        <circle cx="100" cy="250" r="22" fill="#0a0a0f" stroke="#00e5ff" stroke-width="2"/>
+        <text x="100" y="254" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">106</text>
+        <text x="100" y="285" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">HP+30 (100)</text>
+
+        <!-- M-107 -->
+        <circle cx="180" cy="250" r="22" fill="#0a0a0f" stroke="#00e5ff" stroke-width="2"/>
+        <text x="180" y="254" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">107</text>
+        <text x="180" y="285" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">DMG+30% (150)</text>
+
+        <!-- M-108 -->
+        <circle cx="140" cy="350" r="22" fill="#0a0a0f" stroke="#00e5ff" stroke-width="2"/>
+        <text x="140" y="354" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">108</text>
+        <text x="140" y="385" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Range+15% (70)</text>
+
+        <!-- M-109 (독립 진입점) -->
+        <circle cx="220" cy="70" r="22" fill="#0a0a0f" stroke="#00e5ff" stroke-width="2"/>
+        <text x="220" y="74" fill="#00e5ff" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">109</text>
+        <text x="220" y="105" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">AtkSpd+10% (40)</text>
+
         <!-- ============ CARD POOL ============ -->
         <!-- M-201 → M-202 -->
         <line x1="320" y1="80" x2="320" y2="140" stroke="#ff00aa" stroke-width="2" stroke-opacity="0.4"/>
@@ -165,24 +193,34 @@
         <text x="360" y="295" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Orbital (200)</text>
 
         <!-- ============ ECONOMY ============ -->
-        <!-- M-301 → M-302 & M-303 (branching) -->
-        <line x1="520" y1="80" x2="480" y2="140" stroke="#ffd600" stroke-width="2" stroke-opacity="0.4"/>
-        <line x1="520" y1="80" x2="560" y2="140" stroke="#ffd600" stroke-width="2" stroke-opacity="0.4"/>
-
-        <!-- M-301 -->
-        <circle cx="520" cy="70" r="22" fill="#0a0a0f" stroke="#ffd600" stroke-width="2"/>
-        <text x="520" y="74" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">301</text>
-        <text x="520" y="105" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">XP Magnet (40)</text>
+        <!-- XP Magnet(M-301) 제거(2026-07-29, 실제 획득 로직 없이 죽어있던 노드 — SpawnManager.md/MetaTreeRecord.md 참고) -->
+        <!-- M-302 / M-303는 이제 선행 없는 독립 진입점 -->
 
         <!-- M-302 -->
-        <circle cx="480" cy="160" r="22" fill="#0a0a0f" stroke="#ffd600" stroke-width="2"/>
-        <text x="480" y="164" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">302</text>
-        <text x="480" y="195" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">XP Boost (100)</text>
+        <circle cx="490" cy="70" r="22" fill="#0a0a0f" stroke="#ffd600" stroke-width="2"/>
+        <text x="490" y="74" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">302</text>
+        <text x="490" y="105" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">XP Boost (100)</text>
 
         <!-- M-303 -->
+        <circle cx="560" cy="70" r="22" fill="#0a0a0f" stroke="#ffd600" stroke-width="2"/>
+        <text x="560" y="74" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">303</text>
+        <text x="560" y="105" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Shard+25% (150)</text>
+
+        <!-- 2026-07-29 신규: M-304/305(각각 302/303 심화) -->
+        <!-- M-302 → M-304 -->
+        <line x1="490" y1="92" x2="490" y2="138" stroke="#ffd600" stroke-width="2" stroke-opacity="0.4"/>
+        <!-- M-303 → M-305 -->
+        <line x1="560" y1="92" x2="560" y2="138" stroke="#ffd600" stroke-width="2" stroke-opacity="0.4"/>
+
+        <!-- M-304 -->
+        <circle cx="490" cy="160" r="22" fill="#0a0a0f" stroke="#ffd600" stroke-width="2"/>
+        <text x="490" y="164" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">304</text>
+        <text x="490" y="195" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">XP Boost II (200)</text>
+
+        <!-- M-305 -->
         <circle cx="560" cy="160" r="22" fill="#0a0a0f" stroke="#ffd600" stroke-width="2"/>
-        <text x="560" y="164" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">303</text>
-        <text x="560" y="195" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Shard+25% (150)</text>
+        <text x="560" y="164" fill="#ffd600" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">305</text>
+        <text x="560" y="195" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Shard Bonus II (250)</text>
 
         <!-- ============ UTILITY ============ -->
         <!-- M-401 → M-402 & M-403 -->
@@ -204,20 +242,29 @@
         <text x="730" y="164" fill="#00ff88" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">403</text>
         <text x="730" y="195" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Skip (120)</text>
 
+        <!-- 2026-07-29 신규: M-404(402 심화) -->
+        <!-- M-402 → M-404 -->
+        <line x1="680" y1="182" x2="680" y2="228" stroke="#00ff88" stroke-width="2" stroke-opacity="0.4"/>
+
+        <!-- M-404 -->
+        <circle cx="680" cy="250" r="22" fill="#0a0a0f" stroke="#00ff88" stroke-width="2"/>
+        <text x="680" y="254" fill="#00ff88" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">404</text>
+        <text x="680" y="285" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="9" text-anchor="middle">Reroll III (250)</text>
+
         <!-- Legend -->
         <g transform="translate(40, 420)">
           <text x="0" y="0" fill="#606078" font-family="JetBrains Mono, monospace" font-size="10">LEGEND</text>
           <circle cx="10" cy="20" r="8" fill="#0a0a0f" stroke="#00e5ff" stroke-width="2"/>
           <text x="25" y="24" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">Locked node</text>
           <text x="160" y="24" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">─── = prerequisite link</text>
-          <text x="380" y="24" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">총 15 노드 · 총 비용 1,450 Shards</text>
+          <text x="380" y="24" fill="#a0a0b8" font-family="JetBrains Mono, monospace" font-size="10">총 21 노드 · 총 비용 2,470 Shards</text>
         </g>
       </svg>
     </div>
-    <p class="phone-caption">FIG-05-A · META PROGRESSION TREE · 4 branch, 15 nodes</p>
+    <p class="phone-caption">FIG-05-A · META PROGRESSION TREE · 4 branch, 21 nodes</p>
 
-    <h3>STARTING POWER 줄기 (5노드)</h3>
-    <p>런 시작 시점의 타워 능력치를 영구 강화.</p>
+    <h3>STARTING POWER 줄기 (9노드)</h3>
+    <p>런 시작 시점의 타워 능력치를 영구 강화. (2026-07-29: HP/DMG/Range 각각 3티어로 심화 + 신규 축 Attack Speed 추가)</p>
 
     <div class="tbl-wrap">
       <table>
@@ -225,9 +272,13 @@
         <tbody>
           <tr><td class="num">M-101</td><td>Starting HP I</td><td>Max HP +10</td><td class="num">20</td><td>-</td></tr>
           <tr><td class="num">M-102</td><td>Starting HP II</td><td>Max HP +20</td><td class="num">50</td><td>M-101</td></tr>
+          <tr><td class="num">M-106</td><td>Starting HP III</td><td>Max HP +30</td><td class="num">100</td><td>M-102</td></tr>
           <tr><td class="num">M-103</td><td>Starting DMG I</td><td>Damage +10%</td><td class="num">30</td><td>-</td></tr>
           <tr><td class="num">M-104</td><td>Starting DMG II</td><td>Damage +20%</td><td class="num">80</td><td>M-103</td></tr>
+          <tr><td class="num">M-107</td><td>Starting DMG III</td><td>Damage +30%</td><td class="num">150</td><td>M-104</td></tr>
           <tr><td class="num">M-105</td><td>Starting Range</td><td>Range +10%</td><td class="num">40</td><td>-</td></tr>
+          <tr><td class="num">M-108</td><td>Starting Range II</td><td>Range +15%</td><td class="num">70</td><td>M-105</td></tr>
+          <tr><td class="num">M-109</td><td>Starting Attack Speed</td><td>Attack Speed +10%</td><td class="num">40</td><td>-</td></tr>
         </tbody>
       </table>
     </div>
@@ -256,29 +307,31 @@
       </p>
     </div>
 
-    <h3>ECONOMY 줄기 (3노드)</h3>
-    <p>XP/Shard 획득량 증가.</p>
+    <h3>ECONOMY 줄기 (4노드)</h3>
+    <p>XP/Shard 획득량 증가. (2026-07-29: XP Magnet(M-301) 제거 — 이 게임은 처치 즉시 XP를 직접 지급하는 구조라 "자동 흡수 반경" 개념 자체가 없어 실제 효과가 없던 노드였음. M-302/M-303을 독립 진입점으로 재배선하고, 각각 2티어(M-304/M-305)로 심화.)</p>
 
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>노드</th><th>이름</th><th>효과</th><th>비용</th><th>선행</th></tr></thead>
         <tbody>
-          <tr><td class="num">M-301</td><td>XP Magnet</td><td>XP 자동 흡수 반경 +50%</td><td class="num">40</td><td>-</td></tr>
-          <tr><td class="num">M-302</td><td>XP Boost</td><td>모든 XP +20%</td><td class="num">100</td><td>M-301</td></tr>
-          <tr><td class="num">M-303</td><td>Shard Bonus</td><td>런 종료 Shards +25%</td><td class="num">150</td><td>M-301</td></tr>
+          <tr><td class="num">M-302</td><td>XP Boost</td><td>모든 XP +20%</td><td class="num">100</td><td>-</td></tr>
+          <tr><td class="num">M-304</td><td>XP Boost II</td><td>모든 XP +20%(누적)</td><td class="num">200</td><td>M-302</td></tr>
+          <tr><td class="num">M-303</td><td>Shard Bonus</td><td>런 종료 Shards +25%</td><td class="num">150</td><td>-</td></tr>
+          <tr><td class="num">M-305</td><td>Shard Bonus II</td><td>런 종료 Shards +25%(누적)</td><td class="num">250</td><td>M-303</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>UTILITY 줄기 (3노드)</h3>
-    <p>편의 기능 / QoL.</p>
+    <h3>UTILITY 줄기 (4노드)</h3>
+    <p>편의 기능 / QoL. (2026-07-29: Reroll 3티어로 심화)</p>
 
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>노드</th><th>이름</th><th>효과</th><th>비용</th><th>선행</th></tr></thead>
         <tbody>
           <tr><td class="num">M-401</td><td>Reroll Token</td><td>런마다 카드 리롤 1회</td><td class="num">80</td><td>-</td></tr>
-          <tr><td class="num">M-402</td><td>Reroll II</td><td>리롤 2회</td><td class="num">150</td><td>M-401</td></tr>
+          <tr><td class="num">M-402</td><td>Reroll II</td><td>리롤 2회(누적 3회)</td><td class="num">150</td><td>M-401</td></tr>
+          <tr><td class="num">M-404</td><td>Reroll III</td><td>리롤 2회(누적 5회)</td><td class="num">250</td><td>M-402</td></tr>
           <tr><td class="num">M-403</td><td>Skip Token</td><td>카드 스킵 가능 (Shards 획득)</td><td class="num">120</td><td>M-401</td></tr>
         </tbody>
       </table>
@@ -289,21 +342,22 @@
     <div class="card-grid">
       <div class="card">
         <h4 style="margin-top: 0;">총 노드 수</h4>
-        <p style="margin: 0; font-size: 24px; color: var(--neon-cyan); font-family: var(--font-display);">15</p>
+        <p style="margin: 0; font-size: 24px; color: var(--neon-cyan); font-family: var(--font-display);">21</p>
       </div>
       <div class="card">
         <h4 style="margin-top: 0;">누적 Shards</h4>
-        <p style="margin: 0; font-size: 24px; color: var(--neon-cyan); font-family: var(--font-display);">1,450</p>
+        <p style="margin: 0; font-size: 24px; color: var(--neon-cyan); font-family: var(--font-display);">2,470</p>
       </div>
       <div class="card">
         <h4 style="margin-top: 0;">예상 완주</h4>
-        <p style="margin: 0; font-size: 24px; color: var(--neon-cyan); font-family: var(--font-display);">~25런</p>
+        <p style="margin: 0; font-size: 24px; color: var(--neon-cyan); font-family: var(--font-display);">~35런</p>
       </div>
     </div>
 
     <p>
-      평균 1런 60~80 Shards 획득 가정 시 약 <strong>20~25런</strong>에 메타
-      전체 해금. 1런 10분 가정 시 약 <strong>4~5시간 플레이</strong>면 메타 완료.
+      평균 1런 60~80 Shards 획득 가정 시 약 <strong>30~40런</strong>에 메타
+      전체 해금(2026-07-29: 노드 14→21개로 확장되며 20~25런 → 30~40런으로 늘어남).
+      1런 10분 가정 시 약 <strong>5~7시간 플레이</strong>면 메타 완료.
     </p>
 
     <h2>점수 / 로컬 리더보드</h2>

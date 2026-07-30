@@ -1,5 +1,13 @@
 # ActorMonster
 
+## 2026-07-30-0 — SetSlowTinted(bool) 신설 (Frost Orb Turret 슬로우 시각화)
+사용자 요청("냉기오브에서 슬로우가 좀 걸리는게 눈에 띄었으면 좋겠고"). `m_Record.ColorHex`(원본 종족 색) 기준으로 프로스트 블루(0.4,0.8,1)와 50% 블렌드한 색을 적용/해제하는 토글 메서드. 매번 원본 색에서 다시 계산해서 트윈이 아니라 즉시 스냅 전환 — 반복 호출해도 누적 오염 없음. `Open(EnemyRecord)`에서 `m_isSlowTinted=false`로 리셋(풀링 재사용 시 이전 사용자의 틴트 상태가 새 몬스터에 새는 것 방지). 소비처는 [[MonsterManager]] 2026-07-30-0 참고.
+
+### 검증
+컴파일 확인 필요. Play Mode 미검증.
+
+---
+
 ## 연관 클래스
 - Actor — 베이스 클래스 (FactoryObject 계열, 2026-07-27부터 IUpdatable 추가)
 - MonsterManager — MemoryPoolFactory로 생성/반납, 매 프레임 `UpdateCullingLogic()` 호출

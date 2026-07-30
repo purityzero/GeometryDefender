@@ -20,6 +20,9 @@ public class DamageTextManager : UpdatableBehaviour
     private int m_SpawnCountThisSecond;
     private float m_SecondTimer;
 
+    // SoundTable(Key→ClipPath) 기반 전투 SFX — 로드한 클립은 캐싱해서 재조회 비용을 없앤다.
+    private Dictionary<string, AudioClip> m_SoundClipCache = new Dictionary<string, AudioClip>();
+
     [System.NonSerialized] private bool m_isInitialized;
 
     public void Init()
@@ -114,6 +117,8 @@ public class DamageTextManager : UpdatableBehaviour
         splashExplosion.Open();
         splashExplosion.transform.position = _position;
         splashExplosion.Play(OnSplashExplosionComplete);
+
+        PlaySfxByKey("SplashDamage");
     }
 
     private void OnSplashExplosionComplete(SplashExplosion _splashExplosion)
@@ -165,6 +170,39 @@ public class DamageTextManager : UpdatableBehaviour
             
         Handheld.Vibrate();
         TweenUtil.DelayedCall(GameConfigTable.VIBRATE_PULSE_INTERVAL, () => Handheld.Vibrate());
+    }
+
+    // 8비트 전투 SFX(SoundTable 기반) — MonsterManager(처치)/HealthSystem(치명타)/ActorPlayer(발사)가 호출
+    public void PlayEnemyDeathSound() => PlaySfxByKey("EnemyDeath");
+    public void PlayCritSound() => PlaySfxByKey("CritHit");
+
+    // 무기마다 발사음이 다를 수 있어 Key를 받는다 — 기본값(WeaponFire)은 CentralTower/Mage/ChainCoil 공용,
+    // Archer는 "RapidFire"(연사 타격감), HomingPod는 "HomingFire"(2.2초 발사 웨일)로 ActorPlayer.Fire()가 지정.
+    public void PlayWeaponFireSound(string _key = "WeaponFire") => PlaySfxByKey(_key);
+
+    private void PlaySfxByKey(string _key)
+    {
+        SoundTable soundTable = TableManager.instance.GetTable<SoundTable>();
+        if (soundTable == null)
+            return;
+
+        SoundRecord record = soundTable.GetRecordByKey(_key);
+        if (record == null)
+        {
+            Logger.Error($"[DamageTextManager] PlaySfxByKey Failed! SoundRecord not found - {_key}");
+            return;
+        }
+
+        if (m_SoundClipCache.TryGetValue(_key, out AudioClip clip) == false)
+        {
+            clip = ResUtil.Load<AudioClip>(record.ClipPath);
+            m_SoundClipCache[_key] = clip;
+        }
+
+        if (clip == null)
+            return;
+
+        SoundManager.instance.PlaySfx(clip, null, record.MaxConcurrent);
     }
 
     public override void UpdateLogic()

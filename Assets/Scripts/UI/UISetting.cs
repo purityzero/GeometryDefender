@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class UISetting : UIPopup
 {
@@ -9,9 +10,9 @@ public class UISetting : UIPopup
     [SerializeField] private ToggleButtonList m_LanguageToggles;
     [SerializeField] private ToggleButtonList m_FpsToggles;
 
-    [SerializeField] private UIToggleButton m_SoundToggle;
+    [SerializeField] private Slider m_BgmVolumeSlider;
+    [SerializeField] private Slider m_SfxVolumeSlider;
     [SerializeField] private UIToggleButton m_HapticToggle;
-    [SerializeField] private UIToggleButton m_LeftHandToggle;
     [SerializeField] private UIToggleButton m_EnemyDamageTextToggle;
     [SerializeField] private UIToggleButton m_AllyDamageTextToggle;
 
@@ -28,9 +29,15 @@ public class UISetting : UIPopup
         m_FpsToggles.SetData(m_FpsToggles.toggleListId, OnClickFpsToggle, fpsIndex);
         ApplyFpsLabels();
 
-        m_SoundToggle.SetData(optionData.isSoundOn, OnClickSoundToggle);
+        m_BgmVolumeSlider.SetValueWithoutNotify(optionData.BgmVolume);
+        m_BgmVolumeSlider.onValueChanged.RemoveAllListeners();
+        m_BgmVolumeSlider.onValueChanged.AddListener(OnBgmVolumeChanged);
+
+        m_SfxVolumeSlider.SetValueWithoutNotify(optionData.SfxVolume);
+        m_SfxVolumeSlider.onValueChanged.RemoveAllListeners();
+        m_SfxVolumeSlider.onValueChanged.AddListener(OnSfxVolumeChanged);
+
         m_HapticToggle.SetData(optionData.isHapticOn, OnClickHapticToggle);
-        m_LeftHandToggle.SetData(optionData.isLeftHandMode, OnClickLeftHandToggle);
         m_EnemyDamageTextToggle.SetData(optionData.isEnemyDamageTextOn, OnClickEnemyDamageTextToggle);
         m_AllyDamageTextToggle.SetData(optionData.isAllyDamageTextOn, OnClickAllyDamageTextToggle);
     }
@@ -64,19 +71,19 @@ public class UISetting : UIPopup
         PlayerManager.instance.SetFpsOption(FPS_OPTIONS[_index]);
     }
 
-    private void OnClickSoundToggle(UIToggleButton _toggle)
+    private void OnBgmVolumeChanged(float _value)
     {
-        PlayerManager.instance.SetSoundOn(_toggle.isOn);
+        PlayerManager.instance.SetBgmVolume(_value);
+    }
+
+    private void OnSfxVolumeChanged(float _value)
+    {
+        PlayerManager.instance.SetSfxVolume(_value);
     }
 
     private void OnClickHapticToggle(UIToggleButton _toggle)
     {
         PlayerManager.instance.SetHapticOn(_toggle.isOn);
-    }
-
-    private void OnClickLeftHandToggle(UIToggleButton _toggle)
-    {
-        PlayerManager.instance.SetLeftHandMode(_toggle.isOn);
     }
 
     private void OnClickEnemyDamageTextToggle(UIToggleButton _toggle)

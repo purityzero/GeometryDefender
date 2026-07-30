@@ -16,9 +16,9 @@ public class RunRecord
 [Serializable]
 public class OptionData
 {
-    public bool isSoundOn = true;
+    public float BgmVolume = 1f;
+    public float SfxVolume = 1f;
     public bool isHapticOn = true;
-    public bool isLeftHandMode = false;
     public eFpsOption FpsOption = eFpsOption.Fps60;
     public eLanguage Language;
     public bool isEnemyDamageTextOn = true;
@@ -210,12 +210,20 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         Save();
     }
 
-    public void SetSoundOn(bool _isSoundOn)
+    public void SetBgmVolume(float _volume)
     {
-        m_OptionData.isSoundOn = _isSoundOn;
+        m_OptionData.BgmVolume = _volume;
         Save();
 
-        // TODO: 사운드/BGM 시스템이 생기면 여기서 실제 뮤트 처리
+        SoundManager.instance.SetCategoryVolume(eSoundCategory.Bgm, _volume);
+    }
+
+    public void SetSfxVolume(float _volume)
+    {
+        m_OptionData.SfxVolume = _volume;
+        Save();
+
+        SoundManager.instance.SetCategoryVolume(eSoundCategory.Sfx, _volume);
     }
 
     public void SetHapticOn(bool _isHapticOn)
@@ -224,14 +232,6 @@ public class PlayerManager : MonoSingleton<PlayerManager>
         Save();
 
         // TODO: 진동 트리거 시스템이 생기면 여기서 실제 On/Off 반영
-    }
-
-    public void SetLeftHandMode(bool _isLeftHandMode)
-    {
-        m_OptionData.isLeftHandMode = _isLeftHandMode;
-        Save();
-
-        // TODO: 인게임 일시정지 버튼이 생기면 여기서 좌/우 위치 반영
     }
 
     public void SetEnemyDamageTextOn(bool _isEnemyDamageTextOn)

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -78,6 +79,7 @@ public class ProjectileManager : UpdatableBehaviour
         {
             Direction = new float3(direction.x, direction.y, 0f),
             SpawnPosition = spawnPosition,
+            PreviousPosition = spawnPosition,
             MaxDistance = _range,
             Speed = _speed,
         });
@@ -87,8 +89,10 @@ public class ProjectileManager : UpdatableBehaviour
         SpawnVisual(entity, record);
     }
 
-    /// <summary>Orbital Ring(#503) 카드 — 타워 주위를 계속 회전하는 상시 투사체 _count개를 생성(만료 없음, 카드는 유니크라 중복 호출 안 됨 전제).</summary>
-    public void SpawnOrbitals(Vector2 _center, int _count, int _damage, float _radius, float _orbitDistance)
+    /// <summary>Orbital Ring(#503) 카드 — 타워 주위를 계속 회전하는 상시 투사체 _count개를 생성(만료 없음, 카드는 유니크라 중복 호출 안 됨 전제).
+    /// _visualScaleMultiplier: 기본 투사체 시각 크기(Basic 프로젝타일 Size 기준)에 곱해지는 배율 — 오브 개별 크기를 다른 투사체와
+    /// 별도로 키우고 싶을 때 사용(사용자 요청 "좀 살짝 더 크게").</summary>
+    public void SpawnOrbitals(Vector2 _center, int _count, int _damage, float _radius, float _orbitDistance, float _visualScaleMultiplier = 1f)
     {
         if (m_isInitialized == false)
             return;
@@ -118,8 +122,32 @@ public class ProjectileManager : UpdatableBehaviour
 
             ProjectileRecord record = m_ProjectileTable.GetRecordByType(eProjectileType.Basic);
             if (record != null)
-                SpawnVisual(entity, record);
+            {
+                ActorProjectile actorProjectile = SpawnVisual(entity, record, _visualScaleMultiplier);
+                ApplyOrbitalGlowEffect(actorProjectile);
+            }
         }
+    }
+
+    // 사용자 요청("오비탈 링도 주황색으로 Glow효과, Tween효과 빨강-주황으로" → "빨강을 빼고 노랑으로") — Frost Orb Turret과
+    // 동일한 Material._GlowAmount + DOColor Yoyo 루프 방식. 이 오브들은 MemoryPoolFactory로 풀링되므로(비영구
+    // 인스턴스), 반납 시 트윈 정리는 ActorProjectile.Close()가 담당(풀링 오염 방지).
+    private static readonly Color ORBITAL_RING_BASE_COLOR = new Color(1f, 0.55f, 0f);   // 주황
+    private static readonly Color ORBITAL_RING_TWEEN_COLOR = new Color(1f, 0.9f, 0.1f); // 노랑
+
+    private void ApplyOrbitalGlowEffect(ActorProjectile _actorProjectile)
+    {
+        if (_actorProjectile == null)
+            return;
+
+        Material material = _actorProjectile.material;
+        _actorProjectile.SetColor(ORBITAL_RING_BASE_COLOR);
+        material.SetFloat("_GlowAmount", GameConfigTable.ORBITAL_RING_GLOW_MIN);
+
+        TweenUtil.Color(material, ORBITAL_RING_TWEEN_COLOR.linear, GameConfigTable.ORBITAL_RING_COLOR_TWEEN_DURATION)
+            .SetLoops(-1, LoopType.Yoyo);
+        TweenUtil.Float(material, "_GlowAmount", GameConfigTable.ORBITAL_RING_GLOW_MAX, GameConfigTable.ORBITAL_RING_GLOW_PULSE_DURATION)
+            .SetLoops(-1, LoopType.Yoyo);
     }
 
     public override void UpdateLogic()
@@ -146,16 +174,16 @@ public class ProjectileManager : UpdatableBehaviour
         expiredEntities.Dispose();
     }
 
-    private void SpawnVisual(Entity _entity, ProjectileRecord _record)
+    private ActorProjectile SpawnVisual(Entity _entity, ProjectileRecord _record, float _visualScaleMultiplier = 1f)
     {
         ActorProjectile actorProjectile = m_ProjectileFactory.Create(_record.Type);
         if (actorProjectile == null)
-            return;
+            return null;
 
         // ResUtil.Attach()가 풀에서 꺼낸 오브젝트의 localScale을 항상 Vector3.one으로 리셋하므로
         // (MonsterManager.SpawnVisual()이 코드로 직접 스케일을 세팅하는 것과 동일한 이유), 스폰 시점에 코드로 직접 세팅.
         // PROJECTILE_PREFAB_NATIVE_DIAMETER: 프리팹 스프라이트(shape_circle)의 스케일 1일 때 지름 — ProjectileRecord.Size(반지름)로부터 시각 스케일을 역산하는 데 사용
-        float visualScale = (_record.Size * 2f) / GameConfigTable.PROJECTILE_PREFAB_NATIVE_DIAMETER;
+        float visualScale = (_record.Size * 2f) / GameConfigTable.PROJECTILE_PREFAB_NATIVE_DIAMETER * _visualScaleMultiplier;
         actorProjectile.transform.localScale = Vector3.one * visualScale;
 
         if (ColorUtility.TryParseHtmlString(_record.ColorHex, out Color color) == true)
@@ -168,6 +196,8 @@ public class ProjectileManager : UpdatableBehaviour
         {
             transform = actorProjectile.transform,
         });
+
+        return actorProjectile;
     }
 
     // 타입은 MemoryPoolFactory가 Create() 시점에 스스로 기억하므로, 여기선 VisualObject(entity에 이미 붙어있는 참조)에서

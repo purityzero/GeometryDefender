@@ -60,7 +60,7 @@ public class TowerColorEffect : UpdatableBehaviour
         if (m_RegisteredObservable != null)
             return;
 
-        if (InGameScene.Current.towerController == null)
+        if (InGameScene.Current?.towerController == null)
             return;
 
         m_RegisteredObservable = InGameScene.Current.towerController.currentHp;
@@ -69,7 +69,7 @@ public class TowerColorEffect : UpdatableBehaviour
 
     private void OnHpChanged(int _oldValue, int _newValue)
     {
-        if (InGameScene.Current.towerController == null || InGameScene.Current.towerController.maxHp <= 0)
+        if (InGameScene.Current?.towerController == null || InGameScene.Current.towerController.maxHp <= 0)
             return;
 
         float hpRatio = (float)_newValue / InGameScene.Current.towerController.maxHp;
