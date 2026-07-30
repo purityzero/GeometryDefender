@@ -48,6 +48,10 @@ public class PlayerManager : MonoSingleton<PlayerManager>
     private const string OPTION_SAVE_KEY = "OptionData";
     private const string ASSET_SAVE_KEY = "AssetData";
 
+    // QA/밸런스 테스트 전용 — true면 UICardDraft가 드래프트마다 사람이 클릭하지 않고 우선순위(무기 > 공격 > 그 외)로 자동 선택.
+    // 세이브 대상 아님(PlayerData/OptionData/AssetData 어디에도 속하지 않는 런타임 전용 플래그) — 세션마다 기본값 false로 시작.
+    public bool isAutoMode;
+
     private PlayerData m_PlayerData = new PlayerData();
     private OptionData m_OptionData = new OptionData();
     private AssetData m_AssetData = new AssetData();
@@ -185,6 +189,15 @@ public class PlayerManager : MonoSingleton<PlayerManager>
             return;
 
         m_PlayerData.UnlockedMetaNodes.Add(_nodeId);
+        Save();
+    }
+
+    // QA/치트 전용 — 메타 트리 해금 상태와 샤드 보유량만 초기화(BestScore/UnlockedDifficulties/RecentRuns는 유지).
+    public void ResetMetaTreeAndShard()
+    {
+        m_PlayerData.UnlockedMetaNodes.Clear();
+        m_AssetData.Shards = 0;
+        m_ShardsObservable.Value = m_AssetData.Shards;
         Save();
     }
 

@@ -26,6 +26,9 @@ public class PlayerDataResetWindow : EditorWindow
         DrawAssetDataSection();
         EditorGUILayout.Space();
 
+        DrawMetaTreeResetSection();
+        EditorGUILayout.Space();
+
         EditorGUILayout.Space();
         if (GUILayout.Button("전체 초기화 (PlayerData + OptionData + AssetData)") == true)
             TryResetAll();
@@ -105,6 +108,57 @@ public class PlayerDataResetWindow : EditorWindow
 
         if (GUILayout.Button("AssetData 초기화") == true)
             TryResetSaveKey(ASSET_DATA_KEY, "AssetData", "샤드 보유량");
+    }
+
+    private void DrawMetaTreeResetSection()
+    {
+        EditorGUILayout.LabelField("메타 트리 + 샤드만 초기화 (최고 점수/난이도 해금/최근 기록/설정은 유지)", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("메타 트리 해금 + 샤드 초기화") == true)
+            TryResetMetaTreeAndShard();
+    }
+
+    private void TryResetMetaTreeAndShard()
+    {
+        bool isConfirmed = EditorUtility.DisplayDialog(
+            "메타 트리 + 샤드 초기화",
+            "메타 트리 해금 상태와 샤드 보유량만 초기화합니다.\n최고 점수/난이도 해금/최근 기록/설정은 유지됩니다.\n계속하시겠습니까?",
+            "초기화",
+            "취소");
+
+        if (isConfirmed == false)
+            return;
+
+        if (EditorApplication.isPlaying == true && PlayerManager.instance != null)
+        {
+            PlayerManager.instance.ResetMetaTreeAndShard();
+        }
+        else
+        {
+            ResetMetaTreeAndShardInPrefs();
+        }
+
+        Logger.Log("[PlayerDataResetWindow] TryResetMetaTreeAndShard - 메타 트리 + 샤드 초기화 완료");
+        Repaint();
+    }
+
+    private void ResetMetaTreeAndShardInPrefs()
+    {
+        if (PlayerPrefs.HasKey(PLAYER_DATA_KEY) == true)
+        {
+            PlayerData playerData = JsonUtility.FromJson<PlayerData>(PlayerPrefs.GetString(PLAYER_DATA_KEY)) ?? new PlayerData();
+            playerData.UnlockedMetaNodes.Clear();
+            PlayerPrefs.SetString(PLAYER_DATA_KEY, JsonUtility.ToJson(playerData));
+        }
+
+        if (PlayerPrefs.HasKey(ASSET_DATA_KEY) == true)
+        {
+            AssetData assetData = JsonUtility.FromJson<AssetData>(PlayerPrefs.GetString(ASSET_DATA_KEY)) ?? new AssetData();
+            assetData.Shards = 0;
+            PlayerPrefs.SetString(ASSET_DATA_KEY, JsonUtility.ToJson(assetData));
+        }
+
+        PlayerPrefs.Save();
     }
 
     private void TryResetSaveKey(string _saveKey, string _displayName, string _description)

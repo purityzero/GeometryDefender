@@ -11,6 +11,22 @@
 - `TowerTable : Table<TowerRecord>`.
 - 데이터: Assets/Resources/Table/TowerTable.csv — **2026-07-30부터 8행**(6종 기존 무기 + Frost Orb Turret(#7)/Mortar(#8) 신규, [[ActorPlayer]] 2026-07-30-3 참고). Frost Orb Turret은 `Range`를 "공전 반지름", `SplashRadius`를 "슬로우 판정 반경"으로 재사용(새 컬럼 안 늘림).
 
+## 2026-07-30-4 — CentralTower 기본 Damage 추가 상향 (2차 조정)
+`design-issues.md` 2026-07-30-1 검증 결과(1차 조정 후에도 평균 +6.1%/최고 +7.6%에 그침) 후속 — 동일 손잡이를 훨씬 과감하게 재조정. `Damage` 12→**14**(기대 DPS 28.0→32.67). [[GameConfigRecord]] 2026-07-30-6, [[DifficultyRecord]] 2026-07-30-1과 함께 한 세트.
+
+### 검증
+컴파일 불필요(CSV 값 변경), `refresh_unity`(assets, if_dirty) 후 콘솔 에러 0건. Play Mode 재검증 필요.
+
+---
+
+## 2026-07-30-3 — CentralTower 기본 Damage 상향 (Normal 밸런스 근본 조정)
+`design-issues.md` 2026-07-30-0 QA 결론(완전 신규 유저 상태로 Normal 7회 연속 시도, 전부 600초 미클리어·최고 324초) 후속 원인 분석 — 스폰레이트/킬레이트 크로스오버 공식(`spawnRate(t)=SPAWN_BASE_RATE×(1+max(0,t-GRACE)/60)^EXP×DiffMult`, `killRate=DPS/EnemyHp`)으로 역산하면 기본 상태(무기 1개, 메타 0개) 크로스오버가 t≈87.5초로 너무 이르다. CentralTower `Damage` 10→**12**(+20%, 크리 포함 기대 DPS 약 23.3→28.0) — 첫 무기의 절대 킬레이트 자체를 올려 크로스오버 시점을 뒤로 미루는 직접적 조정. [[GameConfigRecord]] 2026-07-30-5(TowerMaxHp/SpawnRampGraceSeconds/WeaponPityThreshold), [[DifficultyRecord]] 2026-07-30-0(Normal DifficultyMultiplier)과 함께 한 세트로 조정.
+
+### 검증
+컴파일 불필요(CSV 값 변경), `refresh_unity`(assets, if_dirty) 후 콘솔 에러 0건. Play Mode 재검증 필요 — 다음 QA 세션에서 Normal 생존시간이 실제로 늘어나는지 확인.
+
+---
+
 ## 2026-07-30-2 — Frost Orb Turret 공전 반경 확대 (Orbital Ring과 겹침 방지)
 사용자 요청("냉기오브 오비탈링이랑 겹치니까 조금 더 멀리 떨어졌으면 해"). `Range`(공전 반지름 용도로 재사용 중) 3.0→**4.5** — Orbital Ring 카드의 공전 거리(2.5, 같은 날 확장됨)와 명확히 분리되도록.
 

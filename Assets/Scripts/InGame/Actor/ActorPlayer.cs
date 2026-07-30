@@ -803,7 +803,7 @@ public class ActorPlayer : Actor
 
         // Splash/Chain/Homing은 더 이상 전역 적용이 아니라 무기 고유 특성 — ApplyInnateWeaponAbility()가
         // 무기 Id로 분기해서 채운다(사용자 지적: "전부 호밍이 되더라, 각각 미사일에 맞게 해줘").
-        // Pierce(#105/#106)도 2026-07-30부터 CentralTower 전용(사용자 요청: "기본무기만 관통이 통해야하고 나머지는 통하면 안됨")
+        // Pierce(#105)도 2026-07-30부터 CentralTower 전용(사용자 요청: "기본무기만 관통이 통해야하고 나머지는 통하면 안됨")
         // — 치명타와 동일하게 CentralTower가 아니면 0으로 무시.
         ProjectileEffects cardEffects = new ProjectileEffects
         {

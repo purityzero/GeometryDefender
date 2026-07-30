@@ -3,6 +3,22 @@
 연관 클래스: Record, Table, TableManager, [[DifficultyManager]](유일한 소비처)
 기획 근거: Assets/Design/08_balance.html "난이도 진행 (Normal → Hard → Hell → Infinite)"
 
+## 2026-07-30-1 — Normal DifficultyMultiplier 2차 하향 (1차 조정 검증 후 훨씬 과감하게)
+`design-issues.md` 2026-07-30-1 검증 결과(1차 조정 0.8→0.65 후에도 평균 +6.1%/최고 +7.6%에 그침, 600초 미달) 후속 — 사용자 확인("크로스오버만 더 과감하게") 후 Normal `DifficultyMultiplier` 0.65→**0.4**(원본 1.0 대비 총 60% 완화). 이 값은 크로스오버 시점과 크로스오버 이후 백로그 증가 기울기 양쪽에 곱해지는 가장 레버리지 큰 손잡이라 가장 크게 움직였다. [[TowerRecord]] 2026-07-30-4, [[GameConfigRecord]] 2026-07-30-6과 함께 한 세트. Hard(1.3)/Hell(1.6)/Infinite는 그대로 유지.
+
+### 검증
+컴파일 불필요(CSV 값 변경), `refresh_unity`(assets, if_dirty) 후 콘솔 에러 0건. Play Mode 재검증 필요 — 이번엔 오히려 600초를 넘겨 "너무 쉬움"으로 나올 가능성도 있음.
+
+---
+
+## 2026-07-30-0 — Normal DifficultyMultiplier 추가 하향 (design-issues.md 2026-07-30-0 후속)
+`design-issues.md` 2026-07-30-0 QA 결론(완전 신규 유저 상태로 Normal 7회 연속 시도, 전부 600초 미클리어·최고 324초, Hard가 단 한 번도 자연 해금 안 됨) 원인 분석 — 스폰레이트 공식의 `DifficultyMultiplier`가 그대로 크로스오버 시점과 이후 백로그 증가 기울기 양쪽에 곱해지므로 가장 직접적인 손잡이. Normal `DifficultyMultiplier` 0.8→**0.65**(추가 약 19% 완화, 2026-07-27 1.0→0.8 조정과 동일한 "Normal 전용 손잡이" 패턴). Hard(1.3)/Hell(1.6)/Infinite는 그대로 유지 — Normal이 먼저 정상 궤도에 올라야 그 다음 사다리 재검토가 의미 있다는 게 이번 QA의 결론이라, 상위 난이도는 손대지 않음. [[TowerRecord]] 2026-07-30-3, [[GameConfigRecord]] 2026-07-30-5와 함께 한 세트로 조정.
+
+### 검증
+컴파일 불필요(CSV 값 변경), `refresh_unity`(assets, if_dirty) 후 콘솔 에러 0건. Play Mode 재검증 필요 — 다음 QA에서 Normal이 실제로 600초에 도달하는지, Hard가 자연 해금되는지 확인.
+
+---
+
 ## 개요
 난이도(Normal/Hard/Hell/Infinite)별 배율/순차 언락 체인 데이터 테이블. CSV: `Resources/Table/DifficultyTable.csv`.
 2026-07-22, 사용자 요청("난이도에 관한 것들을 다 테이블에서 관리")으로 신설 — 이전엔 `DifficultyManager.cs`에 switch문 3개 + 상수 2개로 하드코딩되어 있었음.

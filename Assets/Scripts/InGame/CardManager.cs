@@ -34,13 +34,6 @@ public class CardManager : UpdatableBehaviour
         { 312, 3 }, // Devastating Blow → CentralTower
     };
 
-    // 2026-07-30 — 사용자 요청("관통 1스택이 나온 후 2스택이 나오게 선행조건 추가"). 무기 보유 여부가 아니라
-    // "이번 런에서 이미 뽑은 카드" 기준 선행조건 — WEAPON_REQUIRED_CARD_IDS와는 별개 축이라 새 딕셔너리로 분리.
-    private static readonly Dictionary<int, int> CARD_PREREQUISITE_IDS = new Dictionary<int, int>
-    {
-        { 106, 105 }, // Pierce II ← Pierce I 선획득 필요
-    };
-
     // Double Shot(#107)은 Legendary라 등급상 유니크 취급되지만, 사용자 요청("더블샷 계속 먹으면 탄수 한번에 늘어나게")대로
     // 반복 드래프트가 가능해야 하는 예외 카드 — 계속 뽑을 때마다 AddProjectileCount(1)이 그대로 누적된다.
     private static readonly HashSet<int> REPEATABLE_CARD_IDS = new HashSet<int> { 107 };
@@ -261,9 +254,6 @@ public class CardManager : UpdatableBehaviour
             if (HasWeaponSlotAvailable(record) == false)
                 continue;
 
-            if (HasRequiredPrerequisiteCard(record) == false)
-                continue;
-
             bool isUnique = IsUniqueCard(record);
             if (isUnique == true && m_ObtainedUniqueIds.Contains(record.Id) == true)
                 continue;
@@ -325,16 +315,6 @@ public class CardManager : UpdatableBehaviour
             return true;
 
         return InGameScene.Current.towerController.weaponCount < InGameScene.Current.towerController.maxWeaponSlots;
-    }
-
-    // 2026-07-30 — 사용자 요청("관통 1스택이 나온 후 2스택이 나오게 선행조건 추가"). CARD_PREREQUISITE_IDS에
-    // 없는 카드는 항상 통과, 있으면 이번 런에서 그 선행 카드를 이미 뽑았을 때만 통과.
-    private bool HasRequiredPrerequisiteCard(CardRecord _record)
-    {
-        if (CARD_PREREQUISITE_IDS.TryGetValue(_record.Id, out int prerequisiteCardId) == false)
-            return true;
-
-        return m_ObtainedCardIds.Contains(prerequisiteCardId);
     }
 
     // Epic/Legendary는 원래 한 런에 한 장만(유니크) — REPEATABLE_CARD_IDS에 등록된 카드(Double Shot #107)만 예외로 반복 드래프트 허용.

@@ -60,10 +60,8 @@ Id,Key,Kr,En,Cn,Jp
 62,CardCategoryUtility,유틸리티,UTILITY,实用,ユーティリティ
 63,CardCategoryDefense,방어,DEFENSE,防御,防御
 64,CardCategorySpecial,특수,SPECIAL,特殊,特殊
-73,Card105Name,관통 I,Pierce I,穿透 I,貫通 I
-74,Card105Effect,투사체가 적 1체를 관통합니다,Projectile pierces 1 enemy,弹药可穿透1个敌人,弾が敵1体を貫通します
-75,Card106Name,관통 II,Pierce II,穿透 II,貫通 II
-76,Card106Effect,관통 +2 (스택 가능),Pierce +2 (stackable),穿透 +2 (可叠加),貫通 +2 (スタック可)
+73,Card105Name,관통,Pierce,穿透,貫通
+74,Card105Effect,투사체가 적을 관통합니다 (스택 가능),Projectile pierces enemies (stackable),弹药可穿透敌人 (可叠加),弾が敵を貫通します (スタック可)
 77,Card107Name,더블 샷,Double Shot,双重射击,ダブルショット
 78,Card107Effect,한 번에 투사체 2개를 발사합니다,Fires 2 projectiles at once,一次发射2枚弹药,一度に弾を2発発射します
 79,Card108Name,트라이앵글 헌터,Triangle Hunter,三角猎手,トライアングルハンター

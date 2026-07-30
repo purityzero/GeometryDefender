@@ -121,7 +121,7 @@ public partial struct ProjectileCollisionSystem : ISystem
                 damageTextManager?.ShowSplashExplosion(splashPosition);
             }
 
-            // Pierce(#105/#106) — 관통 스택이 남아있으면 소멸하지 않고 계속 날아감
+            // Pierce(#105) — 관통 스택이 남아있으면 소멸하지 않고 계속 날아감
             if (effects.ValueRO.Pierce > 0)
             {
                 effects.ValueRW.Pierce -= 1;

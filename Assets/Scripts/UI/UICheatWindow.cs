@@ -35,6 +35,7 @@ public class UICheatWindow : UIPopup
 
     [Header("# 메타트리")]
     [SerializeField] private Button m_AddShardButton;
+    [SerializeField] private Button m_ResetMetaTreeButton;
     [SerializeField] private Transform m_MetaTreeListContainer;
     [SerializeField] private GameObject m_MetaTreeRowTemplate;
 
@@ -112,6 +113,9 @@ public class UICheatWindow : UIPopup
 
         m_AddShardButton.onClick.RemoveAllListeners();
         m_AddShardButton.onClick.AddListener(() => PlayerManager.instance.AddCurrency(eCurrencyType.Shard, 1000));
+
+        m_ResetMetaTreeButton.onClick.RemoveAllListeners();
+        m_ResetMetaTreeButton.onClick.AddListener(() => PlayerManager.instance.ResetMetaTreeAndShard());
     }
 
     private void SkipTime(float _seconds)

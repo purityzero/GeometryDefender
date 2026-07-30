@@ -49,6 +49,43 @@ public class UICardDraft : UIPopup
         DisplayCards();
         RefreshButtons();
         RefreshBuildInfo();
+
+        if (PlayerManager.instance.isAutoMode == true)
+        {
+            AutoMode();
+            return;
+        }
+    }
+
+    // QA/밸런스 테스트 전용 — 사람이 직접 클릭하지 않고 우선순위(무기 > 공격 > 그 외 일반카드)로 즉시 1장 선택.
+    public void AutoMode()
+    {
+        CardRecord picked = PickCardByPriority();
+        if (picked == null)
+        {
+            Close();
+            return;
+        }
+
+        InGameScene.Current.cardManager.ApplyCard(picked);
+        AdvanceOrClose();
+    }
+
+    // 1순위: Weapon 카테고리(무기 해금) / 2순위: Offense 카테고리(공격, 체력·방어 계열 제외) / 3순위: 그 외 남은 카드 중 아무거나.
+    private CardRecord PickCardByPriority()
+    {
+        if (m_CurrentDraft == null || m_CurrentDraft.Count <= 0)
+            return null;
+
+        CardRecord weaponCard = m_CurrentDraft.Find(record => record.Category == eCardCategory.Weapon);
+        if (weaponCard != null)
+            return weaponCard;
+
+        CardRecord offenseCard = m_CurrentDraft.Find(record => record.Category == eCardCategory.Offense);
+        if (offenseCard != null)
+            return offenseCard;
+
+        return m_CurrentDraft[0];
     }
 
     private void DisplayCards()

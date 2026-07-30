@@ -1,5 +1,25 @@
 # GameConfigRecord (GameConfigTable)
 
+## 2026-07-30-6 — Normal 밸런스 2차 조정 (1차 조정 검증 후 훨씬 과감하게)
+`design-issues.md` 2026-07-30-1 검증 결과(1차 조정 후에도 평균 +6.1%/최고 +7.6%에 그침, 600초 미달) 후속 — 동일 세 값을 훨씬 큰 폭으로 재조정: `TOWER_MAX_HP` 180→**220**, `SPAWN_RAMP_GRACE_SECONDS` 75→**100**, `WEAPON_PITY_THRESHOLD` 2→**1**(두 번째 무기가 거의 즉시 강제 등장하도록). [[TowerRecord]] 2026-07-30-4, [[DifficultyRecord]] 2026-07-30-1과 함께 한 세트. 반응이 비선형이었던 점을 감안해 이번엔 목표를 다소 넘길 수도 있게 크게 밀었음(의도적) — 다음 QA에서 오히려 너무 쉬워지면 완화 폭을 줄이는 3차 조정 필요.
+
+### 검증
+컴파일 불필요(CSV 값 변경), `refresh_unity`(assets, if_dirty) 후 콘솔 에러 0건. Play Mode 재검증 필요.
+
+---
+
+## 2026-07-30-5 — Normal 밸런스 근본 조정 (design-issues.md 2026-07-30-0 후속)
+`design-issues.md` 2026-07-30-0 QA 결론(완전 신규 유저 상태로 Normal 7회 연속 시도, 전부 600초 미클리어) 원인 분석 후 조정. 크로스오버 공식 기준 세 값을 함께 조정:
+- `TOWER_MAX_HP`(`TowerMaxHp`) 150→**180**(+20%) — 백로그(못 잡은 몬스터의 기지 도달) 흡수 여력 확대.
+- `SPAWN_RAMP_GRACE_SECONDS`(`SpawnRampGraceSeconds`) 60→**75** — 램프 시작 시점을 15초 더 미뤄 크로스오버 지점 자체를 뒤로 이동.
+- `WEAPON_PITY_THRESHOLD`(`WeaponPityThreshold`) 3→**2** — 두 번째 무기(킬레이트를 실질적으로 배로 늘리는 유일한 수단, 이번 세션 타겟팅 분산 구현으로 다중 무기 시너지 확보됨)가 더 빨리 등장하도록 카테고리 천장 발동 조건 완화.
+[[TowerRecord]] 2026-07-30-3(CentralTower Damage), [[DifficultyRecord]] 2026-07-30-0(Normal DifficultyMultiplier)과 함께 한 세트로 조정.
+
+### 검증
+컴파일 불필요(CSV 값 변경), `refresh_unity`(assets, if_dirty) 후 콘솔 에러 0건. Play Mode 재검증 필요.
+
+---
+
 ## 2026-07-30-4 — 카메라 자동 줌아웃 튜닝값 신설
 [[ActorPlayer]] 2026-07-30-5 참고. `CAMERA_BASE_ORTHO_SIZE`(10, 씬 기본값과 동일), `CAMERA_MAX_ZOOM_OUT_AMOUNT`(4), `CAMERA_ZOOM_FULL_MONSTER_COUNT`(20 — 사용자 확정치, 초안 8에서 상향), `CAMERA_ZOOM_CHECK_INTERVAL`(0.5초), `CAMERA_ZOOM_TWEEN_DURATION`(1.5초).
 

@@ -1,5 +1,29 @@
 # CardManager
 
+## 2026-07-30-5 — Pierce I/II 카드 통합 (사용자 요청: "관통카드 하나로 통합해 1,2 있으니까 뭔가 이상함, 스택은 계속 쌓이게 해줘야함")
+
+### 개요
+2026-07-30-4에서 추가한 Pierce II(#106) + 선행조건(Pierce I 선획득 필요) 구조를 사용자가 다시 보고 "이상하다"고 판단 — 카드 2장 + 선행조건 체인을 걷어내고 **Pierce 카드 1장**으로 되돌렸다. 스택 누적 자체는 원래부터 `AddPierce()`가 `+=`라 문제없이 동작했고(비유니크 카드라 뽑을 때마다 풀에 계속 남아있어 반복 드래프트도 이미 가능했음), 이번 변경은 "카드가 2장으로 쪼개져 있는 것" 자체를 정리한 것.
+
+### 데이터
+- `CardTable.csv`: Id 106(Pierce II) 행 삭제. Id 105는 `Rarity=Common→Rare`로 조정(사용자 정정: 최초엔 Common으로 남기려 했으나 "Common으로 남아있는건 레어로 옮겨야할꺼같음"이라는 피드백 반영), `EffectValue=1` 그대로 유지(스택마다 +1, 뽑을 때마다 계속 누적).
+- `StringTable.csv`: Card105Name "관통 I"→"관통"(Pierce I→Pierce), Card105Effect에 "스택 가능" 문구 추가. Card106Name/Effect 2행 삭제.
+- `Assets/Design/04_card.html`: Pierce I/II gcard 2개 → Pierce 1개로 병합(Rarity 표기도 Rare로 갱신), draft 목업의 "Pierce II"도 "Pierce"로, OFFENSE 카드 수 7장→6장, 전체 카드 일람 34장→33장.
+
+### 코드 (CardManager.cs)
+- `CARD_PREREQUISITE_IDS`(Dictionary, `{106,105}` 하나만 있던 딕셔너리) 전체 삭제 — 유일한 등록 카드가 없어졌으므로 죽은 코드.
+- `HasRequiredPrerequisiteCard(CardRecord)` 메서드 삭제, `BuildAvailablePool()`의 호출 지점도 함께 제거.
+- 주석 정리: `ActorPlayer.cs`/`ProjectileCollisionSystem.cs`/`ProjectileEffects.cs`의 "Pierce(#105/#106)" 표기를 "Pierce(#105)"로 정리(코드 로직 변경 없음, 참조 카드 Id가 하나로 줄었을 뿐).
+
+### 검증 완료 (2026-07-30, qa-tester 세션)
+Play Mode 실측(TitleScene→`Btn_Play`→`Item_Normal` 실제 클릭 경로)으로 확인:
+- **드래프트 풀 1장 확인**: `CardTable.csv`를 grep — Pierce/관통 관련 행이 `105,Card105Name,Card105Effect,Offense,Rare,PierceAdd,1,` 단 1건만 존재, #106은 완전히 삭제됨. 코드(`CARD_PREREQUISITE_IDS` 삭제 확인)와 데이터 양쪽 다 재등장 가능성 구조적으로 차단됨.
+- **스택 누적 확인**: `InGameScene.Current.cardManager.ApplyCard(CardTable.GetRecordById(105))`를 5회 연속 호출 후 `ActorPlayer.m_PierceStacks`(private, 리플렉션)를 직접 조회 — 정확히 5로 누적됨. `AddPierce(int)`가 `+=`인 설계대로 뽑을 때마다 스택이 계속 쌓임을 확인.
+- **CentralTower 전용 확인**: `ActorPlayer.FireSingleShot()` 코드 재확인 — `Pierce = (_weapon.Record.Id == TOWER_RECORD_ID) ? m_PierceStacks : 0`로 명시적으로 게이팅되어 있어 다른 무기(Archer/Mage/ChainCoil/HomingPod/Laser/OrbitalSlow/Mortar)에는 절대 적용 안 됨 — 정적 분석만으로도 명확한 삼항 조건이라 별도 런타임 교차검증 없이 확정.
+- 콘솔 에러 0건.
+
+---
+
 ## 2026-07-30-4 — 밸런스 일괄 조정 + Pierce II 선행조건 + Init() 상태 누락 발견/수정 + 오비탈 링 확장
 
 ### Pierce II 선행조건 (사용자 요청: "관통 1스택이 나온 후 2스택이 나오게 선행조건 추가")

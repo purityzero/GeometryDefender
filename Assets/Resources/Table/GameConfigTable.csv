@@ -10,7 +10,7 @@ Id,DisplayName,Value
 9,BaseZ,-8
 10,TapScale,0.95
 11,TapDuration,0.05
-12,TowerMaxHp,150
+12,TowerMaxHp,220
 13,SpawnBaseRate,1.0
 14,SpawnRateExponent,1.0
 15,HpMultiplierGrowth,0.2
@@ -28,7 +28,7 @@ Id,DisplayName,Value
 27,MaxRecentRunCount,10
 28,DraftSize,3
 29,PityThreshold,5
-64,WeaponPityThreshold,3
+64,WeaponPityThreshold,1
 31,ShieldBurstRadius,3
 32,CritExplosionScalePopDuration,0.15
 33,CritExplosionFadeDuration,0.25
@@ -52,7 +52,7 @@ Id,DisplayName,Value
 51,ChainLightningPoolSize,6
 52,ChainLightningFadeDuration,0.25
 53,ChainLightningWidth,0.08
-54,SpawnRampGraceSeconds,60
+54,SpawnRampGraceSeconds,100
 55,ProjectileHomingMaxLifetime,25
 57,ChainCoilInnateChainJumps,3
 58,ChainCoilInnateChainRadius,2

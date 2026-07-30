@@ -1,6 +1,5 @@
 Id,NameKey,EffectKey,Category,Rarity,EffectType,EffectValue,EffectParam
-105,Card105Name,Card105Effect,Offense,Common,PierceAdd,1,
-106,Card106Name,Card106Effect,Offense,Rare,PierceAdd,2,
+105,Card105Name,Card105Effect,Offense,Rare,PierceAdd,1,
 107,Card107Name,Card107Effect,Offense,Legendary,DoubleShot,1,
 108,Card108Name,Card108Effect,Offense,Rare,SpeciesBonusDamage,5,Normal
 109,Card109Name,Card109Effect,Offense,Common,VariantBonusDamage,2,Normal
