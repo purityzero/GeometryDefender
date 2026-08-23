@@ -1,2 +1,80 @@
+# Unity 표준 무시 목록 — https://github.com/github/gitignore/blob/main/Unity.gitignore
+#
+# 2026-08-23: 이 규칙들은 원래 이 PC의 전역 gitignore(core.excludesfile)에만 있었다.
+# 그 파일이 없는 다른 PC에서 clone하면 Library/ 같은 폴더가 통째로 추적 대상이 되므로
+# 프로젝트 안으로 옮겼다. (Orca 워크스페이스 WorkBranchFlow.MD §7)
+
+# Unity 자동 생성 폴더
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# IDE 캐시 / 개인 설정
+.vs/
+.idea/
+.vscode/
+/[Aa]ssets/Plugins/Editor/JetBrains*
+*.DotSettings.user
+
+# 자동 생성 솔루션·프로젝트 파일
+ExportedObj/
+.consulo/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# 로그 / 크래시 리포트
+*.log
+sysinfo.txt
+mono_crash.*
+crashlytics-build.properties
+
+# 빌드 산출물
+*.apk
+*.aab
+*.app
+*.unitypackage
+*.unitypackage.meta
+
+# Blender 백업본
+*.blend1
+*.blend1.meta
+
+# 테스트 러너가 자동 생성하는 씬
+InitTestScene*.unity*
+/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Addressables
+/ServerData
+/[Aa]ssets/StreamingAssets/aa*
+/[Aa]ssets/AddressableAssetsData/link.xml*
+/[Aa]ssets/Addressables_Temp*
+/[Aa]ssets/AddressableAssetsData/*/*.bin*
+
+# Visual Scripting 자동 생성
+/[Aa]ssets/Unity.VisualScripting.Generated/
+
+# 이 프로젝트 고유
 QA_Recordings/
 .claude/
+.claude.zip
